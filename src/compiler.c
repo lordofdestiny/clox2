@@ -66,6 +66,8 @@ typedef struct {
 Parser parser;
 Compiler *current = NULL;
 
+int innermostLoopStart = -1;
+int innermostLoopScopeDepth = 0;
 
 static Chunk *currentChunk() {
     return compilingChunk;
@@ -347,7 +349,11 @@ static void forStatement() {
         expressionStatement();
     }
 
-    int loopStart = currentChunk()->count;
+    int surroundingLoopStart = innermostLoopStart;
+    int surroundingLoopScopeDepth = innermostLoopScopeDepth;
+    innermostLoopStart = currentChunk()->count;
+    innermostLoopScopeDepth = current->scopeDepth;
+
     int exitJump = -1;
     if (!match(TOKEN_SEMICOLON)) {
         expression();
@@ -365,20 +371,40 @@ static void forStatement() {
         emitByte(OP_POP);
         consume(TOKEN_RIGHT_PAREN, "Expected ')' after for clauses.");
 
-        emitLoop(loopStart);
-        loopStart = incrementStart;
+        emitLoop(innermostLoopStart);
+        innermostLoopStart = incrementStart;
         patchJump(bodyJump);
     }
 
     statement();
-    emitLoop(loopStart);
+    emitLoop(innermostLoopStart);
 
     if (exitJump != -1) {
         patchJump(exitJump);
         emitByte(OP_POP); // Condition;
     }
 
+    innermostLoopStart = surroundingLoopStart;
+    innermostLoopScopeDepth = surroundingLoopScopeDepth;
+
     endScope();
+}
+
+static void continueStatement() {
+    if (innermostLoopStart == -1) {
+        error("Can't use 'continue' outside of a loop.");
+    }
+
+    consume(TOKEN_SEMICOLON, "Expect ';' after 'continue'.");
+
+    // Pop locals
+    for (int i = current->localCount - 1;
+         i >= 0 && current->locals[i].depth > innermostLoopStart;
+         i--) {
+        emitByte(OP_POP);
+    }
+
+    emitLoop(innermostLoopStart);
 }
 
 static void ifStatement() {
@@ -403,8 +429,15 @@ static void printStatement() {
     emitByte(OP_PRINT);
 }
 
+
+// var a = 0; while ( a != 2) { if(a == 1) { print a; a = a+1; } else { a = a+1; continue; } }
 static void whileStatement() {
-    int loopStart = currentChunk()->count;
+    beginScope(); // ?
+    int surroundingLoopStart = innermostLoopStart;
+    int surroundingLoopScopeDepth = innermostLoopScopeDepth;
+    innermostLoopStart = currentChunk()->count;
+    innermostLoopScopeDepth = current->scopeDepth;
+
     consume(TOKEN_LEFT_PAREN, "Expect '(' after while.");
     expression();
     consume(TOKEN_RIGHT_PAREN, "Expect ')' after condition.");
@@ -412,10 +445,14 @@ static void whileStatement() {
     int exitJump = emitJump(OP_JUMP_IF_FALSE);
     emitByte(OP_POP);
     statement();
-    emitLoop(loopStart);
+    emitLoop(innermostLoopStart);
 
     patchJump(exitJump);
     emitByte(OP_POP);
+
+    innermostLoopStart = surroundingLoopStart;
+    innermostLoopScopeDepth = surroundingLoopScopeDepth;
+    endScope(); // ?
 }
 
 static void synchronize() {
@@ -452,6 +489,8 @@ static void declaration() {
 static void statement() {
     if (match(TOKEN_PRINT)) {
         printStatement();
+    } else if (match(TOKEN_CONTINUE)) {
+        continueStatement();
     } else if (match(TOKEN_IF)) {
         ifStatement();
     } else if (match(TOKEN_FOR)) {
