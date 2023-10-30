@@ -491,8 +491,6 @@ static void printStatement() {
     emitByte(OP_PRINT);
 }
 
-#define MAX_CASES 256
-
 static void switchStatement() {
     consume(TOKEN_LEFT_PAREN, "Expected '(' after switch");
     expression();
@@ -503,9 +501,8 @@ static void switchStatement() {
     // 1: before default
     // 2: after default
     int state = 0;
-    int caseEnds[MAX_CASES];
-    int caseCount = 0;
     int previousCaseSkip = -1;
+    int previousFallthroughLocation = -1;
 
     while (!match(TOKEN_RIGHT_BRACE) && !match(TOKEN_EOF)) {
         // If line is a line with a case or a default
@@ -518,7 +515,7 @@ static void switchStatement() {
 
             if (state == 1) {
                 // At the end of previous case, jump over the others
-                caseEnds[caseCount++] = emitJump(OP_JUMP);
+                previousFallthroughLocation = emitJump(OP_JUMP);
                 // Patch its condition to jump to the next case (this one), also for default?
 
                 patchJump(previousCaseSkip);
@@ -543,6 +540,9 @@ static void switchStatement() {
                 consume(TOKEN_COLON, "Expect ':' after default.");
                 previousCaseSkip = -1;
             }
+            if (previousFallthroughLocation != -1) {
+                patchJump(previousFallthroughLocation);
+            }
         } else {
             // Handle lines that are statements
             if (state == 0) {
@@ -551,17 +551,13 @@ static void switchStatement() {
             statement();
         }
     }
-
     // If we ended without a default case, patch its condition jump
     if (state == 1) {
-        patchJump(previousCaseSkip);
+        previousFallthroughLocation = emitJump(OP_JUMP);
         emitByte(OP_POP);
+        patchJump(previousCaseSkip);
     }
-
-    // Patch all the case jumps to the end.
-    for (int i = 0; i < caseCount; i++) {
-        patchJump(caseEnds[i]);
-    }
+    patchJump(previousFallthroughLocation);
 
     emitByte(OP_POP); // The switch value
 }
