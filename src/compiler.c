@@ -13,7 +13,6 @@
 #ifdef DEBUG_PRINT_CODE
 
 #include <string.h>
-#include <assert.h>
 
 #include "../h/debug.h"
 
@@ -299,7 +298,12 @@ static void defineVariable(uint8_t global) {
     emitBytes(OP_DEFINE_GLOBAL, global);
 }
 
+#pragma clang diagnostic push
+#pragma ide diagnostic ignored "UnusedParameter"
+
 static void and_(bool canAssign) {
+#pragma clang diagnostic pop
+
     int endJump = emitJump(OP_JUMP_IF_FALSE);
     emitByte(OP_POP);
     parsePrecedence(PREC_AND);
@@ -487,8 +491,79 @@ static void printStatement() {
     emitByte(OP_PRINT);
 }
 
+#define MAX_CASES 256
+
 static void switchStatement() {
-    error("Switch statement is not supported by clox2");
+    consume(TOKEN_LEFT_PAREN, "Expected '(' after switch");
+    expression();
+    consume(TOKEN_RIGHT_PAREN, "Expected ')' after switch expression");
+    consume(TOKEN_LEFT_BRACE, "Expected '{' before switch cases.");
+
+    // 0: before all cases
+    // 1: before default
+    // 2: after default
+    int state = 0;
+    int caseEnds[MAX_CASES];
+    int caseCount = 0;
+    int previousCaseSkip = -1;
+
+    while (!match(TOKEN_RIGHT_BRACE) && !match(TOKEN_EOF)) {
+        // If line is a line with a case or a default
+        if (match(TOKEN_CASE) || match(TOKEN_DEFAULT)) {
+            TokenType caseType = parser.previous.type;
+
+            if (state == 2) {
+                error("Can't have another case or default after default case ");
+            }
+
+            if (state == 1) {
+                // At the end of previous case, jump over the others
+                caseEnds[caseCount++] = emitJump(OP_JUMP);
+                // Patch its condition to jump to the next case (this one), also for default?
+
+                patchJump(previousCaseSkip);
+                emitByte(OP_POP); // If case is not entered, pop it here before next test
+            }
+
+            if (caseType == TOKEN_CASE) {
+                state = 1;
+
+                // See if the case is equal to value
+                emitByte(OP_DUP);
+                expression();
+
+                consume(TOKEN_COLON, "Expect ':' after case value");
+
+                emitByte(OP_EQUAL);
+                previousCaseSkip = emitJump(OP_JUMP_IF_FALSE);
+
+                emitByte(OP_POP); // If case is entered, pop result
+            } else {
+                state = 2;
+                consume(TOKEN_COLON, "Expect ':' after default.");
+                previousCaseSkip = -1;
+            }
+        } else {
+            // Handle lines that are statements
+            if (state == 0) {
+                error("Can't have statements before any case");
+            }
+            statement();
+        }
+    }
+
+    // If we ended without a default case, patch its condition jump
+    if (state == 1) {
+        patchJump(previousCaseSkip);
+        emitByte(OP_POP);
+    }
+
+    // Patch all the case jumps to the end.
+    for (int i = 0; i < caseCount; i++) {
+        patchJump(caseEnds[i]);
+    }
+
+    emitByte(OP_POP); // The switch value
 }
 
 static void whileStatement() {
@@ -584,7 +659,12 @@ static void conditional() {
 }
 */
 
+#pragma clang diagnostic push
+#pragma ide diagnostic ignored "UnusedParameter"
+
 static void binary(bool canAssign) {
+#pragma clang diagnostic pop
+
     TokenType operatorType = parser.previous.type;
     ParseRule *rule = getRule(operatorType);
     parsePrecedence((Precedence) (rule->precedence + 1));
@@ -614,7 +694,12 @@ static void binary(bool canAssign) {
     }
 }
 
+#pragma clang diagnostic push
+#pragma ide diagnostic ignored "UnusedParameter"
+
 static void literal(bool canAssign) {
+#pragma clang diagnostic pop
+
     switch (parser.previous.type) {
     case TOKEN_FALSE: emitByte(OP_FALSE);
         break;
@@ -626,17 +711,32 @@ static void literal(bool canAssign) {
     }
 }
 
+#pragma clang diagnostic push
+#pragma ide diagnostic ignored "UnusedParameter"
+
 static void grouping(bool canAssign) {
+#pragma clang diagnostic
+
     expression();
     consume(TOKEN_RIGHT_PAREN, "Expect ')' after expression");
 }
 
+#pragma clang diagnostic push
+#pragma ide diagnostic ignored "UnusedParameter"
+
 static void number(bool canAssign) {
+#pragma clang diagnostic pop
+
     double value = strtod(parser.previous.start, NULL);
     emitConstant(NUMBER_VAL(value));
 }
 
+#pragma clang diagnostic push
+#pragma ide diagnostic ignored "UnusedParameter"
+
 static void or_(bool canAssign) {
+#pragma clang diagnostic pop
+
     int elseJump = emitJump(OP_JUMP_IF_FALSE);
     int endJump = emitJump(OP_JUMP);
     patchJump(elseJump);
@@ -646,7 +746,12 @@ static void or_(bool canAssign) {
     patchJump(endJump);
 }
 
+#pragma clang diagnostic push
+#pragma ide diagnostic ignored "UnusedParameter"
+
 static void string(bool canAssign) {
+#pragma clang diagnostic pop
+
     emitConstant(OBJ_VAL((Obj *) copyString(parser.previous.start + 1,
                                             parser.previous.length - 2)));
 }
@@ -676,7 +781,12 @@ static void variable(bool canAssign) {
     namedVariable(parser.previous, canAssign);
 }
 
+#pragma clang diagnostic push
+#pragma ide diagnostic ignored "UnusedParameter"
+
 static void unary(bool canAssign) {
+#pragma clang diagnostic pop
+
     TokenType operatorType = parser.previous.type;
 
     // Compile the operand.
