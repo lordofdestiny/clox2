@@ -431,7 +431,7 @@ static void forStatement() {
 }
 
 static void breakStatement() {
-    if (innermostLoopStart == -1 || currentBreakLocations == NULL) {
+    if (innermostLoopStart == -1 && currentBreakLocations == NULL) {
         error("Can't use 'break' outside a loop/switch statements.");
     }
 
@@ -503,6 +503,8 @@ static void switchStatement() {
     int state = 0;
     int previousCaseSkip = -1;
     int previousFallthroughLocation = -1;
+    BreakLocations locations;
+    initBreakLocations(&locations);
 
     while (!match(TOKEN_RIGHT_BRACE) && !match(TOKEN_EOF)) {
         // If line is a line wth a case or a default
@@ -558,6 +560,8 @@ static void switchStatement() {
         emitByte(OP_POP);
     }
     patchJump(previousFallthroughLocation);
+
+    leaveBreakLocations(&locations);
 
     emitByte(OP_POP);
 }
