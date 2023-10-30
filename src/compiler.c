@@ -505,7 +505,7 @@ static void switchStatement() {
     int previousFallthroughLocation = -1;
 
     while (!match(TOKEN_RIGHT_BRACE) && !match(TOKEN_EOF)) {
-        // If line is a line with a case or a default
+        // If line is a line wth a case or a default
         if (match(TOKEN_CASE) || match(TOKEN_DEFAULT)) {
             TokenType caseType = parser.previous.type;
 
@@ -514,52 +514,52 @@ static void switchStatement() {
             }
 
             if (state == 1) {
-                // At the end of previous case, jump over the others
+                // Prepare fallthrough jump for previous case (to this one)
                 previousFallthroughLocation = emitJump(OP_JUMP);
-                // Patch its condition to jump to the next case (this one), also for default?
-
+                // Patch where previous case skips on unmatched value
                 patchJump(previousCaseSkip);
-                emitByte(OP_POP); // If case is not entered, pop it here before next test
+                emitByte(OP_POP); // Pop old check
             }
 
             if (caseType == TOKEN_CASE) {
                 state = 1;
-
-                // See if the case is equal to value
+                // Duplicate expression result for consecutive comparisons
                 emitByte(OP_DUP);
                 expression();
 
                 consume(TOKEN_COLON, "Expect ':' after case value");
 
                 emitByte(OP_EQUAL);
+                // Prepare jump to next case if this one fails
                 previousCaseSkip = emitJump(OP_JUMP_IF_FALSE);
-
-                emitByte(OP_POP); // If case is entered, pop result
+                // Pop test result if case is matched
+                emitByte(OP_POP);
             } else {
                 state = 2;
                 consume(TOKEN_COLON, "Expect ':' after default.");
                 previousCaseSkip = -1;
             }
+            // Patch where previous case falls through after it's body is done
             if (previousFallthroughLocation != -1) {
                 patchJump(previousFallthroughLocation);
             }
         } else {
-            // Handle lines that are statements
             if (state == 0) {
                 error("Can't have statements before any case");
             }
             statement();
         }
     }
-    // If we ended without a default case, patch its condition jump
+    // If there was no default case
     if (state == 1) {
         previousFallthroughLocation = emitJump(OP_JUMP);
         emitByte(OP_POP);
         patchJump(previousCaseSkip);
+        emitByte(OP_POP);
     }
     patchJump(previousFallthroughLocation);
 
-    emitByte(OP_POP); // The switch value
+    emitByte(OP_POP);
 }
 
 static void whileStatement() {
