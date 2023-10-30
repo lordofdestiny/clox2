@@ -399,7 +399,7 @@ static void continueStatement() {
 
     // Pop locals
     for (int i = current->localCount - 1;
-         i >= 0 && current->locals[i].depth > innermostLoopStart;
+         i >= 0 && current->locals[i].depth > innermostLoopScopeDepth;
          i--) {
         emitByte(OP_POP);
     }
