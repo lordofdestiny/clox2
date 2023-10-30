@@ -13,6 +13,7 @@
 #ifdef DEBUG_PRINT_CODE
 
 #include <string.h>
+#include <assert.h>
 
 #include "../h/debug.h"
 
@@ -144,7 +145,7 @@ static void emitLoop(int loopStart) {
     emitByte(offset & 0xFF);
 }
 
-static uint8_t emitJump(uint8_t instruction) {
+static int emitJump(uint8_t instruction) {
     emitByte(instruction);
     emitByte(0xFF);
     emitByte(0xFF);
@@ -337,6 +338,36 @@ static void expressionStatement() {
     emitByte(OP_POP);
 }
 
+#define MAX_BREAK_LOCATIONS 255
+
+typedef struct BreakLocations {
+    struct BreakLocations *prev;
+    int count;
+    int locations[MAX_BREAK_LOCATIONS];
+} BreakLocations;
+BreakLocations *currentBreakLocations = NULL;
+
+void initBreakLocations(BreakLocations *locations) {
+    locations->count = 0;
+    locations->prev = currentBreakLocations;
+    currentBreakLocations = locations;
+}
+
+void leaveBreakLocations(BreakLocations *locations) {
+    // Patch locations for break statement
+    for (int i = 0; i < locations->count; i++) {
+        patchJump(locations->locations[i]);
+    }
+    currentBreakLocations = locations->prev;
+}
+
+void addBreakLocation(int location) {
+    BreakLocations *loc = currentBreakLocations;
+    if (loc == NULL || loc->count >= MAX_BREAK_LOCATIONS) return;
+    loc->locations[loc->count] = location;
+    loc->count++;
+}
+
 static void forStatement() {
     beginScope();
     consume(TOKEN_LEFT_PAREN, "Expect '(' after for.");
@@ -353,6 +384,9 @@ static void forStatement() {
     int surroundingLoopScopeDepth = innermostLoopScopeDepth;
     innermostLoopStart = currentChunk()->count;
     innermostLoopScopeDepth = current->scopeDepth;
+
+    BreakLocations locations;
+    initBreakLocations(&locations);
 
     int exitJump = -1;
     if (!match(TOKEN_SEMICOLON)) {
@@ -387,7 +421,31 @@ static void forStatement() {
     innermostLoopStart = surroundingLoopStart;
     innermostLoopScopeDepth = surroundingLoopScopeDepth;
 
+    leaveBreakLocations(&locations);
+
     endScope();
+}
+
+static void breakStatement() {
+    if (innermostLoopStart == -1 || currentBreakLocations == NULL) {
+        error("Can't use 'break' outside a loop/switch statements.");
+    }
+
+    if (currentBreakLocations->count == MAX_BREAK_LOCATIONS) {
+        error("Too many break statements in the loop");
+    }
+
+    consume(TOKEN_SEMICOLON, "Expect ';' after 'break'.");
+
+    // Pop locals
+    for (int i = current->localCount - 1;
+         i >= 0 && current->locals[i].depth > innermostLoopScopeDepth;
+         i--) {
+        emitByte(OP_POP);
+    }
+
+    int breakJump = emitJump(OP_JUMP);
+    addBreakLocation(breakJump);
 }
 
 static void continueStatement() {
@@ -429,14 +487,18 @@ static void printStatement() {
     emitByte(OP_PRINT);
 }
 
+static void switchStatement() {
+    error("Switch statement is not supported by clox2");
+}
 
-// var a = 0; while ( a != 2) { if(a == 1) { print a; a = a+1; } else { a = a+1; continue; } }
 static void whileStatement() {
-    beginScope(); // ?
     int surroundingLoopStart = innermostLoopStart;
     int surroundingLoopScopeDepth = innermostLoopScopeDepth;
     innermostLoopStart = currentChunk()->count;
     innermostLoopScopeDepth = current->scopeDepth;
+
+    BreakLocations locations;
+    initBreakLocations(&locations);
 
     consume(TOKEN_LEFT_PAREN, "Expect '(' after while.");
     expression();
@@ -450,9 +512,12 @@ static void whileStatement() {
     patchJump(exitJump);
     emitByte(OP_POP);
 
+    leaveBreakLocations(&locations);
+
     innermostLoopStart = surroundingLoopStart;
     innermostLoopScopeDepth = surroundingLoopScopeDepth;
-    endScope(); // ?
+
+
 }
 
 static void synchronize() {
@@ -489,12 +554,16 @@ static void declaration() {
 static void statement() {
     if (match(TOKEN_PRINT)) {
         printStatement();
+    } else if (match(TOKEN_BREAK)) {
+        breakStatement();
     } else if (match(TOKEN_CONTINUE)) {
         continueStatement();
     } else if (match(TOKEN_IF)) {
         ifStatement();
     } else if (match(TOKEN_FOR)) {
         forStatement();
+    } else if (match(TOKEN_SWITCH)) {
+        switchStatement();
     } else if (match(TOKEN_WHILE)) {
         whileStatement();
     } else if (match(TOKEN_LEFT_BRACE)) {
