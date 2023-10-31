@@ -76,7 +76,6 @@ typedef struct Compiler {
     int innermostLoopStart;
     int innermostLoopScopeDepth;
 
-    // TODO Should be made a global. Needs it's own area. Kinda hard rn.
     Table stringConstants;
 } Compiler;
 
@@ -455,13 +454,6 @@ static void function(FunctionType type) {
     block();
 
     ObjFunction *function = endCompiler(); // endScope() not needed because compiler ends here
-    /* emitBytes(OP_CLOSURE, makeConstant(OBJ_VAL((Obj *) function)));
-
-    for (int i = 0; i < function->upvalueCount; i++) {
-        emitByte(compiler.upvalues[i].isLocal ? 1 : 0);
-        emitByte(compiler.upvalues[i].index);
-    }
-     */
     uint8_t functionConstant = makeConstant(OBJ_VAL((Obj *) function));
     if (function->upvalueCount > 0) {
         emitBytes(OP_CLOSURE, functionConstant);
@@ -643,17 +635,17 @@ static void breakStatement() {
     consume(TOKEN_SEMICOLON, "Expect ';' after 'break'.");
 
     // Pop locals
-    if (current->loopType == LOOP_LOOP) {
-        for (int i = current->localCount - 1;
-             i >= 0 && current->locals[i].depth > current->innermostLoopScopeDepth;
-             i--) {
-            if (current->locals[i].isCaptured) {
-                emitByte(OP_CLOSE_UPVALUE);
-            } else {
-                emitByte(OP_POP);
-            }
+//    if (current->loopType == LOOP_LOOP) {
+    for (int i = current->localCount - 1;
+         i >= 0 && current->locals[i].depth > current->innermostLoopScopeDepth;
+         i--) {
+        if (current->locals[i].isCaptured) {
+            emitByte(OP_CLOSE_UPVALUE);
+        } else {
+            emitByte(OP_POP);
         }
     }
+//    }
 
     int breakJump = emitJump(OP_JUMP);
     addBreakLocation(breakJump);
@@ -728,6 +720,11 @@ static void switchStatement() {
     int state = 0;
     int previousCaseSkip = -1;
     int previousFallthroughLocation = -1;
+
+    // Reserve a stack space for the switch helper location
+    // That is used to save the switched expression result
+    current->localCount++;
+
     BreakLocations locations;
     LoopType surroundingLoopType = current->loopType;
     current->loopType = LOOP_NONE;
@@ -790,6 +787,7 @@ static void switchStatement() {
 
     leaveBreakLocations(&locations);
     current->loopType = surroundingLoopType;
+    current->localCount--;
 
     emitByte(OP_POP);
 }
