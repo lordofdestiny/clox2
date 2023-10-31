@@ -3,8 +3,10 @@
 //
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <stdarg.h>
 #include <string.h>
+#include <time.h>
 #include "../h/common.h"
 #include "../h/value.h"
 #include "../h/compiler.h"
@@ -13,6 +15,23 @@
 #include "../h/object.h"
 
 VM vm;
+
+static bool clockNative(int argCount, Value *args) {
+    args[-1] = NUMBER_VAL((double) clock() / CLOCKS_PER_SEC);
+    return true;
+}
+
+static bool exitNative(int argCount, Value *args) {
+    if (!IS_NUMBER(args[0])) {
+        const char *message = "Exit code must be a number.";
+        args[-1] = OBJ_VAL((Obj *) copyString(message, strlen(message)));
+        return false;
+    }
+    int exitCode = (int) AS_NUMBER(args[0]);
+    exit(exitCode);
+    args[-1] = NIL_VAL;
+    return true;
+}
 
 static void resetStack() {
     vm.stackTop = vm.stack;
@@ -39,8 +58,15 @@ static void runtimeError(const char *format, ...) {
         }
     }
 
-
     resetStack();
+}
+
+static void defineNative(const char *name, int arity, NativeFn function) {
+    push(OBJ_VAL((Obj *) copyString(name, (int) strlen(name))));
+    push(OBJ_VAL((Obj *) newNative(function, arity)));
+    tableSet(&vm.globals, AS_STRING(vm.stack[0]), vm.stack[1]);
+    pop();
+    pop();
 }
 
 void initVM() {
@@ -48,6 +74,9 @@ void initVM() {
     initTable(&vm.globals);
     initTable(&vm.strings);
     vm.objects = NULL;
+
+    defineNative("clock", 0, clockNative);
+    defineNative("exit", 1, exitNative);
 }
 
 void freeVM() {
@@ -88,10 +117,26 @@ static bool call(ObjFunction *function, int argCount) {
     return true;
 }
 
+static bool callNative(ObjNative *native, int argCount) {
+    if (argCount != native->arity) {
+        runtimeError("Expected %d arguments but got %d", native->arity, argCount);
+        return false;
+    }
+    if (native->function(argCount, vm.stackTop - argCount)) {
+        vm.stackTop -= argCount;
+        return true;
+    } else {
+        runtimeError(AS_STRING(vm.stackTop[-argCount - 1])->chars);
+        return false;
+    }
+}
+
+
 static bool callValue(Value callee, int argCount) {
     if (IS_OBJ(callee)) {
         switch (OBJ_TYPE(callee)) {
         case OBJ_FUNCTION: return call(AS_FUNCTION(callee), argCount);
+        case OBJ_NATIVE: return callNative(((ObjNative *) (AS_OBJ(callee))), argCount);
         default:break;
         }
     }
@@ -119,14 +164,16 @@ static void concatenate() {
 
 static InterpretResult run() {
     CallFrame *frame = &vm.frames[vm.frameCount - 1];
+    register uint8_t *ip = frame->ip;
 
-#define READ_BYTE() (*frame->ip++)
-#define READ_SHORT() (frame->ip+=2, (uint16_t)((frame->ip[-2] << 8) | frame->ip[-1]))
+#define READ_BYTE() (*ip++)
+#define READ_SHORT() (ip+=2, (uint16_t)((ip[-2] << 8) | ip[-1]))
 #define READ_CONSTANT()  (frame->function->chunk.constants.values[READ_BYTE()])
 #define READ_STRING() AS_STRING(READ_CONSTANT())
 #define BINARY_OP(valueType, op) \
     do {              \
         if(!IS_NUMBER(peek(0)) || !IS_NUMBER(peek(1))){ \
+            frame->ip = ip;                     \
             runtimeError("Operands must be numbers");   \
             return INTERPRETER_RUNTIME_ERROR; \
         }\
@@ -179,6 +226,7 @@ static InterpretResult run() {
             ObjString *name = READ_STRING();
             Value value;
             if (!tableGet(&vm.globals, name, &value)) {
+                frame->ip = ip;
                 runtimeError("Undefined variable '%s'.", name->chars);
                 return INTERPRETER_RUNTIME_ERROR;
             }
@@ -195,6 +243,7 @@ static InterpretResult run() {
             ObjString *name = READ_STRING();
             if (tableSet(&vm.globals, name, peek(0))) {
                 tableDelete(&vm.globals, name);
+                frame->ip = ip;
                 runtimeError("Undefined variable '%s'.", name->chars);
                 return INTERPRETER_RUNTIME_ERROR;
             }
@@ -218,6 +267,7 @@ static InterpretResult run() {
                 double a = AS_NUMBER(pop());
                 push(NUMBER_VAL(a + b));
             } else {
+                frame->ip = ip;
                 runtimeError("Operands must be two numbers or two strings.");
                 return INTERPRETER_RUNTIME_ERROR;
             }
@@ -231,6 +281,7 @@ static InterpretResult run() {
             break;
         case OP_NEGATE:
             if (!IS_NUMBER(peek(0))) {
+                frame->ip = ip;
                 runtimeError("Operand must be a number.");
                 return INTERPRETER_RUNTIME_ERROR;
             }
@@ -238,17 +289,17 @@ static InterpretResult run() {
             break;
         case OP_JUMP: {
             uint16_t offset = READ_SHORT();
-            frame->ip += offset;
+            ip += offset;
             break;
         }
         case OP_JUMP_IF_FALSE: {
             uint16_t offset = READ_SHORT();
-            if (isFalsy(peek(0))) frame->ip += offset;
+            if (isFalsy(peek(0))) ip += offset;
             break;
         }
         case OP_LOOP: {
             uint16_t offset = READ_SHORT();
-            frame->ip -= offset;
+            ip -= offset;
             break;
         }
         case OP_PRINT: printValue(pop());
@@ -256,10 +307,12 @@ static InterpretResult run() {
             break;
         case OP_CALL: {
             int argCount = READ_BYTE();
+            frame->ip = ip;
             if (!callValue(peek(argCount), argCount)) {
                 return INTERPRETER_RUNTIME_ERROR;
             }
             frame = &vm.frames[vm.frameCount - 1];
+            ip = frame->ip;
             break;
         }
         case OP_RETURN: {
@@ -273,6 +326,7 @@ static InterpretResult run() {
             vm.stackTop = frame->slots;
             push(result);
             frame = &vm.frames[vm.frameCount - 1];
+            ip = frame->ip;
             break;
         }
         }

@@ -34,7 +34,7 @@ typedef struct {
 typedef enum {
     INTERPRETER_OK,
     INTERPRETER_COMPILE_ERROR,
-    INTERPRETER_RUNTIME_ERROR
+    INTERPRETER_RUNTIME_ERROR,
 } InterpretResult;
 
 extern VM vm;
