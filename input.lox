@@ -1,21 +1,6 @@
-for(var i = 0; i< 7; i = i+1) {
-    switch (i) {
-    case 1:
-        print("one");
-        break;
-    case 2:
-        print("two");
-    case 3:
-        print("three");
-        break;
-    default:
-        switch(i) {
-            case 4: print "4";
-            case 5: print "5"; break;
-            default:
-                print i; break;
-        }
-    }
+fun fibo(n) {
+    if(n<=1) return n;
+    return fibo(n-1) + fibo(n-2);
 }
 
-print("after");
+print fibo(35   );

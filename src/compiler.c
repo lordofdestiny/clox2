@@ -51,7 +51,13 @@ typedef enum {
     TYPE_SCRIPT
 } FunctionType;
 
-typedef struct {
+typedef enum LoopType {
+    LOOP_NONE,
+    LOOP_LOOP,
+} LoopType;
+
+typedef struct Compiler {
+    struct Compiler *enclosing;
     ObjFunction *function;
     FunctionType type;
 
@@ -59,11 +65,13 @@ typedef struct {
     int localCount;
     int scopeDepth;
 
+    LoopType loopType;
     int innermostLoopStart;
     int innermostLoopScopeDepth;
+
+    Table stringConstants;
 } Compiler;
 
-Table stringConstants;
 
 typedef struct {
     Token current;
@@ -158,6 +166,7 @@ static int emitJump(uint8_t instruction) {
 }
 
 static void emitReturn() {
+    emitByte(OP_NIL);
     emitByte(OP_RETURN);
 }
 
@@ -186,6 +195,7 @@ static void patchJump(int offset) {
 }
 
 static void initCompiler(Compiler *compiler, FunctionType type) {
+    compiler->enclosing = current;
     compiler->function = NULL;
     compiler->type = type;
     compiler->localCount = 0;
@@ -193,14 +203,21 @@ static void initCompiler(Compiler *compiler, FunctionType type) {
     compiler->function = newFunction();
     current = compiler;
 
+    if (type != TYPE_SCRIPT) {
+        current->function->name = copyString(parser.previous.start,
+                                             parser.previous.length);
+    }
+
     Local *local = &current->locals[current->localCount++];
     local->depth = 0;
     local->name.start = "";
     local->name.length = 0;
 
-
+    compiler->loopType = LOOP_NONE;
     compiler->innermostLoopStart = -1;
     compiler->innermostLoopScopeDepth = 0;
+
+    initTable(&compiler->stringConstants);
 }
 
 static ObjFunction *endCompiler() {
@@ -214,6 +231,8 @@ static ObjFunction *endCompiler() {
     }
 #endif
 
+    freeTable(&current->stringConstants);
+    current = current->enclosing;
     return function;
 }
 
@@ -244,12 +263,12 @@ static void parsePrecedence(Precedence precedence);
 static uint8_t identifierConstant(Token *name) {
     ObjString *string = copyString(name->start, name->length);
     Value indexValue;
-    if (tableGet(&stringConstants, string, &indexValue)) {
+    if (tableGet(&current->stringConstants, string, &indexValue)) {
         // TODO free string with GCv
         return (uint8_t) AS_NUMBER(indexValue);
     }
     uint8_t index = makeConstant(OBJ_VAL((Obj *) string));
-    tableSet(&stringConstants, string, NUMBER_VAL((double) index));
+    tableSet(&current->stringConstants, string, NUMBER_VAL((double) index));
     return index;
 }
 
@@ -299,6 +318,21 @@ static void declareVariable() {
     addLocal(*name);
 }
 
+static uint8_t argumentList() {
+    uint8_t argCount = 0;
+    if (!check(TOKEN_RIGHT_PAREN)) {
+        do {
+            expression();
+            if (argCount == 255) {
+                error("Can't have more than 255 arguments.");
+            }
+            argCount++;
+        } while (match(TOKEN_COMMA));
+    }
+    consume(TOKEN_RIGHT_PAREN, "Expected ')' after argument list.");
+    return argCount;
+}
+
 static uint8_t parseVariable(const char *errorMessage) {
     consume(TOKEN_IDENTIFIER, errorMessage);
 
@@ -309,6 +343,7 @@ static uint8_t parseVariable(const char *errorMessage) {
 }
 
 static void markInitialized() {
+    if (current->scopeDepth == 0) return;
     current->locals[current->localCount - 1].depth = current->scopeDepth;
 }
 
@@ -344,6 +379,39 @@ static void block() {
 
     consume(TOKEN_RIGHT_BRACE, "Expect '}' after block.");
 }
+
+static void function(FunctionType type) {
+    Compiler compiler;
+    initCompiler(&compiler, type);
+    beginScope();
+
+    consume(TOKEN_LEFT_PAREN, "Expect '(' after function name.");
+    if (!check(TOKEN_RIGHT_PAREN)) {
+        do {
+            current->function->arity++;
+            if (current->function->arity > 255) {
+                errorAtCurrent("Can't have more than 255 parameters");
+            }
+            uint8_t constant = parseVariable("Expect parameter name.");
+            defineVariable(constant);
+        } while (match(TOKEN_COMMA));
+    }
+    consume(TOKEN_RIGHT_PAREN, "Expected ')' after parameters.");
+    consume(TOKEN_LEFT_BRACE, "Expected '{' before function body.");
+
+    block();
+
+    ObjFunction *function = endCompiler(); // endScope() not needed because compiler ends here
+    emitBytes(OP_CONSTANT, makeConstant(OBJ_VAL((Obj *) function)));
+}
+
+static void funDeclaration() {
+    uint8_t global = parseVariable("Expect function name");
+    markInitialized();
+    function(TYPE_FUNCTION);
+    defineVariable(global);
+}
+
 
 static void varDeclaration() {
     uint8_t global = parseVariable("Expect variable name");
@@ -407,8 +475,10 @@ static void forStatement() {
         expressionStatement();
     }
 
+    LoopType surroundingLoopType = current->loopType;
     int surroundingLoopStart = current->innermostLoopStart;
     int surroundingLoopScopeDepth = current->innermostLoopScopeDepth;
+    current->loopType = LOOP_LOOP;
     current->innermostLoopStart = currentChunk()->count;
     current->innermostLoopScopeDepth = current->scopeDepth;
 
@@ -445,6 +515,7 @@ static void forStatement() {
         emitByte(OP_POP); // Condition;
     }
 
+    current->loopType = surroundingLoopType;
     current->innermostLoopStart = surroundingLoopStart;
     current->innermostLoopScopeDepth = surroundingLoopScopeDepth;
 
@@ -454,7 +525,7 @@ static void forStatement() {
 }
 
 static void breakStatement() {
-    if (current->innermostLoopStart == -1 && currentBreakLocations == NULL) {
+    if (current->loopType == LOOP_NONE && currentBreakLocations == NULL) {
         error("Can't use 'break' outside a loop/switch statements.");
     }
 
@@ -476,7 +547,7 @@ static void breakStatement() {
 }
 
 static void continueStatement() {
-    if (current->innermostLoopStart == -1) {
+    if (current->loopType == LOOP_NONE) {
         error("Can't use 'continue' outside of a loop.");
     }
 
@@ -514,6 +585,20 @@ static void printStatement() {
     emitByte(OP_PRINT);
 }
 
+static void returnStatement() {
+    if (current->type == TYPE_SCRIPT) {
+        error("Can't return from top-level code.");
+    }
+
+    if (match(TOKEN_SEMICOLON)) {
+        emitReturn();
+    } else {
+        expression();
+        consume(TOKEN_SEMICOLON, "Expected ';' after return statement.");
+        emitByte(OP_RETURN);
+    }
+}
+
 static void switchStatement() {
     consume(TOKEN_LEFT_PAREN, "Expected '(' after switch");
     expression();
@@ -527,6 +612,8 @@ static void switchStatement() {
     int previousCaseSkip = -1;
     int previousFallthroughLocation = -1;
     BreakLocations locations;
+    LoopType surroundingLoopType = current->loopType;
+    current->loopType = LOOP_NONE;
     initBreakLocations(&locations);
 
     while (!match(TOKEN_RIGHT_BRACE) && !match(TOKEN_EOF)) {
@@ -585,15 +672,19 @@ static void switchStatement() {
     patchJump(previousFallthroughLocation);
 
     leaveBreakLocations(&locations);
+    current->loopType = surroundingLoopType;
 
     emitByte(OP_POP);
 }
 
 static void whileStatement() {
+    LoopType surroundingLoopType = current->loopType;
     int surroundingLoopStart = current->innermostLoopStart;
     int surroundingLoopScopeDepth = current->innermostLoopScopeDepth;
+    current->loopType = LOOP_LOOP;
     current->innermostLoopStart = currentChunk()->count;
     current->innermostLoopScopeDepth = current->scopeDepth;
+
 
     BreakLocations locations;
     initBreakLocations(&locations);
@@ -612,9 +703,9 @@ static void whileStatement() {
 
     leaveBreakLocations(&locations);
 
+    current->loopType = surroundingLoopType;
     current->innermostLoopStart = surroundingLoopStart;
     current->innermostLoopScopeDepth = surroundingLoopScopeDepth;
-
 }
 
 static void synchronize() {
@@ -639,7 +730,9 @@ static void synchronize() {
 }
 
 static void declaration() {
-    if (match(TOKEN_VAR)) {
+    if (match(TOKEN_FUN)) {
+        funDeclaration();
+    } else if (match(TOKEN_VAR)) {
         varDeclaration();
     } else {
         statement();
@@ -657,6 +750,8 @@ static void statement() {
         continueStatement();
     } else if (match(TOKEN_IF)) {
         ifStatement();
+    } else if (match(TOKEN_RETURN)) {
+        returnStatement();
     } else if (match(TOKEN_FOR)) {
         forStatement();
     } else if (match(TOKEN_SWITCH)) {
@@ -714,6 +809,16 @@ static void binary(bool canAssign) {
         break;
     default:return; // Unreachable
     }
+}
+
+
+#pragma clang diagnostic push
+#pragma ide diagnostic ignored "UnusedParameter"
+
+static void call(bool canAssign) {
+#pragma clang diagnostic pop
+    uint8_t argCount = argumentList();
+    emitBytes(OP_CALL, argCount);
 }
 
 #pragma clang diagnostic push
@@ -825,7 +930,7 @@ static void unary(bool canAssign) {
 }
 
 ParseRule rules[] = {
-        [TOKEN_LEFT_PAREN] = {grouping, NULL, PREC_NONE},
+        [TOKEN_LEFT_PAREN] = {grouping, call, PREC_CALL},
         [TOKEN_RIGHT_PAREN] = {NULL, NULL, PREC_NONE},
         [TOKEN_LEFT_BRACE] = {NULL, NULL, PREC_NONE},
         [TOKEN_RIGHT_BRACE] = {NULL, NULL, PREC_NONE},
@@ -901,7 +1006,6 @@ ObjFunction *compile(const char *source) {
 
     parser.hadError = false;
     parser.panicMode = false;
-    initTable(&stringConstants);
 
     advance();
 
@@ -910,6 +1014,5 @@ ObjFunction *compile(const char *source) {
     }
 
     ObjFunction *function = endCompiler();
-    freeTable(&stringConstants);
-    return function;
+    return parser.hadError ? NULL : function;
 }
