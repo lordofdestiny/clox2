@@ -10,9 +10,9 @@
 #include "../h/scanner.h"
 #include "../h/object.h"
 
-#ifdef DEBUG_PRINT_CODE
-
 #include <string.h>
+
+#ifdef DEBUG_PRINT_CODE
 
 #include "../h/debug.h"
 
@@ -670,7 +670,11 @@ static void continueStatement() {
     for (int i = current->localCount - 1;
          i >= 0 && current->locals[i].depth > current->innermostLoopScopeDepth;
          i--) {
-        emitByte(OP_POP);
+        if (current->locals[i].isCaptured) {
+            emitByte(OP_CLOSE_UPVALUE);
+        } else {
+            emitByte(OP_POP);
+        }
     }
 
     emitLoop(current->innermostLoopStart);
@@ -776,8 +780,8 @@ static void switchStatement() {
         }
     }
     // If there was no default case
+    previousFallthroughLocation = emitJump(OP_JUMP);
     if (state == 1) {
-        previousFallthroughLocation = emitJump(OP_JUMP);
         emitByte(OP_POP);
         patchJump(previousCaseSkip);
         emitByte(OP_POP);

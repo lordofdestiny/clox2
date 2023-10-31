@@ -9,7 +9,6 @@ for(var i = 0; i < 5; i=i+1) {
     fun capture() {
         print i;
     }
-    if(i == 3) break;
     switch(i) {
         case 0:
             zero = capture;
@@ -22,19 +21,10 @@ for(var i = 0; i < 5; i=i+1) {
             break;
         case 3:
             three = capture;
-            break; // ? missing
+            break;
         case 4:
             four = capture;
             break;
-        default:
-            print "_______";
     }
     print i;
 }
-
-
-zero();
-one();
-if(two != nil)two();
-if(three!=nil)three();
-if(four!=nil) four();
