@@ -76,7 +76,7 @@ typedef struct Compiler {
     int innermostLoopStart;
     int innermostLoopScopeDepth;
 
-    // TODO Should be made a global
+    // TODO Should be made a global. Needs it's own area. Kinda hard rn.
     Table stringConstants;
 } Compiler;
 
@@ -535,12 +535,23 @@ void addBreakLocation(int location) {
 
 static void forStatement() {
     beginScope();
+
+    // 1: Grab the name and slot of the loop variable, so that we can refer to it later.
+    int loopVariable = -1;
+    Token loopVariableName;
+    loopVariableName.start = NULL;
+    // end
+
     consume(TOKEN_LEFT_PAREN, "Expect '(' after for.");
 
     if (match(TOKEN_SEMICOLON)) {
         // No initializer
     } else if (match(TOKEN_VAR)) {
+        // 1: Grab the ame of the loop variable
+        loopVariableName = parser.current;
         varDeclaration();
+        // and get its slot
+        loopVariable = current->localCount - 1;
     } else {
         expressionStatement();
     }
@@ -567,6 +578,7 @@ static void forStatement() {
 
     if (!match(TOKEN_RIGHT_PAREN)) {
         int bodyJump = emitJump(OP_JUMP);
+
         int incrementStart = currentChunk()->count;
         expression();
         emitByte(OP_POP);
@@ -577,8 +589,33 @@ static void forStatement() {
         patchJump(bodyJump);
     }
 
+    int innerVariable = -1;
+    if (loopVariable != -1) {
+        // 1: Create a scope for the copy ...
+        beginScope();
+        // 1: Define a new variable initialized with the current value of the loop
+        emitBytes(OP_GET_LOCAL, (uint8_t) loopVariable);
+        addLocal(loopVariableName);
+        markInitialized();
+        // 1: Keep the track of it's slot
+        innerVariable = current->localCount - 1;
+    }
+
     statement();
+
+    // Is  this in the right place ?
+    // break should execute the pop ??
+    // 3: If the loop declares a variable...
+    if (loopVariable != -1) {
+        emitBytes(OP_GET_LOCAL, (uint8_t) innerVariable);
+        emitBytes(OP_SET_LOCAL, (uint8_t) loopVariable);
+        emitByte(OP_POP);
+
+        // 4: Close  the temporary scope for the copy of loop variable
+        endScope();
+    }
     emitLoop(current->innermostLoopStart);
+
 
     if (exitJump != -1) {
         patchJump(exitJump);
@@ -606,10 +643,16 @@ static void breakStatement() {
     consume(TOKEN_SEMICOLON, "Expect ';' after 'break'.");
 
     // Pop locals
-    for (int i = current->localCount - 1;
-         i >= 0 && current->locals[i].depth > current->innermostLoopScopeDepth;
-         i--) {
-        emitByte(OP_POP);
+    if (current->loopType == LOOP_LOOP) {
+        for (int i = current->localCount - 1;
+             i >= 0 && current->locals[i].depth > current->innermostLoopScopeDepth;
+             i--) {
+            if (current->locals[i].isCaptured) {
+                emitByte(OP_CLOSE_UPVALUE);
+            } else {
+                emitByte(OP_POP);
+            }
+        }
     }
 
     int breakJump = emitJump(OP_JUMP);

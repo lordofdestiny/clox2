@@ -1,8 +1,40 @@
-fun fib(n) {
-  if (n < 2) return n;
-  return fib(n - 2) + fib(n - 1);
+var zero;
+var one;
+var two;
+var three;
+var four;
+
+
+for(var i = 0; i < 5; i=i+1) {
+    fun capture() {
+        print i;
+    }
+    if(i == 3) break;
+    switch(i) {
+        case 0:
+            zero = capture;
+            break;
+        case 1:
+            one = capture;
+            break;
+        case 2:
+            two = capture;
+            break;
+        case 3:
+            three = capture;
+            break; // ? missing
+        case 4:
+            four = capture;
+            break;
+        default:
+            print "_______";
+    }
+    print i;
 }
 
-var start = clock();
-print fib(33);
-print clock() - start;
+
+zero();
+one();
+if(two != nil)two();
+if(three!=nil)three();
+if(four!=nil) four();

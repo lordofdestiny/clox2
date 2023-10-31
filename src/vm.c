@@ -220,12 +220,7 @@ static InterpretResult run() {
 
 #define READ_BYTE() (*ip++)
 #define READ_SHORT() (ip+=2, (uint16_t)((ip[-2] << 8) | ip[-1]))
-#define GET_FUNCTION() \
-    ( frame->function->type == OBJ_FUNCTION \
-    ? ((ObjFunction*)frame->function)\
-    : ((ObjClosure*)frame->function)->function)
-
-#define READ_CONSTANT() (GET_FUNCTION()->chunk.constants.values[READ_BYTE()])
+#define READ_CONSTANT() (getFrameFunction(frame)->chunk.constants.values[READ_BYTE()])
 #define READ_STRING() AS_STRING(READ_CONSTANT())
 #define BINARY_OP(valueType, op) \
     do {              \
@@ -250,8 +245,8 @@ static InterpretResult run() {
         }
         printf("\n");
         disassembleInstruction(
-                &frame->closure->function->chunk,
-                (int) (ip - frame->closure->function->chunk.code));
+                &getFrameFunction(frame)->chunk,
+                (int) (ip - getFrameFunction(frame)->chunk.code));
 #endif
         uint8_t instruction;
         switch (instruction = READ_BYTE()) {
@@ -424,7 +419,6 @@ static InterpretResult run() {
 
 #undef READ_BYTE
 #undef READ_SHORT
-#undef GET_FUNCTION
 #undef READ_CONSTANT
 #undef READ_STRING
 #undef BINARY_OP
