@@ -46,15 +46,24 @@ typedef struct {
     int depth;
 } Local;
 
+typedef enum {
+    TYPE_FUNCTION,
+    TYPE_SCRIPT
+} FunctionType;
+
 typedef struct {
+    ObjFunction *function;
+    FunctionType type;
+
     Local locals[UINT8_COUNT];
     int localCount;
     int scopeDepth;
+
+    int innermostLoopStart;
+    int innermostLoopScopeDepth;
 } Compiler;
 
 Table stringConstants;
-
-Chunk *compilingChunk;
 
 typedef struct {
     Token current;
@@ -66,11 +75,8 @@ typedef struct {
 Parser parser;
 Compiler *current = NULL;
 
-int innermostLoopStart = -1;
-int innermostLoopScopeDepth = 0;
-
 static Chunk *currentChunk() {
-    return compilingChunk;
+    return &current->function->chunk;
 }
 
 static void errorAt(Token *token, const char *message) {
@@ -179,19 +185,36 @@ static void patchJump(int offset) {
     currentChunk()->code[offset + 1] = jump & 0xFF;
 }
 
-static void initCompiler(Compiler *compiler) {
+static void initCompiler(Compiler *compiler, FunctionType type) {
+    compiler->function = NULL;
+    compiler->type = type;
     compiler->localCount = 0;
     compiler->scopeDepth = 0;
+    compiler->function = newFunction();
     current = compiler;
+
+    Local *local = &current->locals[current->localCount++];
+    local->depth = 0;
+    local->name.start = "";
+    local->name.length = 0;
+
+
+    compiler->innermostLoopStart = -1;
+    compiler->innermostLoopScopeDepth = 0;
 }
 
-static void endCompiler() {
+static ObjFunction *endCompiler() {
     emitReturn();
+    ObjFunction *function = current->function;
 #ifdef DEBUG_PRINT_CODE
     if (!parser.hadError) {
-        disassembleChunk(currentChunk(), "code");
+        disassembleChunk(currentChunk(), function->name != NULL
+                                         ? function->name->chars
+                                         : "<script>");
     }
 #endif
+
+    return function;
 }
 
 static void beginScope() {
@@ -384,10 +407,10 @@ static void forStatement() {
         expressionStatement();
     }
 
-    int surroundingLoopStart = innermostLoopStart;
-    int surroundingLoopScopeDepth = innermostLoopScopeDepth;
-    innermostLoopStart = currentChunk()->count;
-    innermostLoopScopeDepth = current->scopeDepth;
+    int surroundingLoopStart = current->innermostLoopStart;
+    int surroundingLoopScopeDepth = current->innermostLoopScopeDepth;
+    current->innermostLoopStart = currentChunk()->count;
+    current->innermostLoopScopeDepth = current->scopeDepth;
 
     BreakLocations locations;
     initBreakLocations(&locations);
@@ -409,21 +432,21 @@ static void forStatement() {
         emitByte(OP_POP);
         consume(TOKEN_RIGHT_PAREN, "Expected ')' after for clauses.");
 
-        emitLoop(innermostLoopStart);
-        innermostLoopStart = incrementStart;
+        emitLoop(current->innermostLoopStart);
+        current->innermostLoopStart = incrementStart;
         patchJump(bodyJump);
     }
 
     statement();
-    emitLoop(innermostLoopStart);
+    emitLoop(current->innermostLoopStart);
 
     if (exitJump != -1) {
         patchJump(exitJump);
         emitByte(OP_POP); // Condition;
     }
 
-    innermostLoopStart = surroundingLoopStart;
-    innermostLoopScopeDepth = surroundingLoopScopeDepth;
+    current->innermostLoopStart = surroundingLoopStart;
+    current->innermostLoopScopeDepth = surroundingLoopScopeDepth;
 
     leaveBreakLocations(&locations);
 
@@ -431,7 +454,7 @@ static void forStatement() {
 }
 
 static void breakStatement() {
-    if (innermostLoopStart == -1 && currentBreakLocations == NULL) {
+    if (current->innermostLoopStart == -1 && currentBreakLocations == NULL) {
         error("Can't use 'break' outside a loop/switch statements.");
     }
 
@@ -443,7 +466,7 @@ static void breakStatement() {
 
     // Pop locals
     for (int i = current->localCount - 1;
-         i >= 0 && current->locals[i].depth > innermostLoopScopeDepth;
+         i >= 0 && current->locals[i].depth > current->innermostLoopScopeDepth;
          i--) {
         emitByte(OP_POP);
     }
@@ -453,7 +476,7 @@ static void breakStatement() {
 }
 
 static void continueStatement() {
-    if (innermostLoopStart == -1) {
+    if (current->innermostLoopStart == -1) {
         error("Can't use 'continue' outside of a loop.");
     }
 
@@ -461,12 +484,12 @@ static void continueStatement() {
 
     // Pop locals
     for (int i = current->localCount - 1;
-         i >= 0 && current->locals[i].depth > innermostLoopScopeDepth;
+         i >= 0 && current->locals[i].depth > current->innermostLoopScopeDepth;
          i--) {
         emitByte(OP_POP);
     }
 
-    emitLoop(innermostLoopStart);
+    emitLoop(current->innermostLoopStart);
 }
 
 static void ifStatement() {
@@ -567,10 +590,10 @@ static void switchStatement() {
 }
 
 static void whileStatement() {
-    int surroundingLoopStart = innermostLoopStart;
-    int surroundingLoopScopeDepth = innermostLoopScopeDepth;
-    innermostLoopStart = currentChunk()->count;
-    innermostLoopScopeDepth = current->scopeDepth;
+    int surroundingLoopStart = current->innermostLoopStart;
+    int surroundingLoopScopeDepth = current->innermostLoopScopeDepth;
+    current->innermostLoopStart = currentChunk()->count;
+    current->innermostLoopScopeDepth = current->scopeDepth;
 
     BreakLocations locations;
     initBreakLocations(&locations);
@@ -582,16 +605,15 @@ static void whileStatement() {
     int exitJump = emitJump(OP_JUMP_IF_FALSE);
     emitByte(OP_POP);
     statement();
-    emitLoop(innermostLoopStart);
+    emitLoop(current->innermostLoopStart);
 
     patchJump(exitJump);
     emitByte(OP_POP);
 
     leaveBreakLocations(&locations);
 
-    innermostLoopStart = surroundingLoopStart;
-    innermostLoopScopeDepth = surroundingLoopScopeDepth;
-
+    current->innermostLoopStart = surroundingLoopStart;
+    current->innermostLoopScopeDepth = surroundingLoopScopeDepth;
 
 }
 
@@ -872,11 +894,11 @@ static ParseRule *getRule(TokenType type) {
     return &rules[type];
 }
 
-bool compile(const char *source, Chunk *chunk) {
+ObjFunction *compile(const char *source) {
     initScanner(source);
     Compiler compiler;
-    initCompiler(&compiler);
-    compilingChunk = chunk;
+    initCompiler(&compiler, TYPE_SCRIPT);
+
     parser.hadError = false;
     parser.panicMode = false;
     initTable(&stringConstants);
@@ -887,7 +909,7 @@ bool compile(const char *source, Chunk *chunk) {
         declaration();
     }
 
-    endCompiler();
+    ObjFunction *function = endCompiler();
     freeTable(&stringConstants);
-    return !parser.hadError;
+    return function;
 }
