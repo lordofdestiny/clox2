@@ -75,6 +75,14 @@ int disassembleInstruction(Chunk *chunk, int offset) {
     case OP_JUMP_IF_FALSE: return jumpInstruction("OP_JUMP_IF_FALSE", 1, chunk, offset);
     case OP_LOOP: return jumpInstruction("OP_LOOP", -1, chunk, offset);
     case OP_CALL: return byteInstruction("OP_CALL", chunk, offset);
+    case OP_CLOSURE: {
+        offset++;
+        uint8_t constant = chunk->code[offset++];
+        printf("%-16s %4d ", "OP_CLOSURE", constant);
+        printValue(chunk->constants.values[constant]);
+        printf("\n");
+        return offset;
+    }
     case OP_RETURN: return simpleInstruction("OP_RETURN", offset);
     default:printf("Unknown opcode %d\n", instruction);
         return offset + 1;

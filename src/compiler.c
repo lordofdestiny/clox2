@@ -402,7 +402,7 @@ static void function(FunctionType type) {
     block();
 
     ObjFunction *function = endCompiler(); // endScope() not needed because compiler ends here
-    emitBytes(OP_CONSTANT, makeConstant(OBJ_VAL((Obj *) function)));
+    emitBytes(OP_CLOSURE, makeConstant(OBJ_VAL((Obj *) function)));
 }
 
 static void funDeclaration() {
