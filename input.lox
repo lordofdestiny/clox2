@@ -1,5 +1,6 @@
 class Brioche {}
 print Brioche;
+print Brioche();
 
 // fun fib(n) {
 //     if(n < 2) return n;
@@ -12,26 +13,3 @@ print Brioche;
 //
 // print result;
 // print end - start;
-
-fun Vec(msg) {
-    fun new(x, y) {
-        fun object(msg) {
-            if (msg == "x") return x;
-            if (msg == "y") return y;
-        }
-        return object;
-    }
-
-    fun add(v1, v2) {
-        return Vec("new")(v1("x")+v2("x"), v1("y")+v2("y"));
-    }
-
-    if(msg == "new") return new;
-    if(msg == "add") return add;
-}
-
-var a = Vec("new")(1, 2);
-var b = Vec("new")(3, 4);
-var c = Vec("add")(a, b);
-print c("x");
-print c("y");

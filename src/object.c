@@ -61,7 +61,7 @@ uint32_t hashString(const char *key, int length) {
 
 
 ObjClass *newClass(ObjString *name) {
-    ObjClass *klass = ALLOCATE_CALLABLE(ObjClass, OBJ_CLASS, NULL);
+    ObjClass *klass = ALLOCATE_CALLABLE(ObjClass, OBJ_CLASS, callClass);
     klass->name = name;
     return klass;
 }
@@ -88,6 +88,13 @@ ObjFunction *newFunction() {
     function->name = NULL;
     initChunk(&function->chunk);
     return function;
+}
+
+ObjInstance *newInstance(ObjClass *klass) {
+    ObjInstance *instance = ALLOCATE_OBJ(ObjInstance, OBJ_INSTANCE);
+    instance->klass = klass;
+    initTable(&instance->fields);
+    return instance;
 }
 
 ObjNative *newNative(NativeFn function, int arity) {
@@ -145,6 +152,8 @@ void printObject(Value value) {
     case OBJ_CLOSURE: printFunction(AS_CLOSURE(value)->function);
         break;
     case OBJ_FUNCTION: printFunction(AS_FUNCTION(value));
+        break;
+    case OBJ_INSTANCE: printf("<instance %s>", AS_INSTANCE(value)->klass->name->chars);
         break;
     case OBJ_NATIVE: printf("<native fn>");
         break;

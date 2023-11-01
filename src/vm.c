@@ -146,6 +146,12 @@ bool callFunction(Callable *callable, int argCount) {
     return call((Obj *) callable, (ObjFunction *) callable, argCount);
 }
 
+bool callClass(Callable *callable, int argCount) {
+    ObjClass *klass = (ObjClass *) callable;
+    vm.stackTop[-argCount - 1] = OBJ_VAL((Obj *) newInstance(klass));
+    return true;
+}
+
 bool callNative(Callable *callable, int argCount) {
     ObjNative *native = (ObjNative *) callable;
     if (argCount != native->arity) {
