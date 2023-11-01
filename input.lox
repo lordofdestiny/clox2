@@ -1,6 +1,4 @@
-class Brioche {}
-print Brioche;
-print Brioche();
+clock(66);
 
 // fun fib(n) {
 //     if(n < 2) return n;

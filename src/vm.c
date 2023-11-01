@@ -16,6 +16,77 @@
 
 VM vm;
 
+#define NATIVE_ERROR(msg) (OBJ_VAL((Obj*) copyString(msg, strlen(msg))))
+
+static bool hasFieldNative(int argCount, Value *args) {
+    if (!IS_INSTANCE(args[0])) {
+        args[-1] = NATIVE_ERROR("Function 'hasField' expects an instance as the first argument.");
+        return false;
+    }
+    if (!IS_INSTANCE(args[1])) {
+        args[-1] = NATIVE_ERROR("Function 'hasField' expects a string as the second argument.");
+        return false;
+    }
+    ObjInstance *instance = AS_INSTANCE(args[0]);
+    ObjString *key = AS_STRING(args[1]);
+    Value dummy;
+
+    args[-1] = BOOL_VAL(tableGet(&instance->fields, key, &dummy));
+    return true;
+}
+
+static bool getFieldNative(int argCount, Value *args) {
+    if (!IS_INSTANCE(args[0])) {
+        args[-1] = NATIVE_ERROR("Function 'getField' expects an instance as the first argument.");
+        return false;
+    }
+    if (!IS_INSTANCE(args[1])) {
+        args[-1] = NATIVE_ERROR("Function 'getField' expects a string as the second argument.");
+        return false;
+    }
+    ObjInstance *instance = AS_INSTANCE(args[0]);
+    ObjString *key = AS_STRING(args[1]);
+    Value value;
+
+    if (!tableGet(&instance->fields, key, &value)) {
+        args[-1] = NATIVE_ERROR("Instance doesn't have the requested field.");
+        return false;
+    }
+
+    args[-1] = value;
+    return true;
+}
+
+static bool setFieldNative(int argCount, Value *args) {
+    if (!IS_INSTANCE(args[0])) {
+        args[-1] = NATIVE_ERROR("Function 'setField' expects an instance as the first argument.");
+        return false;
+    }
+    if (!IS_INSTANCE(args[1])) {
+        args[-1] = NATIVE_ERROR("Function 'setField' expects a string as the second argument.");
+        return false;
+    }
+    ObjInstance *instance = AS_INSTANCE(args[0]);
+    tableSet(&instance->fields, AS_STRING(args[1]), args[2]);
+    args[-1] = args[2];
+    return true;
+}
+
+static bool deleteFieldNative(int argCount, Value *args) {
+    if (!IS_INSTANCE(args[0])) {
+        args[-1] = NATIVE_ERROR("Function 'deleteField' expects an instance as the first argument.");
+        return false;
+    }
+    if (!IS_INSTANCE(args[1])) {
+        args[-1] = NATIVE_ERROR("Function 'deleteField' expects a string as the second argument.");
+        return false;
+    }
+    ObjInstance *instance = AS_INSTANCE(args[0]);
+    tableDelete(&instance->fields, AS_STRING(args[1]));
+    args[-1] = NIL_VAL;
+    return true;
+}
+
 static bool clockNative(int argCount, Value *args) {
     args[-1] = NUMBER_VAL((double) clock() / CLOCKS_PER_SEC);
     return true;
@@ -91,6 +162,10 @@ void initVM() {
     vm.grayCapacity = 0;
     vm.grayStack = NULL;
 
+    defineNative("hasField", 2, hasFieldNative);
+    defineNative("getField", 2, getFieldNative);
+    defineNative("setField", 3, setFieldNative);
+    defineNative("deleteField", 2, deleteFieldNative);
     defineNative("clock", 0, clockNative);
     defineNative("exit", 1, exitNative);
 }
@@ -154,7 +229,7 @@ bool callClass(Callable *callable, int argCount) {
 
 bool callNative(Callable *callable, int argCount) {
     ObjNative *native = (ObjNative *) callable;
-    if (argCount != native->arity) {
+    if (native->arity != -1 && argCount != native->arity) {
         runtimeError("Expected %d arguments but got %d", native->arity, argCount);
         return false;
     }
@@ -322,6 +397,36 @@ static InterpretResult run() {
         case OP_SET_UPVALUE: {
             uint8_t slot = READ_BYTE();
             *((ObjClosure *) frame->function)->upvalues[slot]->location = peek(0);
+            break;
+        }
+        case OP_GET_PROPERTY: {
+            if (!IS_INSTANCE(peek(0))) {
+                runtimeError("Only instances have properties.");
+                return INTERPRETER_RUNTIME_ERROR;
+            }
+
+            ObjInstance *instance = AS_INSTANCE(peek(0));
+            ObjString *name = READ_STRING();
+
+            Value value;
+            if (tableGet(&instance->fields, name, &value)) {
+                pop(); // Instance
+                push(value);
+                break;
+            }
+            runtimeError("Undefined property '%s'.", name->chars);
+            return INTERPRETER_RUNTIME_ERROR;
+        }
+        case OP_SET_PROPERTY: {
+            if (!IS_INSTANCE(peek(1))) {
+                runtimeError("Only instances have fields.");
+                return INTERPRETER_RUNTIME_ERROR;
+            }
+            ObjInstance *instance = AS_INSTANCE(peek(1));
+            tableSet(&instance->fields, READ_STRING(), peek(0));
+            Value value = pop();
+            pop();
+            push(value);
             break;
         }
         case OP_EQUAL: {
