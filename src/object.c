@@ -59,6 +59,13 @@ uint32_t hashString(const char *key, int length) {
     return hash;
 }
 
+
+ObjClass *newClass(ObjString *name) {
+    ObjClass *klass = ALLOCATE_CALLABLE(ObjClass, OBJ_CLASS, NULL);
+    klass->name = name;
+    return klass;
+}
+
 ObjClosure *newClosure(ObjFunction *function) {
     ObjUpvalue **upvalues = ALLOCATE(ObjUpvalue*, function->upvalueCount);
 
@@ -133,6 +140,8 @@ static void printFunction(ObjFunction *function) {
 
 void printObject(Value value) {
     switch (OBJ_TYPE(value)) {
+    case OBJ_CLASS:printf("<class %s>", AS_CLASS(value)->name->chars);
+        break;
     case OBJ_CLOSURE: printFunction(AS_CLOSURE(value)->function);
         break;
     case OBJ_FUNCTION: printFunction(AS_FUNCTION(value));
