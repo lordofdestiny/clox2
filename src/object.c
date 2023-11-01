@@ -14,15 +14,28 @@
 #define ALLOCATE_OBJ(type, objectType) \
     (type*) allocateObject(sizeof(type), objectType)
 
+#define ALLOCATE_CALLABLE(type, objectType, caller) \
+    (type*) allocateCallable(sizeof(type), objectType, caller)
+
+static void initObject(Obj *object, ObjType type, bool callable) {
+    object->type = type;
+    object->isMarked = false;
+    object->isCallable = callable;
+    object->next = vm.objects;
+    vm.objects = object;
+}
 
 static Obj *allocateObject(size_t size, ObjType type) {
     Obj *object = (Obj *) reallocate(NULL, 0, size);
-    object->type = type;
-    object->isMarked = false;
-
-    object->next = vm.objects;
-    vm.objects = object;
+    initObject(object, type, false);
     return object;
+}
+
+static Callable *allocateCallable(size_t size, ObjType type, CallableFn caller) {
+    Callable *callable = (Callable *) reallocate(NULL, 0, size);
+    initObject((Obj *) callable, type, true);
+    callable->caller = caller;
+    return callable;
 }
 
 static ObjString *allocateString(char *chars, int length,
@@ -53,15 +66,16 @@ ObjClosure *newClosure(ObjFunction *function) {
         upvalues[i] = NULL;
     }
 
-    ObjClosure *closure = ALLOCATE_OBJ(ObjClosure, OBJ_CLOSURE);
+    ObjClosure *closure = ALLOCATE_CALLABLE(ObjClosure, OBJ_CLOSURE, callClosure);
     closure->function = function;
     closure->upvalues = upvalues;
     closure->upvalueCount = function->upvalueCount;
     return closure;
 }
 
+
 ObjFunction *newFunction() {
-    ObjFunction *function = ALLOCATE_OBJ(ObjFunction, OBJ_FUNCTION);
+    ObjFunction *function = ALLOCATE_CALLABLE(ObjFunction, OBJ_FUNCTION, callFunction);
     function->arity = 0;
     function->upvalueCount = 0;
     function->name = NULL;
@@ -70,7 +84,7 @@ ObjFunction *newFunction() {
 }
 
 ObjNative *newNative(NativeFn function, int arity) {
-    ObjNative *native = ALLOCATE_OBJ(ObjNative, OBJ_NATIVE);
+    ObjNative *native = ALLOCATE_CALLABLE(ObjNative, OBJ_NATIVE, callNative);
     native->function = function;
     native->arity = arity;
     return native;
