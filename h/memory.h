@@ -20,9 +20,15 @@
     (type *)reallocate(previous, sizeof(type) * (oldCount), sizeof(type) * (count))
 
 #define FREE_ARRAY(type, pointer, oldCount) \
-    (type *)reallocate(pointer, sizeof(type) * (oldCount), 0);
+    (type *)reallocate(pointer, sizeof(type) * (oldCount), 0)
 
 void *reallocate(void *previous, size_t oldSize, size_t newSize);
+
+void markObject(Obj *object);
+
+void markValue(Value value);
+
+void collectGarbage();
 
 void freeObjects();
 

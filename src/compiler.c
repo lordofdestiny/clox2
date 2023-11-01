@@ -15,6 +15,7 @@
 #ifdef DEBUG_PRINT_CODE
 
 #include "../h/debug.h"
+#include "../h/memory.h"
 
 #endif
 
@@ -210,6 +211,9 @@ static void initCompiler(Compiler *compiler, FunctionType type) {
     compiler->function = newFunction();
     current = compiler;
 
+    // Has to be called here because GC will try to mark its entires
+    initTable(&compiler->stringConstants);
+
     if (type != TYPE_SCRIPT) {
         current->function->name = copyString(parser.previous.start,
                                              parser.previous.length);
@@ -225,7 +229,6 @@ static void initCompiler(Compiler *compiler, FunctionType type) {
     compiler->innermostLoopStart = -1;
     compiler->innermostLoopScopeDepth = 0;
 
-    initTable(&compiler->stringConstants);
 }
 
 static ObjFunction *endCompiler() {
@@ -277,7 +280,6 @@ static uint8_t identifierConstant(Token *name) {
     ObjString *string = copyString(name->start, name->length);
     Value indexValue;
     if (tableGet(&current->stringConstants, string, &indexValue)) {
-        // TODO free string with GCv
         return (uint8_t) AS_NUMBER(indexValue);
     }
     uint8_t index = makeConstant(OBJ_VAL((Obj *) string));
@@ -1133,4 +1135,14 @@ ObjFunction *compile(const char *source) {
 
     ObjFunction *function = endCompiler();
     return parser.hadError ? NULL : function;
+}
+
+void markCompilerRoots() {
+    Compiler *compiler = current;
+    while (compiler != NULL) {
+        markObject((Obj *) compiler->function);
+
+        markTable(&compiler->stringConstants);
+        compiler = compiler->enclosing;
+    }
 }

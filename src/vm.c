@@ -84,6 +84,13 @@ void initVM() {
     initTable(&vm.strings);
     vm.objects = NULL;
 
+    vm.bytesAllocated = 0;
+    vm.nextGC = 512;
+
+    vm.grayCount = 0;
+    vm.grayCapacity = 0;
+    vm.grayStack = NULL;
+
     defineNative("clock", 0, clockNative);
     defineNative("exit", 1, exitNative);
 }
@@ -92,6 +99,9 @@ void freeVM() {
     freeTable(&vm.globals);
     freeTable(&vm.strings);
     freeObjects();
+#ifdef DEBUG_LOG_GC
+    printf("%td bytes still allocated by the VM.\n", vm.bytesAllocated);
+#endif
 }
 
 void push(Value value) {
@@ -155,7 +165,7 @@ static bool callValue(Value callee, int argCount) {
         switch (OBJ_TYPE(callee)) {
         case OBJ_CLOSURE: return callClosure(AS_CLOSURE(callee), argCount);
         case OBJ_FUNCTION: return callFunction(AS_FUNCTION(callee), argCount);
-        case OBJ_NATIVE: return callNative(((ObjNative *) (AS_NATIVE(callee))), argCount);
+        case OBJ_NATIVE: return callNative((AS_NATIVE(callee)), argCount);
         default:break;
         }
     }
@@ -201,8 +211,8 @@ static bool isFalsy(Value value) {
 }
 
 static void concatenate() {
-    ObjString *b = AS_STRING(pop());
-    ObjString *a = AS_STRING(pop());
+    ObjString *b = AS_STRING(peek(0));
+    ObjString *a = AS_STRING(peek(1));
 
     int length = a->length + b->length;
     char *chars = ALLOCATE(char, length + 1);
@@ -211,6 +221,8 @@ static void concatenate() {
     chars[length] = '\0';
 
     ObjString *result = takeString(chars, length);
+    pop();
+    pop();
     push(OBJ_VAL((Obj *) result));
 }
 

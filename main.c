@@ -73,7 +73,7 @@ int main(int argc, char *argv[]) {
     freeVM();
     clock_t end = clock();
 
-    printf("Total execution time: %lf seconds", ((double) (end - start)) / CLOCKS_PER_SEC);
+    printf("Total execution time: %lf seconds\n", ((double) (end - start)) / CLOCKS_PER_SEC);
 
     return 0;
 }
