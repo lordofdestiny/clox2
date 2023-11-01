@@ -57,4 +57,8 @@ void push(Value value);
 
 Value pop();
 
+void runtimeError(const char *format, ...);
+
+bool callNonNative(Obj *callee, ObjFunction *function, int argCount);
+
 #endif //CLOX2_VM_H

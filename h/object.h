@@ -11,16 +11,21 @@
 
 #define OBJ_TYPE(value) (AS_OBJ(value)->type)
 
+#define IS_CALLABLE(value) (AS_OBJ(value)->isCallable)
 #define IS_CLOSURE(value) isObjType(value, OBJ_CLOSURE)
 #define IS_FUNCTION(value) isObjType(value, OBJ_FUNCTION)
 #define IS_NATIVE(value) isObjType(value, OBJ_NATIVE)
 #define IS_STRING(value) isObjType(value, OBJ_STRING)
 
-#define AS_FUNCTION(value) ((ObjFunction *) AS_OBJ(value))
+#define AS_CALLABLE(value) ((Callable *) AS_OBJ(value))
 #define AS_CLOSURE(value) ((ObjClosure*)AS_OBJ(value))
+#define AS_FUNCTION(value) ((ObjFunction *) AS_OBJ(value))
 #define AS_NATIVE(value) (((ObjNative*) AS_OBJ(value)))
 #define AS_STRING(value) ((ObjString*)AS_OBJ(value))
 #define AS_CSTRING(value) (((ObjString*)AS_OBJ(value))->chars)
+
+#define CALL_CALLABLE_V(vcallee, argCount) AS_CALLABLE(vcallee)->caller(AS_CALLABLE(vcallee), argCount)
+#define CALL_CALLABLE_O(ocallee, argCount) ((Callable*)ocallee)->caller((Callable*)ocallee, argCount)
 
 typedef enum {
     OBJ_CLOSURE,
@@ -32,12 +37,22 @@ typedef enum {
 
 struct Obj {
     ObjType type;
+    bool isCallable;
     bool isMarked;
     struct Obj *next;
 };
 
-typedef struct ObjFunction {
+typedef struct Callable Callable;
+
+typedef bool (*CallableFn)(Callable *, int argCount);
+
+struct Callable {
     Obj obj;
+    CallableFn caller;
+};
+
+typedef struct ObjFunction {
+    Callable obj;
     int arity;
     int upvalueCount;
     Chunk chunk;
@@ -52,7 +67,7 @@ typedef struct ObjUpvalue {
 } ObjUpvalue;
 
 typedef struct {
-    Obj obj;
+    Callable obj;
     ObjFunction *function;
     ObjUpvalue **upvalues;
     int upvalueCount;
@@ -61,7 +76,7 @@ typedef struct {
 typedef bool (*NativeFn)(int argCount, Value *args);
 
 typedef struct {
-    Obj obj;
+    Callable obj;
     int arity;
     NativeFn function;
 } ObjNative;

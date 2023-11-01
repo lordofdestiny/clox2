@@ -47,7 +47,7 @@ static inline ObjFunction *getFrameFunction(CallFrame *frame) {
     }
 }
 
-static void runtimeError(const char *format, ...) {
+void runtimeError(const char *format, ...) {
     va_list args;
     va_start(args, format);
     vfprintf(stderr, format, args);
@@ -118,7 +118,7 @@ static Value peek(int distance) {
     return vm.stackTop[-1 - distance];
 }
 
-static bool call(Obj *callee, ObjFunction *function, int argCount) {
+bool callNonNative(Obj *callee, ObjFunction *function, int argCount) {
     if (argCount != function->arity) {
         runtimeError("Expected %d arguments but got %d",
                      function->arity, argCount);
@@ -137,38 +137,13 @@ static bool call(Obj *callee, ObjFunction *function, int argCount) {
     return true;
 }
 
-bool callClosure(ObjClosure *closure, int argCount) {
-    return call((Obj *) closure, closure->function, argCount);
-}
-
-static bool callFunction(ObjFunction *function, int argCount) {
-    return call((Obj *) function, function, argCount);
-}
-
-static bool callNative(ObjNative *native, int argCount) {
-    if (argCount != native->arity) {
-        runtimeError("Expected %d arguments but got %d", native->arity, argCount);
-        return false;
-    }
-    if (native->function(argCount, vm.stackTop - argCount)) {
-        vm.stackTop -= argCount;
-        return true;
-    } else {
-        runtimeError(AS_STRING(vm.stackTop[-argCount - 1])->chars);
-        return false;
-    }
-}
-
-
 static bool callValue(Value callee, int argCount) {
-    if (IS_OBJ(callee)) {
-        switch (OBJ_TYPE(callee)) {
-        case OBJ_CLOSURE: return callClosure(AS_CLOSURE(callee), argCount);
-        case OBJ_FUNCTION: return callFunction(AS_FUNCTION(callee), argCount);
-        case OBJ_NATIVE: return callNative((AS_NATIVE(callee)), argCount);
-        default:break;
-        }
-    }
+    /* TODO: This can further be optimized by giving every object a call attr
+        Callable struct field 'caller' can be moved into object and implemented
+        for all of the Obj types. For types that are not callable, runtime error
+        can be reported and /false/ fan be returned directly
+     */
+    if (IS_CALLABLE(callee)) return CALL_CALLABLE_V(callee, argCount);
     runtimeError("Can only call functions and classes.");
     return false;
 }
@@ -440,7 +415,9 @@ InterpretResult interpret(const char *source) {
     ObjFunction *function = compile(source);
     if (function == NULL) return INTERPRETER_COMPILE_ERROR;
     push(OBJ_VAL((Obj *) function));
-    callFunction(function, 0);
+//    callFunction(function, 0);
+//    ((Callable *) function)->caller((Callable *) function, 0);
+    CALL_CALLABLE_O(function, 0);
 
     return run();
 }
