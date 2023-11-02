@@ -28,6 +28,7 @@ typedef struct {
     Value *stackTop;
     Table globals;
     Table strings;
+    ObjString *initString;
     ObjUpvalue *openUpvalues;
 
     size_t bytesAllocated;
@@ -40,9 +41,9 @@ typedef struct {
 } VM;
 
 typedef enum {
-    INTERPRETER_OK,
-    INTERPRETER_COMPILE_ERROR,
-    INTERPRETER_RUNTIME_ERROR,
+    INTERPRET_OK,
+    INTERPRET_COMPILE_ERROR,
+    INTERPRET_RUNTIME_ERROR,
 } InterpretResult;
 
 extern VM vm;
@@ -60,9 +61,13 @@ Value pop();
 void runtimeError(const char *format, ...);
 
 bool callClass(Callable *callable, int argCount);
+
 bool callClosure(Callable *callable, int argCount);
+
 bool callFunction(Callable *callable, int argCount);
+
 bool callNative(Callable *callable, int argCount);
+
 bool callBoundMethod(Callable *callable, int argCount);
 
 #endif //CLOX2_VM_H

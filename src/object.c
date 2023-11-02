@@ -69,6 +69,7 @@ ObjBoundMethod *newBoundMethod(Value receiver, Callable *method) {
 ObjClass *newClass(ObjString *name) {
     ObjClass *klass = ALLOCATE_CALLABLE(ObjClass, OBJ_CLASS, callClass);
     klass->name = name;
+    klass->initializer = NIL_VAL;
     initTable(&klass->methods);
     return klass;
 }

@@ -100,6 +100,7 @@ struct ObjString {
 typedef struct {
     Callable obj;
     ObjString *name;
+    Value initializer;
     Table methods;
 } ObjClass;
 

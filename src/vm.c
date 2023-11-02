@@ -153,6 +153,11 @@ void initVM() {
     resetStack();
     initTable(&vm.globals);
     initTable(&vm.strings);
+
+    // Make sure initString is not null
+    // because of GC
+    vm.initString = NULL;
+    vm.initString = copyString("init", 4);
     vm.objects = NULL;
 
     vm.bytesAllocated = 0;
@@ -173,6 +178,7 @@ void initVM() {
 void freeVM() {
     freeTable(&vm.globals);
     freeTable(&vm.strings);
+    vm.initString = NULL;
     freeObjects();
 #ifdef DEBUG_LOG_GC
     printf("%td bytes still allocated by the VM.\n", vm.bytesAllocated);
@@ -224,11 +230,21 @@ bool callFunction(Callable *callable, int argCount) {
 bool callClass(Callable *callable, int argCount) {
     ObjClass *klass = (ObjClass *) callable;
     vm.stackTop[-argCount - 1] = OBJ_VAL((Obj *) newInstance(klass));
+    if (IS_NIL(klass->initializer)) {
+        Callable *initializer = AS_CALLABLE(klass->initializer);
+        return initializer->caller(initializer, argCount);
+    } else if (argCount != 0) {
+        runtimeError("Expected 0 arguments but got %d.", argCount);
+        return false;
+    }
     return true;
 }
 
+// Problem is that GC collects ObjBoundMethod
+// Not correct. call needs to receive this callable as the first argument
 bool callBoundMethod(Callable *callable, int argCount) {
     ObjBoundMethod *bound = (ObjBoundMethod *) callable;
+    vm.stackTop[-argCount - 1] = bound->receiver;
     return bound->method->caller(bound->method, argCount);
 }
 
@@ -252,6 +268,31 @@ static bool callValue(Value callee, int argCount) {
     if (IS_CALLABLE(callee)) return CALL_CALLABLE(callee, argCount);
     runtimeError("Can only call functions and classes.");
     return false;
+}
+
+static bool invokeFromClass(ObjClass *klass, ObjString *name, int argCount) {
+    Value method;
+    if (!tableGet(&klass->methods, name, &method)) {
+        runtimeError("Undefined property '%s'.", name->chars);
+        return false;
+    }
+    return AS_CALLABLE(method)
+            ->caller(AS_CALLABLE(method), argCount);
+}
+
+static bool invoke(ObjString *name, int argCount) {
+    Value receiver = peek(argCount);
+    if (!IS_INSTANCE(receiver)) {
+        runtimeError("Only instances have methods");
+        return false;
+    }
+    ObjInstance *instance = AS_INSTANCE(receiver);
+    Value value;
+    if (tableGet(&instance->fields, name, &value)) {
+        vm.stackTop[-argCount - 1] = value;
+        return callValue(value, argCount);
+    }
+    return invokeFromClass(instance->klass, name, argCount);
 }
 
 static bool bindMethod(ObjClass *klass, ObjString *name) {
@@ -304,6 +345,7 @@ static void defineMethod(ObjString *name) {
     Value method = peek(0);
     ObjClass *klass = AS_CLASS(peek(1));
     tableSet(&klass->methods, name, method);
+    if (name == vm.initString) klass->initializer = method;
     pop();
 }
 
@@ -341,7 +383,7 @@ static InterpretResult run() {
         if(!IS_NUMBER(peek(0)) || !IS_NUMBER(peek(1))){ \
             frame->ip = ip;                     \
             runtimeError("Operands must be numbers");   \
-            return INTERPRETER_RUNTIME_ERROR; \
+            return INTERPRET_RUNTIME_ERROR; \
         }\
         double b = AS_NUMBER(pop()); \
         double a = AS_NUMBER(pop()); \
@@ -394,7 +436,7 @@ static InterpretResult run() {
             if (!tableGet(&vm.globals, name, &value)) {
                 frame->ip = ip;
                 runtimeError("Undefined variable '%s'.", name->chars);
-                return INTERPRETER_RUNTIME_ERROR;
+                return INTERPRET_RUNTIME_ERROR;
             }
             push(value);
             break;
@@ -411,7 +453,7 @@ static InterpretResult run() {
                 tableDelete(&vm.globals, name);
                 frame->ip = ip;
                 runtimeError("Undefined variable '%s'.", name->chars);
-                return INTERPRETER_RUNTIME_ERROR;
+                return INTERPRET_RUNTIME_ERROR;
             }
             break;
         }
@@ -428,7 +470,7 @@ static InterpretResult run() {
         case OP_GET_PROPERTY: {
             if (!IS_INSTANCE(peek(0))) {
                 runtimeError("Only instances have properties.");
-                return INTERPRETER_RUNTIME_ERROR;
+                return INTERPRET_RUNTIME_ERROR;
             }
 
             ObjInstance *instance = AS_INSTANCE(peek(0));
@@ -441,14 +483,14 @@ static InterpretResult run() {
                 break;
             }
             if (!bindMethod(instance->klass, name)) {
-                return INTERPRETER_RUNTIME_ERROR;
+                return INTERPRET_RUNTIME_ERROR;
             }
             break;
         }
         case OP_SET_PROPERTY: {
             if (!IS_INSTANCE(peek(1))) {
                 runtimeError("Only instances have fields.");
-                return INTERPRETER_RUNTIME_ERROR;
+                return INTERPRET_RUNTIME_ERROR;
             }
             ObjInstance *instance = AS_INSTANCE(peek(1));
             tableSet(&instance->fields, READ_STRING(), peek(0));
@@ -477,7 +519,7 @@ static InterpretResult run() {
             } else {
                 frame->ip = ip;
                 runtimeError("Operands must be two numbers or two strings.");
-                return INTERPRETER_RUNTIME_ERROR;
+                return INTERPRET_RUNTIME_ERROR;
             }
             break;
         }
@@ -491,7 +533,7 @@ static InterpretResult run() {
             if (!IS_NUMBER(peek(0))) {
                 frame->ip = ip;
                 runtimeError("Operand must be a number.");
-                return INTERPRETER_RUNTIME_ERROR;
+                return INTERPRET_RUNTIME_ERROR;
             }
             push(NUMBER_VAL(-AS_NUMBER(pop())));
             break;
@@ -517,7 +559,18 @@ static InterpretResult run() {
             int argCount = READ_BYTE();
             frame->ip = ip;
             if (!callValue(peek(argCount), argCount)) {
-                return INTERPRETER_RUNTIME_ERROR;
+                return INTERPRET_RUNTIME_ERROR;
+            }
+            frame = &vm.frames[vm.frameCount - 1];
+            ip = frame->ip;
+            break;
+        }
+        case OP_INVOKE: {
+            ObjString *method = READ_STRING();
+            int argCount = READ_BYTE();
+            frame->ip = ip;
+            if (!invoke(method, argCount)) {
+                return INTERPRET_RUNTIME_ERROR;
             }
             frame = &vm.frames[vm.frameCount - 1];
             ip = frame->ip;
@@ -551,7 +604,7 @@ static InterpretResult run() {
             vm.frameCount--;
             if (vm.frameCount == 0) {
                 pop();
-                return INTERPRETER_OK;
+                return INTERPRET_OK;
             }
 
             vm.stackTop = frame->slots;
@@ -581,7 +634,7 @@ static InterpretResult run() {
 
 InterpretResult interpret(const char *source) {
     ObjFunction *function = compile(source);
-    if (function == NULL) return INTERPRETER_COMPILE_ERROR;
+    if (function == NULL) return INTERPRET_COMPILE_ERROR;
     push(OBJ_VAL((Obj *) function));
     callFunction((Callable *) function, 0);
 

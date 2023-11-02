@@ -15,9 +15,9 @@
 #ifdef DEBUG_PRINT_CODE
 
 #include "../h/debug.h"
-#include "../h/memory.h"
-
 #endif
+
+#include "../h/memory.h"
 
 typedef enum {
     PREC_NONE,
@@ -55,6 +55,8 @@ typedef struct {
 
 typedef enum {
     TYPE_FUNCTION,
+    TYPE_INITIALIZER,
+    TYPE_METHOD,
     TYPE_SCRIPT
 } FunctionType;
 
@@ -80,6 +82,9 @@ typedef struct Compiler {
     Table stringConstants;
 } Compiler;
 
+typedef struct ClassCompiler {
+    struct ClassCompiler *enclosing;
+} ClassCompiler;
 
 typedef struct {
     Token current;
@@ -90,6 +95,7 @@ typedef struct {
 
 Parser parser;
 Compiler *current = NULL;
+ClassCompiler *currentClass = NULL;
 
 static Chunk *currentChunk() {
     return &current->function->chunk;
@@ -174,7 +180,11 @@ static int emitJump(uint8_t instruction) {
 }
 
 static void emitReturn() {
-    emitByte(OP_NIL);
+    if (current->type == TYPE_INITIALIZER) {
+        emitBytes(OP_GET_LOCAL, 0);
+    } else {
+        emitByte(OP_NIL);
+    }
     emitByte(OP_RETURN);
 }
 
@@ -222,8 +232,13 @@ static void initCompiler(Compiler *compiler, FunctionType type) {
     Local *local = &current->locals[current->localCount++];
     local->depth = 0;
     local->isCaptured = false;
-    local->name.start = "";
-    local->name.length = 0;
+    if (type != TYPE_FUNCTION) {
+        local->name.start = "this";
+        local->name.length = 4;
+    } else {
+        local->name.start = "";
+        local->name.length = 0;
+    }
 
     compiler->loopType = LOOP_NONE;
     compiler->innermostLoopStart = -1;
@@ -475,7 +490,11 @@ static void method() {
     consume(TOKEN_IDENTIFIER, "Expect method name.");
     uint8_t constant = identifierConstant(&parser.previous);
 
-    FunctionType type = TYPE_FUNCTION;
+    FunctionType type = TYPE_METHOD;
+    if (parser.previous.length == 4 &&
+        memcmp(parser.previous.start, "init", 4) == 0) {
+        type = TYPE_INITIALIZER;
+    }
     function(type);
     emitBytes(OP_METHOD, constant);
 }
@@ -488,6 +507,10 @@ static void classDeclaration() {
     emitBytes(OP_CLASS, nameConstant);
     defineVariable(nameConstant);
 
+    ClassCompiler classCompiler;
+    classCompiler.enclosing = currentClass;
+    currentClass = &classCompiler;
+
     namedVariable(className, false);
     consume(TOKEN_LEFT_BRACE, "Expect '{' before class body.");
     while (!check(TOKEN_RIGHT_BRACE) && !check(TOKEN_EOF)) {
@@ -495,6 +518,8 @@ static void classDeclaration() {
     }
     consume(TOKEN_RIGHT_BRACE, "Expect '}' after class body.");
     emitByte(OP_POP);
+
+    currentClass = classCompiler.enclosing;
 }
 
 static void funDeclaration() {
@@ -732,6 +757,9 @@ static void returnStatement() {
     if (match(TOKEN_SEMICOLON)) {
         emitReturn();
     } else {
+        if (current->type == TYPE_INITIALIZER) {
+            error("Can't return a value from an initializer.");
+        }
         expression();
         consume(TOKEN_SEMICOLON, "Expected ';' after return statement.");
         emitByte(OP_RETURN);
@@ -974,6 +1002,10 @@ static void dot(bool canAssign) {
     if (canAssign && match(TOKEN_EQUAL)) {
         expression();
         emitBytes(OP_SET_PROPERTY, name);
+    } else if (match(TOKEN_LEFT_PAREN)) {
+        uint8_t argCount = argumentList();
+        emitBytes(OP_INVOKE, name);
+        emitByte(argCount);
     } else {
         emitBytes(OP_GET_PROPERTY, name);
     }
@@ -1041,6 +1073,9 @@ static void string(bool canAssign) {
                                             parser.previous.length - 2)));
 }
 
+#pragma clang diagnostic push
+#pragma ide diagnostic ignored "ConstantParameter"
+
 static void namedVariable(Token name, bool canAssign) {
     uint8_t getOp, setOp;
     int arg = resolveLocal(current, &name);
@@ -1065,9 +1100,20 @@ static void namedVariable(Token name, bool canAssign) {
     }
 }
 
+#pragma clang diagnostic pop
+
 static void variable(bool canAssign) {
     namedVariable(parser.previous, canAssign);
 }
+
+static void this_(bool canAssign) {
+    if (currentClass == NULL) {
+        error("Can't use 'this' outside of a class.");
+        return;
+    }
+    variable(false);
+}
+
 
 #pragma clang diagnostic push
 #pragma ide diagnostic ignored "UnusedParameter"
@@ -1125,7 +1171,7 @@ ParseRule rules[] = {
         [TOKEN_PRINT]         = {NULL, NULL, PREC_NONE},
         [TOKEN_RETURN]        = {NULL, NULL, PREC_NONE},
         [TOKEN_SUPER]         = {NULL, NULL, PREC_NONE},
-        [TOKEN_THIS]          = {NULL, NULL, PREC_NONE},
+        [TOKEN_THIS]          = {this_, NULL, PREC_NONE},
         [TOKEN_TRUE]          = {literal, NULL, PREC_NONE},
         [TOKEN_VAR]           = {NULL, NULL, PREC_NONE},
         [TOKEN_WHILE]         = {NULL, NULL, PREC_NONE},
