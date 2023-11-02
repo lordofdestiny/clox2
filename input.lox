@@ -1,4 +1,7 @@
-clock(66);
+class Class {
+    method() {}
+    method2() {}
+}
 
 // fun fib(n) {
 //     if(n < 2) return n;

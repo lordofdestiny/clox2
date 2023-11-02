@@ -97,6 +97,7 @@ struct ObjString {
 typedef struct {
     Callable obj;
     ObjString *name;
+    Table methods;
 } ObjClass;
 
 typedef struct {

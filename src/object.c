@@ -63,6 +63,7 @@ uint32_t hashString(const char *key, int length) {
 ObjClass *newClass(ObjString *name) {
     ObjClass *klass = ALLOCATE_CALLABLE(ObjClass, OBJ_CLASS, callClass);
     klass->name = name;
+    initTable(&klass->methods);
     return klass;
 }
 
