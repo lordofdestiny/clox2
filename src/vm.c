@@ -227,6 +227,11 @@ bool callClass(Callable *callable, int argCount) {
     return true;
 }
 
+bool callBoundMethod(Callable *callable, int argCount) {
+    ObjBoundMethod *bound = (ObjBoundMethod *) callable;
+    return bound->method->caller(bound->method, argCount);
+}
+
 bool callNative(Callable *callable, int argCount) {
     ObjNative *native = (ObjNative *) callable;
     if (native->arity != -1 && argCount != native->arity) {
@@ -247,6 +252,19 @@ static bool callValue(Value callee, int argCount) {
     if (IS_CALLABLE(callee)) return CALL_CALLABLE(callee, argCount);
     runtimeError("Can only call functions and classes.");
     return false;
+}
+
+static bool bindMethod(ObjClass *klass, ObjString *name) {
+    Value method;
+    if (!tableGet(&klass->methods, name, &method)) {
+        runtimeError("Undefined property '%s'.", name->chars);
+        return false;
+    }
+
+    ObjBoundMethod *bound = newBoundMethod(peek(0), AS_CALLABLE(method));
+    pop();
+    push(OBJ_VAL((Obj *) bound));
+    return true;
 }
 
 static ObjUpvalue *captureUpvalue(Value *local) {
@@ -422,8 +440,10 @@ static InterpretResult run() {
                 push(value);
                 break;
             }
-            runtimeError("Undefined property '%s'.", name->chars);
-            return INTERPRETER_RUNTIME_ERROR;
+            if (!bindMethod(instance->klass, name)) {
+                return INTERPRETER_RUNTIME_ERROR;
+            }
+            break;
         }
         case OP_SET_PROPERTY: {
             if (!IS_INSTANCE(peek(1))) {

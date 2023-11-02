@@ -59,6 +59,12 @@ uint32_t hashString(const char *key, int length) {
     return hash;
 }
 
+ObjBoundMethod *newBoundMethod(Value receiver, Callable *method) {
+    ObjBoundMethod *bound = ALLOCATE_CALLABLE(ObjBoundMethod, OBJ_BOUND_METHOD, callBoundMethod);
+    bound->receiver = receiver;
+    bound->method = method;
+    return bound;
+}
 
 ObjClass *newClass(ObjString *name) {
     ObjClass *klass = ALLOCATE_CALLABLE(ObjClass, OBJ_CLASS, callClass);
@@ -145,9 +151,16 @@ static void printFunction(ObjFunction *function) {
     printf("<fn %s>", function->name->chars);
 }
 
-
 void printObject(Value value) {
     switch (OBJ_TYPE(value)) {
+    case OBJ_BOUND_METHOD: {
+        Callable *method = AS_BOUND_METHOD(value)->method;
+        ObjFunction *fun = method->obj.type == OBJ_FUNCTION
+                           ? (ObjFunction *) method
+                           : ((ObjClosure *) method)->function;
+        printFunction(fun);
+        break;
+    }
     case OBJ_CLASS:printf("<class %s>", AS_CLASS(value)->name->chars);
         break;
     case OBJ_CLOSURE: printFunction(AS_CLOSURE(value)->function);

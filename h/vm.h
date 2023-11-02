@@ -63,5 +63,6 @@ bool callClass(Callable *callable, int argCount);
 bool callClosure(Callable *callable, int argCount);
 bool callFunction(Callable *callable, int argCount);
 bool callNative(Callable *callable, int argCount);
+bool callBoundMethod(Callable *callable, int argCount);
 
 #endif //CLOX2_VM_H
