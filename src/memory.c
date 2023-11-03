@@ -18,26 +18,18 @@
 #endif
 #define GC_HEAP_GROW_FACTOR 2
 
-// Used to prevent GC algorithm from calling
-// itself during the sweep phase
-static bool collecting = false;
-
 void *reallocate(void *previous, size_t oldSize, size_t newSize) {
     vm.bytesAllocated += newSize - oldSize;
     if (newSize > oldSize) {
 #ifdef DEBUG_STRESS_GC
         collectGarbage();
+#else
+        if (vm.bytesAllocated > vm.nextGC) {
+            collectGarbage();
+        }
 #endif
     }
 
-#pragma clang diagnostic push
-#pragma ide diagnostic ignored "ConstantConditionsOC"
-    if (!collecting && vm.bytesAllocated > vm.nextGC) {
-#pragma clang diagnostic pop
-        collecting = true;
-        collectGarbage();
-        collecting = false;
-    }
 
     if (newSize == 0) {
         free(previous);
@@ -180,14 +172,12 @@ static void freeObject(Obj *object) {
 }
 
 void freeObjects() {
-    collecting = true;
     Obj *object = vm.objects;
     while (object != NULL) {
         Obj *next = object->next;
         freeObject(object);
         object = next;
     }
-    collecting = false;
 }
 
 static void markRoots() {
