@@ -3,6 +3,7 @@ project(clox2 C)
 
 set(CMAKE_C_STANDARD 17)
 
+
 add_executable(clox2 main.c
         h/common.h
         h/chunk.h
@@ -23,3 +24,5 @@ add_executable(clox2 main.c
         h/object.h
         src/table.c
         h/table.h)
+
+target_link_libraries(clox2 PUBLIC m)

@@ -1029,6 +1029,8 @@ static void binary(bool canAssign) {
         break;
     case TOKEN_SLASH: emitByte(OP_DIVIDE);
         break;
+    case TOKEN_PERCENT: emitByte(OP_MODULUS);
+        break;
     case TOKEN_BANG_EQUAL: emitBytes(OP_EQUAL, OP_NOT);
         break;
     case TOKEN_EQUAL_EQUAL: emitByte(OP_EQUAL);
@@ -1199,6 +1201,7 @@ ParseRule rules[] = {
         [TOKEN_COMMA] = {NULL, NULL, PREC_NONE},
         [TOKEN_DOT] = {NULL, dot, PREC_CALL},
         [TOKEN_MINUS] = {unary, binary, PREC_TERM},
+        [TOKEN_PERCENT] = {NULL, binary, PREC_FACTOR},
         [TOKEN_PLUS] = {NULL, binary, PREC_TERM},
         [TOKEN_SEMICOLON] = {NULL, NULL, PREC_NONE},
         [TOKEN_SLASH] = {NULL, binary, PREC_FACTOR},

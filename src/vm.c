@@ -7,6 +7,7 @@
 #include <stdarg.h>
 #include <string.h>
 #include <time.h>
+#include <math.h>
 #include "../h/common.h"
 #include "../h/value.h"
 #include "../h/compiler.h"
@@ -161,7 +162,7 @@ void initVM() {
     vm.objects = NULL;
 
     vm.bytesAllocated = 0;
-    vm.nextGC = 1024*1024;
+    vm.nextGC = 1024 * 1024;
 
     vm.grayCount = 0;
     vm.grayCapacity = 0;
@@ -534,6 +535,17 @@ static InterpretResult run() {
             break;
         case OP_DIVIDE: BINARY_OP(NUMBER_VAL, /);
             break;
+        case OP_MODULUS: {
+            if (IS_NUMBER(peek(0)) && IS_NUMBER(peek(1))) {
+                double b = AS_NUMBER(pop());
+                double a = AS_NUMBER(pop());
+                push(NUMBER_VAL(fmod(a, b)));
+            } else {
+                frame->ip = ip;
+                runtimeError("Operands must be two numbers or two strings,");
+            }
+            break;
+        }
         case OP_NOT: push(BOOL_VAL(isFalsy(pop())));
             break;
         case OP_NEGATE:
@@ -625,7 +637,6 @@ static InterpretResult run() {
                 pop();
                 return INTERPRET_OK;
             }
-
             vm.stackTop = frame->slots;
             push(result);
             frame = &vm.frames[vm.frameCount - 1];
