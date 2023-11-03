@@ -741,7 +741,8 @@ static void breakStatement() {
         error("Can't use 'break' outside a loop/switch statements.");
     }
 
-    if (currentBreakLocations->count == MAX_BREAK_LOCATIONS) {
+    if (currentBreakLocations != NULL &&
+        currentBreakLocations->count == MAX_BREAK_LOCATIONS) {
         error("Too many break statements in the loop");
     }
 

@@ -161,7 +161,7 @@ void initVM() {
     vm.objects = NULL;
 
     vm.bytesAllocated = 0;
-    vm.nextGC = 512;
+    vm.nextGC = 1024*1024;
 
     vm.grayCount = 0;
     vm.grayCapacity = 0;
@@ -186,13 +186,11 @@ void freeVM() {
 }
 
 void push(Value value) {
-    *vm.stackTop = value;
-    vm.stackTop++;
+    *vm.stackTop++ = value;
 }
 
 Value pop() {
-    vm.stackTop--;
-    return *vm.stackTop;
+    return *--vm.stackTop;
 }
 
 static Value peek(int distance) {
@@ -359,7 +357,7 @@ static void concatenate() {
     ObjString *a = AS_STRING(peek(1));
 
     int length = a->length + b->length;
-    char *chars = ALLOCATE(char, length + 1);
+    char *chars = ALLOCATE(char, (size_t) length + 1);
     memcpy(chars, a->chars, a->length);
     memcpy(chars + a->length, b->chars, b->length);
     chars[length] = '\0';

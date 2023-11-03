@@ -117,7 +117,7 @@ ObjString *takeString(char *chars, int length) {
     ObjString *interned = tableFindString(&vm.strings, chars, length,
                                           hash);
     if (interned != NULL) {
-        FREE_ARRAY(char, chars, length + 1);
+        FREE_ARRAY(char, chars, (size_t) length + 1);
         return interned;
     }
 
@@ -130,7 +130,7 @@ ObjString *copyString(const char *chars, int length) {
                                           hash);
     if (interned != NULL) return interned;
 
-    char *heapChars = ALLOCATE(char, length + 1);
+    char *heapChars = ALLOCATE(char, (size_t) length + 1);
     memcpy(heapChars, chars, length);
     heapChars[length] = '\0';
     return allocateString(heapChars, length, hash);
