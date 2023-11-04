@@ -8,13 +8,13 @@
 #include "../h/value.h"
 #include "../h/compiler.h"
 #include "../h/scanner.h"
-#include "../h/object.h"
 
 #include <string.h>
 
 #ifdef DEBUG_PRINT_CODE
 
 #include "../h/debug.h"
+
 #endif
 
 #include "../h/memory.h"
@@ -281,7 +281,6 @@ static void endScope() {
     }
 }
 
-
 static void expression();
 
 static void statement();
@@ -371,7 +370,6 @@ static void addLocal(Token name) {
     local->depth = -1;
     local->isCaptured = false;
 }
-
 
 static void declareVariable() {
     if (current->scopeDepth == 0)return;
@@ -641,7 +639,7 @@ void addBreakLocation(int location) {
 static void forStatement() {
     beginScope();
 
-    // 1: Grab the name and slot of the loop variable, so that we can refer to it later.
+    // 1: Grab the name and slot of the loop variable,so that we can refer to it later.
     int loopVariable = -1;
     Token loopVariableName;
     loopVariableName.start = NULL;
@@ -1001,14 +999,18 @@ static void statement() {
     }
 }
 
+static void conditional(bool canAssign) {
+    uint8_t condition = emitJump(OP_JUMP_IF_FALSE);
+    emitByte(OP_POP);
+    parsePrecedence(PREC_ASSIGNMENT);
+    uint8_t was_true = emitJump(OP_JUMP);
+    consume(TOKEN_COLON, "Expect ':' after then branch of conditional operator.");
 
-/*
-static void conditional() {
-    parsePrecedence(compiler, PREC_CONDITIONAL);
-    consume(compiler, TOKEN_COLON, "Expect ':' after then branch of conditional operator.");
-    parsePrecedence(compiler, PREC_ASSIGNMENT);
+    patchJump(condition);
+    emitByte(OP_POP);
+    parsePrecedence(PREC_CONDITIONAL);
+    patchJump(was_true);
 }
-*/
 
 #pragma clang diagnostic push
 #pragma ide diagnostic ignored "UnusedParameter"
@@ -1171,7 +1173,6 @@ static void this_(bool canAssign) {
     variable(false);
 }
 
-
 #pragma clang diagnostic push
 #pragma ide diagnostic ignored "UnusedParameter"
 
@@ -1198,6 +1199,10 @@ ParseRule rules[] = {
         [TOKEN_RIGHT_PAREN] = {NULL, NULL, PREC_NONE},
         [TOKEN_LEFT_BRACE] = {NULL, NULL, PREC_NONE},
         [TOKEN_RIGHT_BRACE] = {NULL, NULL, PREC_NONE},
+
+        [TOKEN_COLON] = {NULL, NULL, PREC_NONE},
+        [TOKEN_QUESTION] = {NULL, conditional, PREC_CONDITIONAL},
+
         [TOKEN_COMMA] = {NULL, NULL, PREC_NONE},
         [TOKEN_DOT] = {NULL, dot, PREC_CALL},
         [TOKEN_MINUS] = {unary, binary, PREC_TERM},

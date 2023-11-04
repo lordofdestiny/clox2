@@ -1,3 +1,13 @@
+var a = 4;
+var b = a > 5 ? "a > 5" :
+        a > 4 ? a = "a > 4" :
+        a > 3 ? "a > 3" : "No";
+
+print a;
+print b;
+
+exit();
+
 class Zoo {
   init() {
     this.aardvark = 1;
