@@ -1,3 +1,8 @@
+print 5 + "Hello";
+print "Hello" + 2;
+
+exit();
+
 var a = 4;
 var b = a > 5 ? "a > 5" :
         a > 4 ? a = "a > 4" :
@@ -5,8 +10,6 @@ var b = a > 5 ? "a > 5" :
 
 print a;
 print b;
-
-exit();
 
 class Zoo {
   init() {

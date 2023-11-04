@@ -375,6 +375,46 @@ static void concatenate() {
     push(OBJ_VAL((Obj *) result));
 }
 
+static void concatenateStringWithNumber() {
+    ObjString *b = AS_STRING(peek(0));
+    double a = AS_NUMBER(peek(1));
+
+    int numberStrLen = snprintf(NULL, 0, "%g", a);
+    char numberStr[numberStrLen + 1];
+    snprintf(numberStr, sizeof numberStr, "%g", a);
+
+    int length = numberStrLen + b->length;
+    char *chars = ALLOCATE(char, (size_t) length + 1);
+    memcpy(chars, numberStr, numberStrLen);
+    memcpy(chars + numberStrLen, b->chars, b->length);
+    chars[length] = '\0';
+
+    ObjString *result = takeString(chars, length);
+    pop();
+    pop();
+    push(OBJ_VAL((Obj *) result));
+}
+
+static void concatenateNumberWithString() {
+    double b = AS_NUMBER(peek(0));
+    ObjString *a = AS_STRING(peek(1));
+
+    int numberStrLen = snprintf(NULL, 0, "%g", b);
+    char numberStr[numberStrLen + 1];
+    snprintf(numberStr, sizeof numberStr, "%g", b);
+
+    int length = a->length + numberStrLen;
+    char *chars = ALLOCATE(char, (size_t) length + 1);
+    memcpy(chars, a->chars, a->length);
+    memcpy(chars + a->length, numberStr, numberStrLen);
+    chars[length] = '\0';
+
+    ObjString *result = takeString(chars, length);
+    pop();
+    pop();
+    push(OBJ_VAL((Obj *) result));
+}
+
 static InterpretResult run() {
     CallFrame *frame = &vm.frames[vm.frameCount - 1];
     register uint8_t *ip = frame->ip;
@@ -530,6 +570,10 @@ static InterpretResult run() {
                 double b = AS_NUMBER(pop());
                 double a = AS_NUMBER(pop());
                 push(NUMBER_VAL(a + b));
+            } else if (IS_STRING(peek(0)) && IS_NUMBER(peek(1))) {
+                concatenateStringWithNumber();
+            } else if (IS_NUMBER(peek(0)) && IS_STRING(peek(1))) {
+                concatenateNumberWithString();
             } else {
                 frame->ip = ip;
                 runtimeError("Operands must be two numbers or two strings.");
