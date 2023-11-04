@@ -54,6 +54,7 @@ typedef struct {
 } Upvalue;
 
 typedef enum {
+    TYPE_LAMBDA,
     TYPE_FUNCTION,
     TYPE_INITIALIZER,
     TYPE_STATIC_METHOD,
@@ -203,6 +204,22 @@ static uint8_t makeConstant(Value value) {
 static void emitConstant(Value value) {
     emitBytes(OP_CONSTANT, makeConstant(value));
 }
+
+
+static void emitFunction(Compiler *compiler, ObjFunction *function) {
+    uint8_t lambdaConstant = makeConstant(OBJ_VAL((Obj *) function));
+    if (function->upvalueCount > 0) {
+        emitBytes(OP_CLOSURE, lambdaConstant);
+
+        for (int i = 0; i < function->upvalueCount; i++) {
+            emitByte(compiler->upvalues[i].isLocal ? 1 : 0);
+            emitByte(compiler->upvalues[i].index);
+        }
+    } else {
+        emitBytes(OP_CONSTANT, lambdaConstant);
+    }
+}
+
 
 static void patchJump(int offset) {
     int jump = currentChunk()->count - offset - 2;
@@ -474,8 +491,26 @@ static void and_(bool canAssign) {
     patchJump(endJump);
 }
 
+static void parameterList() {
+    do {
+        current->function->arity++;
+        if (current->function->arity > 255) {
+            errorAtCurrent("Can't have more than 255 parameters");
+        }
+        uint8_t constant = parseVariable("Expect parameter name.");
+        defineVariable(constant);
+    } while (match(TOKEN_COMMA));
+}
+
+
+static void lambda();
+
 static void expression() {
-    parsePrecedence(PREC_ASSIGNMENT);
+    if (check(TOKEN_VERTICAL_LINE)) {
+        lambda();
+    } else {
+        parsePrecedence(PREC_ASSIGNMENT);
+    }
 }
 
 static void block() {
@@ -486,6 +521,23 @@ static void block() {
     consume(TOKEN_RIGHT_BRACE, "Expect '}' after block.");
 }
 
+static void lambda() {
+    Compiler compiler;
+    initCompiler(&compiler, TYPE_LAMBDA);
+    beginScope();
+
+    consume(TOKEN_VERTICAL_LINE, "Expect '(' after function name.");
+    if (!check(TOKEN_VERTICAL_LINE)) {
+        parameterList();
+    }
+    consume(TOKEN_VERTICAL_LINE, "Expected '|' after parameters.");
+
+    expression();
+    emitByte(OP_RETURN);
+    ObjFunction *function = endCompiler();
+    emitFunction(&compiler, function);
+}
+
 static void function(FunctionType type) {
     Compiler compiler;
     initCompiler(&compiler, type);
@@ -493,14 +545,7 @@ static void function(FunctionType type) {
 
     consume(TOKEN_LEFT_PAREN, "Expect '(' after function name.");
     if (!check(TOKEN_RIGHT_PAREN)) {
-        do {
-            current->function->arity++;
-            if (current->function->arity > 255) {
-                errorAtCurrent("Can't have more than 255 parameters");
-            }
-            uint8_t constant = parseVariable("Expect parameter name.");
-            defineVariable(constant);
-        } while (match(TOKEN_COMMA));
+        parameterList();
     }
     consume(TOKEN_RIGHT_PAREN, "Expected ')' after parameters.");
     consume(TOKEN_LEFT_BRACE, "Expected '{' before function body.");
@@ -508,17 +553,7 @@ static void function(FunctionType type) {
     block();
 
     ObjFunction *function = endCompiler(); // endScope() not needed because compiler ends here
-    uint8_t functionConstant = makeConstant(OBJ_VAL((Obj *) function));
-    if (function->upvalueCount > 0) {
-        emitBytes(OP_CLOSURE, functionConstant);
-
-        for (int i = 0; i < function->upvalueCount; i++) {
-            emitByte(compiler.upvalues[i].isLocal ? 1 : 0);
-            emitByte(compiler.upvalues[i].index);
-        }
-    } else {
-        emitBytes(OP_CONSTANT, functionConstant);
-    }
+    emitFunction(&compiler, function);
 }
 
 static void method() {
@@ -1211,10 +1246,9 @@ ParseRule rules[] = {
         [TOKEN_RIGHT_PAREN] = {NULL, NULL, PREC_NONE},
         [TOKEN_LEFT_BRACE] = {NULL, NULL, PREC_NONE},
         [TOKEN_RIGHT_BRACE] = {NULL, NULL, PREC_NONE},
-
         [TOKEN_COLON] = {NULL, NULL, PREC_NONE},
         [TOKEN_QUESTION] = {NULL, conditional, PREC_CONDITIONAL},
-
+        [TOKEN_VERTICAL_LINE] = {NULL, NULL, PREC_NONE},
         [TOKEN_COMMA] = {NULL, NULL, PREC_NONE},
         [TOKEN_DOT] = {NULL, dot, PREC_CALL},
         [TOKEN_MINUS] = {unary, binary, PREC_TERM},

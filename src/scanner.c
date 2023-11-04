@@ -216,6 +216,7 @@ Token scanToken() {
     case '*': return makeToken(TOKEN_STAR);
     case '?': return makeToken(TOKEN_QUESTION);
     case '%': return makeToken(TOKEN_PERCENT);
+    case '|': return makeToken(TOKEN_VERTICAL_LINE);
     case '!': return makeToken(match('=') ? TOKEN_BANG_EQUAL : TOKEN_BANG);
     case '=': return makeToken(match('=') ? TOKEN_EQUAL_EQUAL : TOKEN_EQUAL);
     case '>': return makeToken(match('=') ? TOKEN_GREATER_EQUAL : TOKEN_GREATER);

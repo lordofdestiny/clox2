@@ -1,9 +1,6 @@
-class Zoo {
-  init() {
-    this.aardvark = 1;
-  }
-  static ant()    { print "aardvark"; }
-}
+var add = |a| |b| |c| a + b + c;
+var add2 = add(2);
 
-var a =Zoo.ant;
-a();
+for(var i = 0; i < 4; i = i + 1) {
+    print add2(i)(1);
+}
