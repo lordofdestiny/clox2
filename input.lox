@@ -1,44 +1,9 @@
-print 5 + "Hello" + " " + false + " " + true  + exit;
-print "Hello" + 2 + nil;
-
-exit();
-
-var a = 4;
-var b = a > 5 ? "a > 5" :
-        a > 4 ? a = "a > 4" :
-        a > 3 ? "a > 3" : "No";
-
-print a;
-print b;
-
 class Zoo {
   init() {
     this.aardvark = 1;
-    this.baboon   = 1;
-    this.cat      = 1;
-    this.donkey   = 1;
-    this.elephant = 1;
-    this.fox      = 1;
   }
-  ant()    { return this.aardvark; }
-  banana() { return this.baboon; }
-  tuna()   { return this.cat; }
-  hay()    { return this.donkey; }
-  grass()  { return this.elephant; }
-  mouse()  { return this.fox; }
+  static ant()    { print "aardvark"; }
 }
 
-var zoo = Zoo();
-var sum = 0;
-var start = clock();
-while (sum < 100000000) {
-  sum = sum + zoo.ant()
-            + zoo.banana()
-            + zoo.tuna()
-            + zoo.hay()
-            + zoo.grass()
-            + zoo.mouse();
-}
-
-print clock() - start;
-print sum;
+var a =Zoo.ant;
+a();

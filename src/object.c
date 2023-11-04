@@ -71,6 +71,7 @@ ObjClass *newClass(ObjString *name) {
     klass->name = name;
     klass->initializer = NIL_VAL;
     initTable(&klass->methods);
+    initTable(&klass->staticMethods);
     return klass;
 }
 

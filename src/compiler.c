@@ -56,6 +56,7 @@ typedef struct {
 typedef enum {
     TYPE_FUNCTION,
     TYPE_INITIALIZER,
+    TYPE_STATIC_METHOD,
     TYPE_METHOD,
     TYPE_SCRIPT
 } FunctionType;
@@ -521,16 +522,23 @@ static void function(FunctionType type) {
 }
 
 static void method() {
+    bool isStatic = match(TOKEN_STATIC);
+
     consume(TOKEN_IDENTIFIER, "Expect method name.");
     uint8_t constant = identifierConstant(&parser.previous);
 
-    FunctionType type = TYPE_METHOD;
+    FunctionType type = isStatic ? TYPE_STATIC_METHOD : TYPE_METHOD;
     if (parser.previous.length == 4 &&
         memcmp(parser.previous.start, "init", 4) == 0) {
-        type = TYPE_INITIALIZER;
+        if (!isStatic) {
+            type = TYPE_INITIALIZER;
+        } else {
+            error("Cannot mark 'init' method as static");
+        }
     }
     function(type);
     emitBytes(OP_METHOD, constant);
+    emitByte(isStatic);
 }
 
 static void classDeclaration() {
@@ -1168,6 +1176,10 @@ static void namedVariable(Token name, bool canAssign) {
 static void this_(bool canAssign) {
     if (currentClass == NULL) {
         error("Can't use 'this' outside of a class.");
+        return;
+    }
+    if (current->type == TYPE_STATIC_METHOD) {
+        error("Can't use 'this' inside a static method.");
         return;
     }
     variable(false);

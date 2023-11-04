@@ -245,8 +245,7 @@ bool callClass(Callable *callable, int argCount) {
     return true;
 }
 
-// Problem is that GC collects ObjBoundMethod
-// Not correct. call needs to receive this callable as the first argument
+
 bool callBoundMethod(Callable *callable, int argCount) {
     ObjBoundMethod *bound = (ObjBoundMethod *) callable;
     vm.stackTop[-argCount - 1] = bound->receiver;
@@ -287,17 +286,28 @@ static bool invokeFromClass(ObjClass *klass, ObjString *name, int argCount) {
 
 static bool invoke(ObjString *name, int argCount) {
     Value receiver = peek(argCount);
-    if (!IS_INSTANCE(receiver)) {
-        runtimeError("Only instances have methods");
+    if (!IS_INSTANCE(receiver) && !IS_CLASS(receiver)) {
+        runtimeError("Only classes and instances have methods");
         return false;
     }
-    ObjInstance *instance = AS_INSTANCE(receiver);
-    Value value;
-    if (tableGet(&instance->fields, name, &value)) {
-        vm.stackTop[-argCount - 1] = value;
-        return callValue(value, argCount);
+
+    if (IS_INSTANCE(receiver)) {
+        ObjInstance *instance = AS_INSTANCE(receiver);
+        Value value;
+        if (tableGet(&instance->fields, name, &value)) {
+            vm.stackTop[-argCount - 1] = value;
+            return callValue(value, argCount);
+        }
+        return invokeFromClass(instance->klass, name, argCount);
+    } else {
+        ObjClass *klass = AS_CLASS(receiver);
+        Value staticMethod;
+        if (!tableGet(&klass->staticMethods, name, &staticMethod)) {
+            runtimeError("No static method '%s' for class '%s'.", name->chars, klass->name->chars);
+            return false;
+        }
+        return AS_CALLABLE(staticMethod)->caller(AS_CALLABLE(staticMethod), argCount);
     }
-    return invokeFromClass(instance->klass, name, argCount);
 }
 
 static bool bindMethod(ObjClass *klass, ObjString *name) {
@@ -337,7 +347,7 @@ static ObjUpvalue *captureUpvalue(Value *local) {
     return createdUpvalue;
 }
 
-static void closeUpvalues(Value *last) {
+static void closeUpvalues(const Value *last) {
     while (vm.openUpvalues != NULL && vm.openUpvalues->location >= last) {
         ObjUpvalue *upvalue = vm.openUpvalues;
         upvalue->closed = *upvalue->location;
@@ -346,11 +356,15 @@ static void closeUpvalues(Value *last) {
     }
 }
 
-static void defineMethod(ObjString *name) {
+static void defineMethod(ObjString *name, bool isStatic) {
     Value method = peek(0);
     ObjClass *klass = AS_CLASS(peek(1));
-    tableSet(&klass->methods, name, method);
-    if (name == vm.initString) klass->initializer = method;
+    if (!isStatic) {
+        tableSet(&klass->methods, name, method);
+        if (name == vm.initString) klass->initializer = method;
+    } else {
+        tableSet(&klass->staticMethods, name, method);
+    }
     pop();
 }
 
@@ -386,7 +400,7 @@ static int primitiveStringLength(Value value) {
 static void writePrimitiveToBuffer(char *buffer, Value value, int length) {
     if (IS_NIL(value)) memcpy(buffer, "nil", length + 1);
     else if (IS_BOOL(value)) memcpy(buffer, AS_BOOL(value) ? "true" : "false", length + 1);
-    else if (IS_NUMBER(value)) snprintf(buffer, length+1, "%g", AS_NUMBER(value));
+    else if (IS_NUMBER(value)) snprintf(buffer, length + 1, "%g", AS_NUMBER(value));
 }
 
 static void concatenateStringWithPrimitive() {
@@ -527,22 +541,37 @@ static InterpretResult run() {
             break;
         }
         case OP_GET_PROPERTY: {
-            if (!IS_INSTANCE(peek(0))) {
-                runtimeError("Only instances have properties.");
+            if (!IS_INSTANCE(peek(0)) && !IS_CLASS(peek(0))) {
+                runtimeError("Only instances and classes have properties.");
                 return INTERPRET_RUNTIME_ERROR;
             }
+            if (IS_INSTANCE(peek(0))) {
+                ObjInstance *instance = AS_INSTANCE(peek(0));
+                ObjString *name = READ_STRING();
 
-            ObjInstance *instance = AS_INSTANCE(peek(0));
-            ObjString *name = READ_STRING();
+                Value value;
+                if (tableGet(&instance->fields, name, &value)) {
+                    pop(); // Instance
+                    push(value);
+                    break;
+                }
+                if (!bindMethod(instance->klass, name)) {
+                    return INTERPRET_RUNTIME_ERROR;
+                }
+            } else {
+                ObjClass *klass = AS_CLASS(peek(0));
+                ObjString *name = READ_STRING();
 
-            Value value;
-            if (tableGet(&instance->fields, name, &value)) {
-                pop(); // Instance
+                Value value;
+                if (!tableGet(&klass->staticMethods, name, &value)) {
+                    runtimeError("No static method '%s' on class '%s'.",
+                                 name->chars, klass->name->chars);
+                    break;
+                }
+
+                pop(); // Class
                 push(value);
                 break;
-            }
-            if (!bindMethod(instance->klass, name)) {
-                return INTERPRET_RUNTIME_ERROR;
             }
             break;
         }
@@ -724,7 +753,9 @@ static InterpretResult run() {
             break;
         }
         case OP_METHOD: {
-            defineMethod(READ_STRING());
+            ObjString *name = READ_STRING();
+            bool isStatic = READ_BYTE();
+            defineMethod(name, isStatic);
             break;
         }
         }

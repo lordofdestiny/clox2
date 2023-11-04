@@ -102,6 +102,7 @@ typedef struct {
     ObjString *name;
     Value initializer;
     Table methods;
+    Table staticMethods;
 } ObjClass;
 
 typedef struct {
