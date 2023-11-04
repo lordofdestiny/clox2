@@ -94,9 +94,15 @@ static bool clockNative(int argCount, Value *args) {
 }
 
 static bool exitNative(int argCount, Value *args) {
+    if (argCount >= 1) {
+        args[-1] = NATIVE_ERROR("Exit takes zero arguments, or one argument that is a number");
+        return false;
+    }
+    if (argCount == 0) {
+        exit(0);
+    }
     if (!IS_NUMBER(args[0])) {
-        const char *message = "Exit code must be a number.";
-        args[-1] = OBJ_VAL((Obj *) copyString(message, strlen(message)));
+        args[-1] = NATIVE_ERROR("Exit code must be a number.");
         return false;
     }
     int exitCode = (int) AS_NUMBER(args[0]);
@@ -173,7 +179,7 @@ void initVM() {
     defineNative("setField", 3, setFieldNative);
     defineNative("deleteField", 2, deleteFieldNative);
     defineNative("clock", 0, clockNative);
-    defineNative("exit", 1, exitNative);
+    defineNative("exit", -1, exitNative);
 }
 
 void freeVM() {
@@ -229,7 +235,7 @@ bool callFunction(Callable *callable, int argCount) {
 bool callClass(Callable *callable, int argCount) {
     ObjClass *klass = (ObjClass *) callable;
     vm.stackTop[-argCount - 1] = OBJ_VAL((Obj *) newInstance(klass));
-    if (IS_NIL(klass->initializer)) {
+    if (!IS_NIL(klass->initializer)) {
         Callable *initializer = AS_CALLABLE(klass->initializer);
         return initializer->caller(initializer, argCount);
     } else if (argCount != 0) {
@@ -378,7 +384,7 @@ static InterpretResult run() {
 #define READ_CONSTANT() (getFrameFunction(frame)->chunk.constants.values[READ_BYTE()])
 #define READ_STRING() AS_STRING(READ_CONSTANT())
 #define BINARY_OP(valueType, op) \
-    do {              \
+    do {                         \
         if(!IS_NUMBER(peek(0)) || !IS_NUMBER(peek(1))){ \
             frame->ip = ip;                     \
             runtimeError("Operands must be numbers");   \
