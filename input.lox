@@ -1,5 +1,5 @@
-print 5 + "Hello";
-print "Hello" + 2;
+print 5 + "Hello" + " " + false + " " + true  + exit;
+print "Hello" + 2 + nil;
 
 exit();
 

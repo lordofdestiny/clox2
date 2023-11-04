@@ -359,6 +359,7 @@ static bool isFalsy(Value value) {
     return IS_NIL(value) || (IS_BOOL(value) && !AS_BOOL(value));
 }
 
+
 static void concatenate() {
     ObjString *b = AS_STRING(peek(0));
     ObjString *a = AS_STRING(peek(1));
@@ -375,18 +376,31 @@ static void concatenate() {
     push(OBJ_VAL((Obj *) result));
 }
 
-static void concatenateStringWithNumber() {
+static int primitiveStringLength(Value value) {
+    if (IS_NIL(value)) return 3;
+    else if (IS_BOOL(value)) return AS_BOOL(value) ? 4 : 5;
+    else if (IS_NUMBER(value)) return snprintf(NULL, 0, "%g", AS_NUMBER(value));
+    return 0; // Unreachable
+}
+
+static void writePrimitiveToBuffer(char *buffer, Value value, int length) {
+    if (IS_NIL(value)) memcpy(buffer, "nil", length + 1);
+    else if (IS_BOOL(value)) memcpy(buffer, AS_BOOL(value) ? "true" : "false", length + 1);
+    else if (IS_NUMBER(value)) snprintf(buffer, length+1, "%g", AS_NUMBER(value));
+}
+
+static void concatenateStringWithPrimitive() {
     ObjString *b = AS_STRING(peek(0));
-    double a = AS_NUMBER(peek(1));
+    Value a = peek(1);
 
-    int numberStrLen = snprintf(NULL, 0, "%g", a);
-    char numberStr[numberStrLen + 1];
-    snprintf(numberStr, sizeof numberStr, "%g", a);
+    int primitiveStrLen = primitiveStringLength(a);
+    char primitiveStr[primitiveStrLen + 1];
+    writePrimitiveToBuffer(primitiveStr, a, primitiveStrLen);
 
-    int length = numberStrLen + b->length;
+    int length = primitiveStrLen + b->length;
     char *chars = ALLOCATE(char, (size_t) length + 1);
-    memcpy(chars, numberStr, numberStrLen);
-    memcpy(chars + numberStrLen, b->chars, b->length);
+    memcpy(chars, primitiveStr, primitiveStrLen);
+    memcpy(chars + primitiveStrLen, b->chars, b->length);
     chars[length] = '\0';
 
     ObjString *result = takeString(chars, length);
@@ -395,18 +409,18 @@ static void concatenateStringWithNumber() {
     push(OBJ_VAL((Obj *) result));
 }
 
-static void concatenateNumberWithString() {
-    double b = AS_NUMBER(peek(0));
+static void concatenatePrimitiveWithString() {
+    Value b = peek(0);
     ObjString *a = AS_STRING(peek(1));
 
-    int numberStrLen = snprintf(NULL, 0, "%g", b);
-    char numberStr[numberStrLen + 1];
-    snprintf(numberStr, sizeof numberStr, "%g", b);
+    int primitiveStrLen = primitiveStringLength(b);
+    char primitiveStr[primitiveStrLen + 1];
+    writePrimitiveToBuffer(primitiveStr, b, primitiveStrLen);
 
-    int length = a->length + numberStrLen;
+    int length = a->length + primitiveStrLen;
     char *chars = ALLOCATE(char, (size_t) length + 1);
     memcpy(chars, a->chars, a->length);
-    memcpy(chars + a->length, numberStr, numberStrLen);
+    memcpy(chars + a->length, primitiveStr, primitiveStrLen);
     chars[length] = '\0';
 
     ObjString *result = takeString(chars, length);
@@ -570,13 +584,13 @@ static InterpretResult run() {
                 double b = AS_NUMBER(pop());
                 double a = AS_NUMBER(pop());
                 push(NUMBER_VAL(a + b));
-            } else if (IS_STRING(peek(0)) && IS_NUMBER(peek(1))) {
-                concatenateStringWithNumber();
-            } else if (IS_NUMBER(peek(0)) && IS_STRING(peek(1))) {
-                concatenateNumberWithString();
+            } else if (IS_STRING(peek(0)) && !IS_OBJ(peek(1))) {
+                concatenateStringWithPrimitive();
+            } else if (!IS_OBJ(peek(0)) && IS_STRING(peek(1))) {
+                concatenatePrimitiveWithString();
             } else {
                 frame->ip = ip;
-                runtimeError("Operands must be two numbers or two strings.");
+                runtimeError("Operands must be primitives or strings.");
                 return INTERPRET_RUNTIME_ERROR;
             }
             break;
