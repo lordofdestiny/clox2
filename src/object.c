@@ -17,10 +17,13 @@
 #define ALLOCATE_CALLABLE(type, objectType, caller) \
     (type*) allocateCallable(sizeof(type), objectType, caller)
 
+static ObjVT vts[];
+
 static void initObject(Obj *object, ObjType type, bool callable) {
     object->type = type;
     object->isMarked = false;
     object->isCallable = callable;
+    object->vtp = &vts[type];
     object->next = vm.objects;
     vm.objects = object;
 }
@@ -58,6 +61,7 @@ uint32_t hashString(const char *key, int length) {
     }
     return hash;
 }
+
 
 ObjBoundMethod *newBoundMethod(Value receiver, Callable *method) {
     ObjBoundMethod *bound = ALLOCATE_CALLABLE(ObjBoundMethod, OBJ_BOUND_METHOD, callBoundMethod);
@@ -145,7 +149,11 @@ ObjUpvalue *newUpvalue(Value *slot) {
     return upvalue;
 }
 
-static void printFunction(ObjFunction *function) {
+void printObject(Value value) {
+    AS_OBJ(value)->vtp->print(AS_OBJ(value));
+}
+
+static void printFunctionImpl(ObjFunction *function) {
     if (function->name == NULL) {
         printf("<script>");
         return;
@@ -153,29 +161,53 @@ static void printFunction(ObjFunction *function) {
     printf("<fn %s>", function->name->chars);
 }
 
-void printObject(Value value) {
-    switch (OBJ_TYPE(value)) {
-    case OBJ_BOUND_METHOD: {
-        Callable *method = AS_BOUND_METHOD(value)->method;
-        ObjFunction *fun = method->obj.type == OBJ_FUNCTION
-                           ? (ObjFunction *) method
-                           : ((ObjClosure *) method)->function;
-        printFunction(fun);
-        break;
-    }
-    case OBJ_CLASS:printf("<class %s>", AS_CLASS(value)->name->chars);
-        break;
-    case OBJ_CLOSURE: printFunction(AS_CLOSURE(value)->function);
-        break;
-    case OBJ_FUNCTION: printFunction(AS_FUNCTION(value));
-        break;
-    case OBJ_INSTANCE: printf("<instance %s>", AS_INSTANCE(value)->klass->name->chars);
-        break;
-    case OBJ_NATIVE: printf("<native fn>");
-        break;
-    case OBJ_STRING: printf("%s", AS_CSTRING(value));
-        break;
-    case OBJ_UPVALUE:printf("upvalue");
-        break;
-    }
+static void printObjBoundMethod(Obj *obj) {
+    Callable *method = ((ObjBoundMethod *) obj)->method;
+    ObjFunction *fun = method->obj.type == OBJ_FUNCTION
+                       ? (ObjFunction *) method
+                       : ((ObjClosure *) method)->function;
+    printFunctionImpl(fun);
 }
+
+static void printObjClass(Obj *obj) {
+    printf("<class %s>", ((ObjClass *) obj)->name->chars);
+}
+
+static void printObjClosure(Obj *obj) {
+    printFunctionImpl(((ObjClosure *) obj)->function);
+}
+
+static void printObjFunction(Obj *obj) {
+    printFunctionImpl(((ObjFunction *) obj));
+}
+
+static void printObjInstance(Obj *obj) {
+    ObjInstance *instance = (ObjInstance *) obj;
+    printf("<instance %s>", instance->klass->name->chars);
+}
+
+static void printObjNative(Obj *obj) {
+    // TODO see if this can be done in a way that displays more information
+    printf("<native fn>");
+}
+
+static void printObjString(Obj *obj) {
+    printf("%s", ((ObjString *) obj)->chars);
+}
+
+static void printObjUpvalue(Obj *obj) {
+    // TODO see if this can be done in a way that displays more information
+    printf("upvalue");
+}
+
+static ObjVT vts[] = {
+        [OBJ_BOUND_METHOD] = {NULL, NULL, printObjBoundMethod},
+        [OBJ_CLASS] = {NULL, NULL, printObjClass},
+        [OBJ_CLOSURE] = {NULL, NULL, printObjClosure},
+        [OBJ_FUNCTION] = {NULL, NULL, printObjFunction},
+        [OBJ_INSTANCE] = {NULL, NULL, printObjInstance},
+        [OBJ_NATIVE] = {NULL, NULL, printObjNative},
+        [OBJ_STRING] = {NULL, NULL, printObjString},
+        [OBJ_UPVALUE] = {NULL, NULL, printObjUpvalue},
+};
+

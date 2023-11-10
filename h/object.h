@@ -44,16 +44,27 @@ typedef enum {
     OBJ_UPVALUE,
 } ObjType;
 
+typedef struct Callable Callable;
+
+typedef bool (*CallableFn)(Callable *, int argCount);
+
+typedef void (*FreeFn)(Obj *);
+
+typedef void (*PrintFn)(Obj *);
+
+typedef struct {
+    CallableFn caller;
+    FreeFn free;
+    PrintFn print;
+} ObjVT;
+
 struct Obj {
     ObjType type;
     bool isCallable;
     bool isMarked;
+    ObjVT *vtp;
     struct Obj *next;
 };
-
-typedef struct Callable Callable;
-
-typedef bool (*CallableFn)(Callable *, int argCount);
 
 struct Callable {
     Obj obj;
