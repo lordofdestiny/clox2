@@ -9,8 +9,6 @@
 #include "value.h"
 #include "object.h"
 
-#define NATIVE_METHOD_COUNT (sizeof (nativeMethods) / sizeof (NativeMethodDef))
-
 typedef struct {
     const char* name;
     const int arity;

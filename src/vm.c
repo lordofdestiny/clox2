@@ -129,20 +129,19 @@ static bool callFunctionLike(Obj *callee, ObjFunction *function, int argCount) {
     return true;
 }
 
-bool callClosure(Callable *callable, int argCount) {
-    return callFunctionLike((Obj *) callable, ((ObjClosure *) callable)->function, argCount);
+bool callClosure(Obj *callable, int argCount) {
+    return callFunctionLike( callable, ((ObjClosure *) callable)->function, argCount);
 }
 
-bool callFunction(Callable *callable, int argCount) {
-    return callFunctionLike((Obj *) callable, (ObjFunction *) callable, argCount);
+bool callFunction(Obj *callable, int argCount) {
+    return callFunctionLike(callable, (ObjFunction *) callable, argCount);
 }
 
-bool callClass(Callable *callable, int argCount) {
+bool callClass(Obj *callable, int argCount) {
     ObjClass *klass = (ObjClass *) callable;
     vm.stackTop[-argCount - 1] = OBJ_VAL((Obj *) newInstance(klass));
     if (!IS_NIL(klass->initializer)) {
-        Callable *initializer = AS_CALLABLE(klass->initializer);
-        return initializer->caller(initializer, argCount);
+        return CALL_CALLABLE(klass->initializer, argCount);
     } else if (argCount != 0) {
         runtimeError("Expected 0 arguments but got %d.", argCount);
         return false;
@@ -150,13 +149,13 @@ bool callClass(Callable *callable, int argCount) {
     return true;
 }
 
-bool callBoundMethod(Callable *callable, int argCount) {
+bool callBoundMethod(Obj *callable, int argCount) {
     ObjBoundMethod *bound = (ObjBoundMethod *) callable;
     vm.stackTop[-argCount - 1] = bound->receiver;
-    return bound->method->caller(bound->method, argCount);
+    return bound->method->vtp->call(bound->method, argCount);
 }
 
-bool callNative(Callable *callable, int argCount) {
+bool callNative(Obj *callable, int argCount) {
     ObjNative *native = (ObjNative *) callable;
     /* IDEA Recognize calls to native functions at compile time
      *  so that this check can be removed
@@ -187,8 +186,7 @@ static bool invokeFromClass(ObjClass *klass, ObjString *name, int argCount) {
         runtimeError("Undefined property '%s'.", name->chars);
         return false;
     }
-    return AS_CALLABLE(method)
-            ->caller(AS_CALLABLE(method), argCount);
+    return CALL_CALLABLE(method, argCount);
 }
 
 static bool invoke(ObjString *name, int argCount) {
@@ -213,7 +211,7 @@ static bool invoke(ObjString *name, int argCount) {
             runtimeError("No static method '%s' for class '%s'.", name->chars, klass->name->chars);
             return false;
         }
-        return AS_CALLABLE(staticMethod)->caller(AS_CALLABLE(staticMethod), argCount);
+        return AS_OBJ(staticMethod)->vtp->call(AS_OBJ(staticMethod), argCount);
     }
 }
 
@@ -224,7 +222,7 @@ static bool bindMethod(ObjClass *klass, ObjString *name) {
         return false;
     }
 
-    ObjBoundMethod *bound = newBoundMethod(peek(0), AS_CALLABLE(method));
+    ObjBoundMethod *bound = newBoundMethod(peek(0), AS_OBJ(method));
     pop();
     push(OBJ_VAL((Obj *) bound));
     return true;
@@ -697,7 +695,7 @@ InterpretResult interpret(const char *source) {
     ObjFunction *function = compile(source);
     if (function == NULL) return INTERPRET_COMPILE_ERROR;
     push(OBJ_VAL((Obj *) function));
-    callFunction((Callable *) function, 0);
+    callFunction((Obj *) function, 0);
 
     return run();
 }

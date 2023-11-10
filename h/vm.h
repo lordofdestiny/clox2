@@ -60,14 +60,14 @@ Value pop();
 
 void runtimeError(const char *format, ...);
 
-bool callClass(Callable *callable, int argCount);
+bool callClass(Obj *callable, int argCount);
 
-bool callClosure(Callable *callable, int argCount);
+bool callClosure(Obj *callable, int argCount);
 
-bool callFunction(Callable *callable, int argCount);
+bool callFunction(Obj *callable, int argCount);
 
-bool callNative(Callable *callable, int argCount);
+bool callNative(Obj *callable, int argCount);
 
-bool callBoundMethod(Callable *callable, int argCount);
+bool callBoundMethod(Obj *callable, int argCount);
 
 #endif //CLOX2_VM_H

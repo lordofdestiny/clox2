@@ -14,7 +14,7 @@
 
 #define IS_BOUND_METHOD(value) isObjType(value, OBJ_BOUND_METHOD)
 #define IS_CLASS(value) isObjType(value, OBJ_CLASS)
-#define IS_CALLABLE(value) (IS_OBJ(value) && AS_OBJ(value)->isCallable)
+#define IS_CALLABLE(value) (IS_OBJ(value) && AS_OBJ(value)->vtp->call != NULL)
 #define IS_CLOSURE(value) isObjType(value, OBJ_CLOSURE)
 #define IS_FUNCTION(value) isObjType(value, OBJ_FUNCTION)
 #define IS_INSTANCE(value) isObjType(value, OBJ_INSTANCE)
@@ -23,7 +23,6 @@
 
 #define AS_BOUND_METHOD(value) ((ObjBoundMethod*)AS_OBJ(value))
 #define AS_CLASS(value) ((ObjClass*)AS_OBJ(value))
-#define AS_CALLABLE(value) ((Callable *) AS_OBJ(value))
 #define AS_CLOSURE(value) ((ObjClosure*)AS_OBJ(value))
 #define AS_FUNCTION(value) ((ObjFunction *) AS_OBJ(value))
 #define AS_INSTANCE(value) ((ObjInstance*) AS_OBJ(value))
@@ -31,7 +30,7 @@
 #define AS_STRING(value) ((ObjString*)AS_OBJ(value))
 #define AS_CSTRING(value) (((ObjString*)AS_OBJ(value))->chars)
 
-#define CALL_CALLABLE(callee, argCount) AS_CALLABLE(callee)->caller(AS_CALLABLE(callee), argCount)
+#define CALL_CALLABLE(callee, argCount) AS_OBJ(callee)->vtp->call(AS_OBJ(callee), argCount)
 
 typedef enum {
     OBJ_BOUND_METHOD,
@@ -44,35 +43,27 @@ typedef enum {
     OBJ_UPVALUE,
 } ObjType;
 
-typedef struct Callable Callable;
-
-typedef bool (*CallableFn)(Callable *, int argCount);
+typedef bool (*CallableFn)(Obj *, int argCount);
 
 typedef void (*FreeFn)(Obj *);
 
 typedef void (*PrintFn)(Obj *);
 
 typedef struct {
-    CallableFn caller;
+    CallableFn call;
     FreeFn free;
     PrintFn print;
 } ObjVT;
 
 struct Obj {
     ObjType type;
-    bool isCallable;
     bool isMarked;
     ObjVT *vtp;
     struct Obj *next;
 };
 
-struct Callable {
-    Obj obj;
-    CallableFn caller;
-};
-
 typedef struct ObjFunction {
-    Callable obj;
+    Obj obj;
     int arity;
     int upvalueCount;
     Chunk chunk;
@@ -87,7 +78,7 @@ typedef struct ObjUpvalue {
 } ObjUpvalue;
 
 typedef struct {
-    Callable obj;
+    Obj obj;
     ObjFunction *function;
     ObjUpvalue **upvalues;
     int upvalueCount;
@@ -96,7 +87,7 @@ typedef struct {
 typedef bool (*NativeFn)(int argCount, Value *args);
 
 typedef struct {
-    Callable obj;
+    Obj obj;
     int arity;
     NativeFn function;
 } ObjNative;
@@ -109,7 +100,7 @@ struct ObjString {
 };
 
 typedef struct {
-    Callable obj;
+    Obj obj;
     ObjString *name;
     Value initializer;
     Table methods;
@@ -123,12 +114,12 @@ typedef struct {
 } ObjInstance;
 
 typedef struct {
-    Callable obj;
+    Obj obj;
     Value receiver;
-    Callable *method;
+    Obj *method;
 } ObjBoundMethod;
 
-ObjBoundMethod *newBoundMethod(Value receiver, Callable *method);
+ObjBoundMethod *newBoundMethod(Value receiver, Obj *method);
 
 ObjClass *newClass(ObjString *name);
 

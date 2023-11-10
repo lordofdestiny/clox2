@@ -14,31 +14,17 @@
 #define ALLOCATE_OBJ(type, objectType) \
     (type*) allocateObject(sizeof(type), objectType)
 
-#define ALLOCATE_CALLABLE(type, objectType, caller) \
-    (type*) allocateCallable(sizeof(type), objectType, caller)
-
 static ObjVT vts[];
-
-static void initObject(Obj *object, ObjType type, bool callable) {
-    object->type = type;
-    object->isMarked = false;
-    object->isCallable = callable;
-    object->vtp = &vts[type];
-    object->next = vm.objects;
-    vm.objects = object;
-}
 
 static Obj *allocateObject(size_t size, ObjType type) {
     Obj *object = (Obj *) reallocate(NULL, 0, size);
-    initObject(object, type, false);
-    return object;
-}
+    object->type = type;
+    object->isMarked = false;
+    object->vtp = &vts[type];
 
-static Callable *allocateCallable(size_t size, ObjType type, CallableFn caller) {
-    Callable *callable = (Callable *) reallocate(NULL, 0, size);
-    initObject((Obj *) callable, type, true);
-    callable->caller = caller;
-    return callable;
+    object->next = vm.objects;
+    vm.objects = object;
+    return object;
 }
 
 static ObjString *allocateString(char *chars, int length,
@@ -63,15 +49,15 @@ uint32_t hashString(const char *key, int length) {
 }
 
 
-ObjBoundMethod *newBoundMethod(Value receiver, Callable *method) {
-    ObjBoundMethod *bound = ALLOCATE_CALLABLE(ObjBoundMethod, OBJ_BOUND_METHOD, callBoundMethod);
+ObjBoundMethod *newBoundMethod(Value receiver, Obj *method) {
+    ObjBoundMethod *bound = ALLOCATE_OBJ(ObjBoundMethod, OBJ_BOUND_METHOD);
     bound->receiver = receiver;
     bound->method = method;
     return bound;
 }
 
 ObjClass *newClass(ObjString *name) {
-    ObjClass *klass = ALLOCATE_CALLABLE(ObjClass, OBJ_CLASS, callClass);
+    ObjClass *klass = ALLOCATE_OBJ(ObjClass, OBJ_CLASS);
     klass->name = name;
     klass->initializer = NIL_VAL;
     initTable(&klass->methods);
@@ -86,7 +72,7 @@ ObjClosure *newClosure(ObjFunction *function) {
         upvalues[i] = NULL;
     }
 
-    ObjClosure *closure = ALLOCATE_CALLABLE(ObjClosure, OBJ_CLOSURE, callClosure);
+    ObjClosure *closure = ALLOCATE_OBJ(ObjClosure, OBJ_CLOSURE);
     closure->function = function;
     closure->upvalues = upvalues;
     closure->upvalueCount = function->upvalueCount;
@@ -95,7 +81,7 @@ ObjClosure *newClosure(ObjFunction *function) {
 
 
 ObjFunction *newFunction() {
-    ObjFunction *function = ALLOCATE_CALLABLE(ObjFunction, OBJ_FUNCTION, callFunction);
+    ObjFunction *function = ALLOCATE_OBJ(ObjFunction, OBJ_FUNCTION);
     function->arity = 0;
     function->upvalueCount = 0;
     function->name = NULL;
@@ -111,7 +97,7 @@ ObjInstance *newInstance(ObjClass *klass) {
 }
 
 ObjNative *newNative(NativeFn function, int arity) {
-    ObjNative *native = ALLOCATE_CALLABLE(ObjNative, OBJ_NATIVE, callNative);
+    ObjNative *native = ALLOCATE_OBJ(ObjNative, OBJ_NATIVE);
     native->function = function;
     native->arity = arity;
     return native;
@@ -162,8 +148,8 @@ static void printFunctionImpl(ObjFunction *function) {
 }
 
 static void printObjBoundMethod(Obj *obj) {
-    Callable *method = ((ObjBoundMethod *) obj)->method;
-    ObjFunction *fun = method->obj.type == OBJ_FUNCTION
+    Obj *method = ((ObjBoundMethod *) obj)->method;
+    ObjFunction *fun = method->type == OBJ_FUNCTION
                        ? (ObjFunction *) method
                        : ((ObjClosure *) method)->function;
     printFunctionImpl(fun);
@@ -201,12 +187,12 @@ static void printObjUpvalue(Obj *obj) {
 }
 
 static ObjVT vts[] = {
-        [OBJ_BOUND_METHOD] = {NULL, NULL, printObjBoundMethod},
-        [OBJ_CLASS] = {NULL, NULL, printObjClass},
-        [OBJ_CLOSURE] = {NULL, NULL, printObjClosure},
-        [OBJ_FUNCTION] = {NULL, NULL, printObjFunction},
+        [OBJ_BOUND_METHOD] = {callBoundMethod, NULL, printObjBoundMethod},
+        [OBJ_CLASS] = {callClass, NULL, printObjClass},
+        [OBJ_CLOSURE] = {callClosure, NULL, printObjClosure},
+        [OBJ_FUNCTION] = {callFunction, NULL, printObjFunction},
         [OBJ_INSTANCE] = {NULL, NULL, printObjInstance},
-        [OBJ_NATIVE] = {NULL, NULL, printObjNative},
+        [OBJ_NATIVE] = {callNative, NULL, printObjNative},
         [OBJ_STRING] = {NULL, NULL, printObjString},
         [OBJ_UPVALUE] = {NULL, NULL, printObjUpvalue},
 };
