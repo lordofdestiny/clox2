@@ -150,7 +150,6 @@ bool callClass(Callable *callable, int argCount) {
     return true;
 }
 
-
 bool callBoundMethod(Callable *callable, int argCount) {
     ObjBoundMethod *bound = (ObjBoundMethod *) callable;
     vm.stackTop[-argCount - 1] = bound->receiver;
@@ -159,6 +158,9 @@ bool callBoundMethod(Callable *callable, int argCount) {
 
 bool callNative(Callable *callable, int argCount) {
     ObjNative *native = (ObjNative *) callable;
+    /* IDEA Recognize calls to native functions at compile time
+     *  so that this check can be removed
+     */
     if (native->arity != -1 && argCount != native->arity) {
         runtimeError("Expected %d arguments but got %d", native->arity, argCount);
         return false;
@@ -273,11 +275,9 @@ static void defineMethod(ObjString *name, bool isStatic) {
     pop();
 }
 
-
 static bool isFalsy(Value value) {
     return IS_NIL(value) || (IS_BOOL(value) && !AS_BOOL(value));
 }
-
 
 static void concatenate() {
     ObjString *b = AS_STRING(peek(0));
@@ -496,6 +496,9 @@ static InterpretResult run() {
             break;
         }
         case OP_GET_SUPER: {
+            /*
+             * TODO enable calling static methods with super keyword
+             * */
             ObjString *name = READ_STRING();
             ObjClass *superclass = AS_CLASS(pop());
 
@@ -515,6 +518,12 @@ static InterpretResult run() {
         case OP_LESS: BINARY_OP(BOOL_VAL, <);
             break;
         case OP_ADD: {
+            /*
+             * TODO: instead of coercing primitives into strings,
+             *  which only allows for them to bi concatenated with strings,
+             *  call a version of "toString" for a value, before concatenating
+             *  it with a string
+             * */
             if (IS_STRING(peek(0)) && IS_STRING(peek(1))) {
                 concatenate();
             } else if (IS_NUMBER(peek(0)) && IS_NUMBER(peek(1))) {
@@ -600,6 +609,9 @@ static InterpretResult run() {
             break;
         }
         case OP_SUPER_INVOKE: {
+            /*
+             * TODO add support for invoking static methods
+             * */
             ObjString *method = READ_STRING();
             int argCount = READ_BYTE();
             ObjClass *superclass = AS_CLASS(pop());
