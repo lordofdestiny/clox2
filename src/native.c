@@ -85,7 +85,7 @@ static bool clockNative(int argCount, Value *args) {
 }
 
 static bool exitNative(int argCount, Value *args) {
-    if (argCount >= 1) {
+    if (argCount > 1) {
         args[-1] = NATIVE_ERROR("Exit takes zero arguments, or one argument that is a number");
         return false;
     }
