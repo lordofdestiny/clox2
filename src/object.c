@@ -14,13 +14,13 @@
 #define ALLOCATE_OBJ(type, objectType) \
     (type*) allocateObject(sizeof(type), objectType)
 
-static ObjVT vts[];
+static ObjVT vtList[];
 
 static Obj *allocateObject(size_t size, ObjType type) {
     Obj *object = (Obj *) reallocate(NULL, 0, size);
     object->type = type;
     object->isMarked = false;
-    object->vtp = &vts[type];
+    object->vtp = &vtList[type];
 
     object->next = vm.objects;
     vm.objects = object;
@@ -186,14 +186,46 @@ static void printObjUpvalue(Obj *obj) {
     printf("upvalue");
 }
 
-static ObjVT vts[] = {
-        [OBJ_BOUND_METHOD] = {callBoundMethod, NULL, printObjBoundMethod},
-        [OBJ_CLASS] = {callClass, NULL, printObjClass},
-        [OBJ_CLOSURE] = {callClosure, NULL, printObjClosure},
-        [OBJ_FUNCTION] = {callFunction, NULL, printObjFunction},
-        [OBJ_INSTANCE] = {NULL, NULL, printObjInstance},
-        [OBJ_NATIVE] = {callNative, NULL, printObjNative},
-        [OBJ_STRING] = {NULL, NULL, printObjString},
-        [OBJ_UPVALUE] = {NULL, NULL, printObjUpvalue},
+static ObjVT vtList[] = {
+        [OBJ_BOUND_METHOD] = {
+                .call = callBoundMethod,
+                .free = NULL,
+                .print =printObjBoundMethod
+        },
+        [OBJ_CLASS] = {
+                .call = callClass,
+                .free = NULL,
+                .print = printObjClass
+        },
+        [OBJ_CLOSURE] = {
+                .call = callClosure,
+                .free = NULL,
+                .print = printObjClosure
+        },
+        [OBJ_FUNCTION] = {
+                .call = callFunction,
+                .free =NULL,
+                printObjFunction
+        },
+        [OBJ_INSTANCE] = {
+                .call = NULL,
+                .free = NULL,
+                .print = printObjInstance
+        },
+        [OBJ_NATIVE] = {
+                .call = callNative,
+                .free = NULL,
+                .print = printObjNative
+        },
+        [OBJ_STRING] = {
+                .call = NULL,
+                .free = NULL,
+                .print = printObjString
+        },
+        [OBJ_UPVALUE] = {
+                .call = NULL,
+                .free = NULL,
+                .print = printObjUpvalue
+        },
 };
 
