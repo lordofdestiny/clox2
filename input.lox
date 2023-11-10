@@ -4,7 +4,7 @@ fun fib(n) {
 }
 
 var start = clock();
-var result = fib(30);
+var result = fib(35);
 var end = clock();
 
 print result;

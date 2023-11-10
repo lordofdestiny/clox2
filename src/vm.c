@@ -6,7 +6,6 @@
 #include <stdlib.h>
 #include <stdarg.h>
 #include <string.h>
-#include <time.h>
 #include <math.h>
 #include "../h/common.h"
 #include "../h/value.h"
@@ -14,102 +13,9 @@
 #include "../h/debug.h"
 #include "../h/memory.h"
 #include "../h/object.h"
+#include "../h/native.h"
 
 VM vm;
-
-#define NATIVE_ERROR(msg) (OBJ_VAL((Obj*) copyString(msg, strlen(msg))))
-
-static bool hasFieldNative(int argCount, Value *args) {
-    if (!IS_INSTANCE(args[0])) {
-        args[-1] = NATIVE_ERROR("Function 'hasField' expects an instance as the first argument.");
-        return false;
-    }
-    if (!IS_INSTANCE(args[1])) {
-        args[-1] = NATIVE_ERROR("Function 'hasField' expects a string as the second argument.");
-        return false;
-    }
-    ObjInstance *instance = AS_INSTANCE(args[0]);
-    ObjString *key = AS_STRING(args[1]);
-    Value dummy;
-
-    args[-1] = BOOL_VAL(tableGet(&instance->fields, key, &dummy));
-    return true;
-}
-
-static bool getFieldNative(int argCount, Value *args) {
-    if (!IS_INSTANCE(args[0])) {
-        args[-1] = NATIVE_ERROR("Function 'getField' expects an instance as the first argument.");
-        return false;
-    }
-    if (!IS_INSTANCE(args[1])) {
-        args[-1] = NATIVE_ERROR("Function 'getField' expects a string as the second argument.");
-        return false;
-    }
-    ObjInstance *instance = AS_INSTANCE(args[0]);
-    ObjString *key = AS_STRING(args[1]);
-    Value value;
-
-    if (!tableGet(&instance->fields, key, &value)) {
-        args[-1] = NATIVE_ERROR("Instance doesn't have the requested field.");
-        return false;
-    }
-
-    args[-1] = value;
-    return true;
-}
-
-static bool setFieldNative(int argCount, Value *args) {
-    if (!IS_INSTANCE(args[0])) {
-        args[-1] = NATIVE_ERROR("Function 'setField' expects an instance as the first argument.");
-        return false;
-    }
-    if (!IS_INSTANCE(args[1])) {
-        args[-1] = NATIVE_ERROR("Function 'setField' expects a string as the second argument.");
-        return false;
-    }
-    ObjInstance *instance = AS_INSTANCE(args[0]);
-    tableSet(&instance->fields, AS_STRING(args[1]), args[2]);
-    args[-1] = args[2];
-    return true;
-}
-
-static bool deleteFieldNative(int argCount, Value *args) {
-    if (!IS_INSTANCE(args[0])) {
-        args[-1] = NATIVE_ERROR("Function 'deleteField' expects an instance as the first argument.");
-        return false;
-    }
-    if (!IS_INSTANCE(args[1])) {
-        args[-1] = NATIVE_ERROR("Function 'deleteField' expects a string as the second argument.");
-        return false;
-    }
-    ObjInstance *instance = AS_INSTANCE(args[0]);
-    tableDelete(&instance->fields, AS_STRING(args[1]));
-    args[-1] = NIL_VAL;
-    return true;
-}
-
-static bool clockNative(int argCount, Value *args) {
-    args[-1] = NUMBER_VAL((double) clock() / CLOCKS_PER_SEC);
-    return true;
-}
-
-static bool exitNative(int argCount, Value *args) {
-    if (argCount >= 1) {
-        args[-1] = NATIVE_ERROR("Exit takes zero arguments, or one argument that is a number");
-        return false;
-    }
-    if (argCount == 0) {
-        exit(0);
-    }
-    if (!IS_NUMBER(args[0])) {
-        args[-1] = NATIVE_ERROR("Exit code must be a number.");
-        return false;
-    }
-    int exitCode = (int) AS_NUMBER(args[0]);
-    exit(exitCode);
-    args[-1] = NIL_VAL;
-    return true;
-}
 
 static void resetStack() {
     vm.stackTop = vm.stack;
@@ -174,12 +80,11 @@ void initVM() {
     vm.grayCapacity = 0;
     vm.grayStack = NULL;
 
-    defineNative("hasField", 2, hasFieldNative);
-    defineNative("getField", 2, getFieldNative);
-    defineNative("setField", 3, setFieldNative);
-    defineNative("deleteField", 2, deleteFieldNative);
-    defineNative("clock", 0, clockNative);
-    defineNative("exit", -1, exitNative);
+    // Define native methods
+    for (int i = 0; nativeMethods[i].name != NULL; i++) {
+        NativeMethodDef *def = &nativeMethods[i];
+        defineNative(def->name, def->arity, def->function);
+    }
 }
 
 void freeVM() {
@@ -205,7 +110,7 @@ static Value peek(int distance) {
 }
 
 
-static bool call(Obj *callee, ObjFunction *function, int argCount) {
+static bool callFunctionLike(Obj *callee, ObjFunction *function, int argCount) {
     if (argCount != function->arity) {
         runtimeError("Expected %d arguments but got %d",
                      function->arity, argCount);
@@ -225,11 +130,11 @@ static bool call(Obj *callee, ObjFunction *function, int argCount) {
 }
 
 bool callClosure(Callable *callable, int argCount) {
-    return call((Obj *) callable, ((ObjClosure *) callable)->function, argCount);
+    return callFunctionLike((Obj *) callable, ((ObjClosure *) callable)->function, argCount);
 }
 
 bool callFunction(Callable *callable, int argCount) {
-    return call((Obj *) callable, (ObjFunction *) callable, argCount);
+    return callFunctionLike((Obj *) callable, (ObjFunction *) callable, argCount);
 }
 
 bool callClass(Callable *callable, int argCount) {
@@ -270,7 +175,7 @@ bool callNative(Callable *callable, int argCount) {
 
 static bool callValue(Value callee, int argCount) {
     if (IS_CALLABLE(callee)) return CALL_CALLABLE(callee, argCount);
-    runtimeError("Can only call functions and classes.");
+    runtimeError("Can only callFunctionLike functions and classes.");
     return false;
 }
 

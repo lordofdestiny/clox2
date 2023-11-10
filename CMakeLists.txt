@@ -23,6 +23,8 @@ add_executable(clox2 main.c
         src/object.c
         h/object.h
         src/table.c
-        h/table.h)
+        h/table.h
+        src/native.c
+        h/native.h)
 
 target_link_libraries(clox2 PUBLIC m)
