@@ -542,6 +542,7 @@ static InterpretResult run() {
         }
         case OP_GET_PROPERTY: {
             if (!IS_INSTANCE(peek(0)) && !IS_CLASS(peek(0))) {
+                frame->ip = ip;
                 runtimeError("Only instances and classes have properties.");
                 return INTERPRET_RUNTIME_ERROR;
             }
@@ -564,6 +565,7 @@ static InterpretResult run() {
 
                 Value value;
                 if (!tableGet(&klass->staticMethods, name, &value)) {
+                    frame->ip = ip;
                     runtimeError("No static method '%s' on class '%s'.",
                                  name->chars, klass->name->chars);
                     break;
@@ -577,6 +579,7 @@ static InterpretResult run() {
         }
         case OP_SET_PROPERTY: {
             if (!IS_INSTANCE(peek(1))) {
+                frame->ip = ip;
                 runtimeError("Only instances have fields.");
                 return INTERPRET_RUNTIME_ERROR;
             }
@@ -624,6 +627,8 @@ static InterpretResult run() {
             }
             break;
         }
+        case OP_SUBTRACT: BINARY_OP(NUMBER_VAL, -);
+            break;
         case OP_MULTIPLY: BINARY_OP(NUMBER_VAL, *);
             break;
         case OP_DIVIDE: BINARY_OP(NUMBER_VAL, /);
@@ -635,7 +640,8 @@ static InterpretResult run() {
                 push(NUMBER_VAL(fmod(a, b)));
             } else {
                 frame->ip = ip;
-                runtimeError("Operands must be two numbers or two strings,");
+                runtimeError("Operands must be two numbers.");
+                return INTERPRET_RUNTIME_ERROR;
             }
             break;
         }
@@ -743,6 +749,7 @@ static InterpretResult run() {
         case OP_INHERIT: {
             Value superclass = peek(1);
             if (!IS_CLASS(superclass)) {
+                frame->ip = ip;
                 runtimeError("Superclass must be a class.");
                 return INTERPRET_RUNTIME_ERROR;
             }

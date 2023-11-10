@@ -207,16 +207,16 @@ static void emitConstant(Value value) {
 
 
 static void emitFunction(Compiler *compiler, ObjFunction *function) {
-    uint8_t lambdaConstant = makeConstant(OBJ_VAL((Obj *) function));
+    uint8_t constant = makeConstant(OBJ_VAL((Obj *) function));
     if (function->upvalueCount > 0) {
-        emitBytes(OP_CLOSURE, lambdaConstant);
+        emitBytes(OP_CLOSURE, constant);
 
         for (int i = 0; i < function->upvalueCount; i++) {
             emitByte(compiler->upvalues[i].isLocal ? 1 : 0);
             emitByte(compiler->upvalues[i].index);
         }
     } else {
-        emitBytes(OP_CONSTANT, lambdaConstant);
+        emitBytes(OP_CONSTANT, constant);
     }
 }
 
@@ -1068,7 +1068,7 @@ static void binary(bool canAssign) {
     switch (operatorType) {
     case TOKEN_PLUS: emitByte(OP_ADD);
         break;
-    case TOKEN_MINUS:emitBytes(OP_NEGATE, OP_ADD);
+    case TOKEN_MINUS:emitByte(OP_SUBTRACT);
         break;
     case TOKEN_STAR: emitByte(OP_MULTIPLY);
         break;
