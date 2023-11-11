@@ -15,7 +15,7 @@ static bool hasFieldNative(int argCount, Value *args) {
         args[-1] = NATIVE_ERROR("Function 'hasField' expects an instance as the first argument.");
         return false;
     }
-    if (!IS_INSTANCE(args[1])) {
+    if (!IS_STRING(args[1])) {
         args[-1] = NATIVE_ERROR("Function 'hasField' expects a string as the second argument.");
         return false;
     }
@@ -32,7 +32,7 @@ static bool getFieldNative(int argCount, Value *args) {
         args[-1] = NATIVE_ERROR("Function 'getField' expects an instance as the first argument.");
         return false;
     }
-    if (!IS_INSTANCE(args[1])) {
+    if (!IS_STRING(args[1])) {
         args[-1] = NATIVE_ERROR("Function 'getField' expects a string as the second argument.");
         return false;
     }
@@ -54,7 +54,7 @@ static bool setFieldNative(int argCount, Value *args) {
         args[-1] = NATIVE_ERROR("Function 'setField' expects an instance as the first argument.");
         return false;
     }
-    if (!IS_INSTANCE(args[1])) {
+    if (!IS_STRING(args[1])) {
         args[-1] = NATIVE_ERROR("Function 'setField' expects a string as the second argument.");
         return false;
     }
@@ -69,7 +69,7 @@ static bool deleteFieldNative(int argCount, Value *args) {
         args[-1] = NATIVE_ERROR("Function 'deleteField' expects an instance as the first argument.");
         return false;
     }
-    if (!IS_INSTANCE(args[1])) {
+    if (!IS_STRING(args[1])) {
         args[-1] = NATIVE_ERROR("Function 'deleteField' expects a string as the second argument.");
         return false;
     }
