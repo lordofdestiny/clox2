@@ -40,6 +40,12 @@ ObjBoundMethod *newBoundMethod(Value receiver, Obj *method) {
     return bound;
 }
 
+static void blackenBoundMethod(Obj *object) {
+    ObjBoundMethod *bound = (ObjBoundMethod *) object;
+    markValue(bound->receiver);
+    markObject((Obj *) bound->method);
+}
+
 static void freeBoundMethod(Obj *object) {
     FREE(ObjBoundMethod, object);
 }
@@ -59,6 +65,13 @@ ObjClass *newClass(ObjString *name) {
     initTable(&klass->methods);
     initTable(&klass->staticMethods);
     return klass;
+}
+
+static void blackenClass(Obj *object) {
+    ObjClass *klass = (ObjClass *) object;
+    markObject((Obj *) klass->name);
+    markTable(&klass->methods);
+    markTable(&klass->staticMethods);
 }
 
 static void freeClass(Obj *object) {
@@ -86,6 +99,14 @@ ObjClosure *newClosure(ObjFunction *function) {
     return closure;
 }
 
+static void blackenClosure(Obj *object) {
+    ObjClosure *closure = (ObjClosure *) object;
+    markObject((Obj *) closure->function);
+    for (int i = 0; i < closure->upvalueCount; i++) {
+        markObject((Obj *) closure->upvalues[i]);
+    }
+}
+
 static void freeClosure(Obj *object) {
     ObjClosure *closure = (ObjClosure *) object;
     FREE_ARRAY(ObjClosure*, closure->upvalues, closure->upvalueCount);
@@ -105,6 +126,12 @@ ObjFunction *newFunction() {
     return function;
 }
 
+static void blackenFunction(Obj *object) {
+    ObjFunction *function = (ObjFunction *) object;
+    markObject((Obj *) function->name);
+    markArray(&function->chunk.constants);
+}
+
 static void freeFunction(Obj *object) {
     ObjFunction *function = (ObjFunction *) object;
     freeChunk(&function->chunk);
@@ -120,6 +147,12 @@ ObjInstance *newInstance(ObjClass *klass) {
     instance->klass = klass;
     initTable(&instance->fields);
     return instance;
+}
+
+static void blackenInstance(Obj *object) {
+    ObjInstance *instance = (ObjInstance *) object;
+    markObject((Obj *) instance->klass);
+    markTable(&instance->fields);
 }
 
 static void freeInstance(Obj *object) {
@@ -213,6 +246,10 @@ ObjUpvalue *newUpvalue(Value *slot) {
     return upvalue;
 }
 
+static void blackenUpvalue(Obj *object) {
+    markValue(((ObjUpvalue *) object)->closed);
+}
+
 static void freeUpvalue(Obj *object) {
     FREE(ObjUpvalue, object);
 }
@@ -230,44 +267,54 @@ static void printFunctionImpl(ObjFunction *function) {
     printf("<fn %s>", function->name->chars);
 }
 
+static void blackenNoOp(Obj *obj) {}
+
 static ObjVT vtList[] = {
         [OBJ_BOUND_METHOD] = {
                 .call = callBoundMethod,
+                .blacken = blackenBoundMethod,
                 .free = freeBoundMethod,
                 .print =printBoundMethod
         },
         [OBJ_CLASS] = {
                 .call = callClass,
+                .blacken = blackenClass,
                 .free = freeClass,
                 .print = printClass
         },
         [OBJ_CLOSURE] = {
                 .call = callClosure,
+                .blacken = blackenClosure,
                 .free = freeClosure,
                 .print = printClosure
         },
         [OBJ_FUNCTION] = {
                 .call = callFunction,
+                .blacken = blackenFunction,
                 .free =freeFunction,
                 .print = printFunction
         },
         [OBJ_INSTANCE] = {
                 .call = NULL,
+                .blacken = blackenInstance,
                 .free = freeInstance,
                 .print = printInstance
         },
         [OBJ_NATIVE] = {
                 .call = callNative,
+                .blacken = blackenNoOp,
                 .free = freeNative,
                 .print = printNative
         },
         [OBJ_STRING] = {
                 .call = NULL,
+                .blacken = blackenNoOp,
                 .free = freeString,
                 .print = printString
         },
         [OBJ_UPVALUE] = {
                 .call = NULL,
+                .blacken = blackenUpvalue,
                 .free = freeUpvalue,
                 .print = printUpvalue
         },

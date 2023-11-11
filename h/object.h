@@ -43,7 +43,9 @@ typedef enum {
     OBJ_UPVALUE,
 } ObjType;
 
-typedef bool (*CallableFn)(Obj *, int argCount);
+typedef bool (*CallableFn)(Obj *, int);
+
+typedef void (*BlackenFn)(Obj *);
 
 typedef void (*FreeFn)(Obj *);
 
@@ -51,6 +53,7 @@ typedef void (*PrintFn)(Obj *);
 
 typedef struct {
     CallableFn call;
+    BlackenFn blacken;
     FreeFn free;
     PrintFn print;
 } ObjVT;
