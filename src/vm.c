@@ -175,8 +175,11 @@ bool callNative(Obj *callable, int argCount) {
 }
 
 static bool callValue(Value callee, int argCount) {
+    /*
+     * TODO only check if value is an OBJ. Add function that throws the
+     *  runtime error and returns false so that callValue can be simpler. */
     if (IS_CALLABLE(callee)) return CALL_CALLABLE(callee, argCount);
-    runtimeError("Can only callFunctionLike functions and classes.");
+    runtimeError("Can only call functions and classes.");
     return false;
 }
 
@@ -211,7 +214,7 @@ static bool invoke(ObjString *name, int argCount) {
             runtimeError("No static method '%s' for class '%s'.", name->chars, klass->name->chars);
             return false;
         }
-        return AS_OBJ(staticMethod)->vtp->call(AS_OBJ(staticMethod), argCount);
+        return CALL_CALLABLE(staticMethod, argCount);
     }
 }
 
@@ -372,7 +375,9 @@ static InterpretResult run() {
         printf("\t\t");
         for (Value *slot = vm.stack; slot < vm.stackTop; slot++) {
             printf("[ ");
+            if(IS_STRING(*slot)) printf("\"");
             printValue(*slot);
+            if(IS_STRING(*slot)) printf("\"");
             printf(" ]");
         }
         printf("\n");

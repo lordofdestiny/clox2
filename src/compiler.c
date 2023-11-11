@@ -492,11 +492,12 @@ static void and_(bool canAssign) {
 }
 
 static void parameterList() {
-    /* IDEA add rest argument to function declarations/definitions
-        This creates an array with the rest of the passed arguments, that
-        is accessible if the declaration contains "...name" as the last argument
+    /* IDEA
+     *  Add rest argument to function declarations/definitions
+     *  This creates an array with the rest of the passed arguments, that
+     *  is accessible if the declaration contains "...name" as the last argument
      */
-     do {
+    do {
         current->function->arity++;
         if (current->function->arity > 255) {
             errorAtCurrent("Can't have more than 255 parameters");
