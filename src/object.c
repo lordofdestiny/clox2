@@ -40,7 +40,11 @@ ObjBoundMethod *newBoundMethod(Value receiver, Obj *method) {
     return bound;
 }
 
-static void printObjBoundMethod(Obj *obj) {
+static void freeBoundMethod(Obj *object) {
+    FREE(ObjBoundMethod, object);
+}
+
+static void printBoundMethod(Obj *obj) {
     Obj *method = ((ObjBoundMethod *) obj)->method;
     ObjFunction *fun = method->type == OBJ_FUNCTION
                        ? (ObjFunction *) method
@@ -57,7 +61,14 @@ ObjClass *newClass(ObjString *name) {
     return klass;
 }
 
-static void printObjClass(Obj *obj) {
+static void freeClass(Obj *object) {
+    ObjClass *class = (ObjClass *) object;
+    freeTable(&class->methods);
+    freeTable(&class->staticMethods);
+    FREE(ObjClass, object);
+}
+
+static void printClass(Obj *obj) {
     printf("<class %s>", ((ObjClass *) obj)->name->chars);
 }
 
@@ -75,7 +86,13 @@ ObjClosure *newClosure(ObjFunction *function) {
     return closure;
 }
 
-static void printObjClosure(Obj *obj) {
+static void freeClosure(Obj *object) {
+    ObjClosure *closure = (ObjClosure *) object;
+    FREE_ARRAY(ObjClosure*, closure->upvalues, closure->upvalueCount);
+    FREE(ObjClosure, object);
+}
+
+static void printClosure(Obj *obj) {
     printFunctionImpl(((ObjClosure *) obj)->function);
 }
 
@@ -88,7 +105,13 @@ ObjFunction *newFunction() {
     return function;
 }
 
-static void printObjFunction(Obj *obj) {
+static void freeFunction(Obj *object) {
+    ObjFunction *function = (ObjFunction *) object;
+    freeChunk(&function->chunk);
+    FREE(ObjFunction, object);
+}
+
+static void printFunction(Obj *obj) {
     printFunctionImpl(((ObjFunction *) obj));
 }
 
@@ -99,7 +122,13 @@ ObjInstance *newInstance(ObjClass *klass) {
     return instance;
 }
 
-static void printObjInstance(Obj *obj) {
+static void freeInstance(Obj *object) {
+    ObjInstance *instance = (ObjInstance *) (object);
+    freeTable(&instance->fields);
+    FREE(ObjInstance, object);
+}
+
+static void printInstance(Obj *obj) {
     ObjInstance *instance = (ObjInstance *) obj;
     printf("<instance %s>", instance->klass->name->chars);
 }
@@ -111,7 +140,11 @@ ObjNative *newNative(NativeFn function, int arity) {
     return native;
 }
 
-static void printObjNative(Obj *obj) {
+static void freeNative(Obj *object) {
+    FREE(ObjNative, object);
+}
+
+static void printNative(Obj *obj) {
     // TODO see if this can be done in a way that displays more information
     printf("<native fn>");
 }
@@ -162,7 +195,13 @@ ObjString *copyString(const char *chars, int length) {
     return allocateString(heapChars, length, hash);
 }
 
-static void printObjString(Obj *obj) {
+static void freeString(Obj *object) {
+    ObjString *string = (ObjString *) object;
+    FREE_ARRAY(char, string->chars, (size_t) string->length + 1);
+    FREE(ObjString, string);
+}
+
+static void printString(Obj *obj) {
     printf("%s", ((ObjString *) obj)->chars);
 }
 
@@ -174,7 +213,11 @@ ObjUpvalue *newUpvalue(Value *slot) {
     return upvalue;
 }
 
-static void printObjUpvalue(Obj *obj) {
+static void freeUpvalue(Obj *object) {
+    FREE(ObjUpvalue, object);
+}
+
+static void printUpvalue(Obj *obj) {
     // TODO see if this can be done in a way that displays more information
     printf("upvalue");
 }
@@ -190,43 +233,43 @@ static void printFunctionImpl(ObjFunction *function) {
 static ObjVT vtList[] = {
         [OBJ_BOUND_METHOD] = {
                 .call = callBoundMethod,
-                .free = NULL,
-                .print =printObjBoundMethod
+                .free = freeBoundMethod,
+                .print =printBoundMethod
         },
         [OBJ_CLASS] = {
                 .call = callClass,
-                .free = NULL,
-                .print = printObjClass
+                .free = freeClass,
+                .print = printClass
         },
         [OBJ_CLOSURE] = {
                 .call = callClosure,
-                .free = NULL,
-                .print = printObjClosure
+                .free = freeClosure,
+                .print = printClosure
         },
         [OBJ_FUNCTION] = {
                 .call = callFunction,
-                .free =NULL,
-                printObjFunction
+                .free =freeFunction,
+                .print = printFunction
         },
         [OBJ_INSTANCE] = {
                 .call = NULL,
-                .free = NULL,
-                .print = printObjInstance
+                .free = freeInstance,
+                .print = printInstance
         },
         [OBJ_NATIVE] = {
                 .call = callNative,
-                .free = NULL,
-                .print = printObjNative
+                .free = freeNative,
+                .print = printNative
         },
         [OBJ_STRING] = {
                 .call = NULL,
-                .free = NULL,
-                .print = printObjString
+                .free = freeString,
+                .print = printString
         },
         [OBJ_UPVALUE] = {
                 .call = NULL,
-                .free = NULL,
-                .print = printObjUpvalue
+                .free = freeUpvalue,
+                .print = printUpvalue
         },
 };
 
