@@ -62,6 +62,7 @@ ObjClass *newClass(ObjString *name) {
     ObjClass *klass = ALLOCATE_OBJ(ObjClass, OBJ_CLASS);
     klass->name = name;
     klass->initializer = NIL_VAL;
+    initTable(&klass->fields);
     initTable(&klass->methods);
     initTable(&klass->staticMethods);
     return klass;
@@ -267,6 +268,11 @@ static void printFunctionImpl(ObjFunction *function) {
     printf("<fn %s>", function->name->chars);
 }
 
+static bool callNonCallable(Obj *obj, int argCount) {
+    runtimeError("Can only call functions and classes.");
+    return false;
+}
+
 static void blackenNoOp(Obj *obj) {}
 
 static ObjVT vtList[] = {
@@ -295,7 +301,7 @@ static ObjVT vtList[] = {
                 .print = printFunction
         },
         [OBJ_INSTANCE] = {
-                .call = NULL,
+                .call = callNonCallable,
                 .blacken = blackenInstance,
                 .free = freeInstance,
                 .print = printInstance
@@ -307,13 +313,13 @@ static ObjVT vtList[] = {
                 .print = printNative
         },
         [OBJ_STRING] = {
-                .call = NULL,
+                .call = callNonCallable,
                 .blacken = blackenNoOp,
                 .free = freeString,
                 .print = printString
         },
         [OBJ_UPVALUE] = {
-                .call = NULL,
+                .call = callNonCallable,
                 .blacken = blackenUpvalue,
                 .free = freeUpvalue,
                 .print = printUpvalue

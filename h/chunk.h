@@ -22,6 +22,7 @@ typedef enum {
     OP_SET_GLOBAL,
     OP_GET_UPVALUE,
     OP_SET_UPVALUE,
+    OP_STATIC_FIELD,
     OP_GET_PROPERTY,
     OP_SET_PROPERTY,
     OP_GET_SUPER,

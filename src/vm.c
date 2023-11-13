@@ -141,7 +141,7 @@ bool callClass(Obj *callable, int argCount) {
     ObjClass *klass = (ObjClass *) callable;
     vm.stackTop[-argCount - 1] = OBJ_VAL((Obj *) newInstance(klass));
     if (!IS_NIL(klass->initializer)) {
-        return CALL_CALLABLE(klass->initializer, argCount);
+        return CALL_OBJ(klass->initializer, argCount);
     } else if (argCount != 0) {
         runtimeError("Expected 0 arguments but got %d.", argCount);
         return false;
@@ -178,7 +178,7 @@ static bool callValue(Value callee, int argCount) {
     /*
      * TODO only check if value is an OBJ. Add function that throws the
      *  runtime error and returns false so that callValue can be simpler. */
-    if (IS_CALLABLE(callee)) return CALL_CALLABLE(callee, argCount);
+    if (IS_OBJ(callee)) return CALL_OBJ(callee, argCount);
     runtimeError("Can only call functions and classes.");
     return false;
 }
@@ -189,7 +189,7 @@ static bool invokeFromClass(ObjClass *klass, ObjString *name, int argCount) {
         runtimeError("Undefined property '%s'.", name->chars);
         return false;
     }
-    return CALL_CALLABLE(method, argCount);
+    return CALL_OBJ(method, argCount);
 }
 
 static bool invoke(ObjString *name, int argCount) {
@@ -210,7 +210,7 @@ static bool invoke(ObjString *name, int argCount) {
             runtimeError("No static method '%s' for class '%s'.", name->chars, klass->name->chars);
             return false;
         }
-        return CALL_CALLABLE(staticMethod, argCount);
+        return CALL_OBJ(staticMethod, argCount);
     }
 
     runtimeError("Only classes and instances have methods");
@@ -374,9 +374,9 @@ static InterpretResult run() {
         printf("\t\t");
         for (Value *slot = vm.stack; slot < vm.stackTop; slot++) {
             printf("[ ");
-            if(IS_STRING(*slot)) printf("\"");
+            if (IS_STRING(*slot)) printf("\"");
             printValue(*slot);
-            if(IS_STRING(*slot)) printf("\"");
+            if (IS_STRING(*slot)) printf("\"");
             printf(" ]");
         }
         printf("\n");
@@ -447,6 +447,14 @@ static InterpretResult run() {
             *((ObjClosure *) frame->function)->upvalues[slot]->location = peek(0);
             break;
         }
+        case OP_STATIC_FIELD: {
+            ObjString *field = READ_STRING();
+            Value value = peek(0);
+            ObjClass *klass = AS_CLASS(peek(1)); // Class
+            tableSet(&klass->fields, field, value);
+            pop();
+            break;
+        }
         case OP_GET_PROPERTY: {
             if (!IS_INSTANCE(peek(0)) && !IS_CLASS(peek(0))) {
                 frame->ip = ip;
@@ -471,30 +479,41 @@ static InterpretResult run() {
                 ObjString *name = READ_STRING();
 
                 Value value;
-                if (!tableGet(&klass->staticMethods, name, &value)) {
-                    frame->ip = ip;
-                    runtimeError("No static method '%s' on class '%s'.",
-                                 name->chars, klass->name->chars);
+                if (tableGet(&klass->staticMethods, name, &value) ||
+                    tableGet(&klass->fields, name, &value)) {
+                    pop(); // Class
+                    push(value);
                     break;
                 }
-
-                pop(); // Class
-                push(value);
-                break;
+                frame->ip = ip;
+                runtimeError("No static member '%s' on class '%s'.",
+                             name->chars, klass->name->chars);
+                return INTERPRET_RUNTIME_ERROR;
             }
             break;
         }
         case OP_SET_PROPERTY: {
-            if (!IS_INSTANCE(peek(1))) {
+            if (!IS_INSTANCE(peek(1)) && !IS_CLASS(peek(1))) {
                 frame->ip = ip;
                 runtimeError("Only instances have fields.");
                 return INTERPRET_RUNTIME_ERROR;
             }
-            ObjInstance *instance = AS_INSTANCE(peek(1));
-            tableSet(&instance->fields, READ_STRING(), peek(0));
-            Value value = pop();
-            pop();
-            push(value);
+            Value receiver = peek(1);
+            if (IS_INSTANCE(receiver)) {
+                ObjInstance *instance = AS_INSTANCE(receiver);
+                tableSet(&instance->fields, READ_STRING(), peek(0));
+                Value value = pop();
+                pop();
+                push(value);
+            } else if (IS_CLASS(receiver)) {
+                ObjClass *klass = AS_CLASS(receiver);
+                ObjString *field = READ_STRING();
+                tableSet(&klass->fields, field, peek(0));
+                Value value = pop();
+                pop();
+                push(value);
+            }
+
             break;
         }
         case OP_GET_SUPER: {
@@ -611,9 +630,6 @@ static InterpretResult run() {
             break;
         }
         case OP_SUPER_INVOKE: {
-            /*
-             * TODO add support for invoking static methods
-             * */
             ObjString *method = READ_STRING();
             int argCount = READ_BYTE();
             ObjClass *superclass = AS_CLASS(pop());
