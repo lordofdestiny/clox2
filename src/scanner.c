@@ -210,13 +210,13 @@ Token scanToken() {
     case ',': return makeToken(TOKEN_COMMA);
     case ':': return makeToken(TOKEN_COLON);
     case '.': return makeToken(TOKEN_DOT);
-    case '-': return makeToken(TOKEN_MINUS);
-    case '+': return makeToken(TOKEN_PLUS);
-    case '/': return makeToken(TOKEN_SLASH);
-    case '*': return makeToken(TOKEN_STAR);
     case '?': return makeToken(TOKEN_QUESTION);
-    case '%': return makeToken(TOKEN_PERCENT);
     case '|': return makeToken(TOKEN_VERTICAL_LINE);
+    case '-': return makeToken(match('=') ? TOKEN_MINUS_EQUAL : TOKEN_MINUS);
+    case '+': return makeToken(match('=') ? TOKEN_PLUS_EQUAL : TOKEN_PLUS);
+    case '/': return makeToken(match('=') ? TOKEN_SLASH_EQUAL : TOKEN_SLASH);
+    case '*': return makeToken(match('=') ? TOKEN_STAR_EQUAL : TOKEN_STAR);
+    case '%': return makeToken(match('=') ? TOKEN_PERCENT_EQUAL : TOKEN_PERCENT);
     case '!': return makeToken(match('=') ? TOKEN_BANG_EQUAL : TOKEN_BANG);
     case '=': return makeToken(match('=') ? TOKEN_EQUAL_EQUAL : TOKEN_EQUAL);
     case '>': return makeToken(match('=') ? TOKEN_GREATER_EQUAL : TOKEN_GREATER);

@@ -1113,6 +1113,36 @@ static void dot(bool canAssign) {
     if (canAssign && match(TOKEN_EQUAL)) {
         expression();
         emitBytes(OP_SET_PROPERTY, name);
+    } else if (canAssign && match(TOKEN_PLUS_EQUAL)) {
+        emitByte(OP_DUP);
+        emitBytes(OP_GET_PROPERTY, name);
+        expression();
+        emitByte(OP_ADD);
+        emitBytes(OP_SET_PROPERTY, name);
+    } else if (canAssign && match(TOKEN_MINUS_EQUAL)) {
+        emitByte(OP_DUP);
+        emitBytes(OP_GET_PROPERTY, name);
+        expression();
+        emitByte(OP_SUBTRACT);
+        emitBytes(OP_SET_PROPERTY, name);
+    } else if (canAssign && match(TOKEN_STAR_EQUAL)) {
+        emitByte(OP_DUP);
+        emitBytes(OP_GET_PROPERTY, name);
+        expression();
+        emitByte(OP_MULTIPLY);
+        emitBytes(OP_SET_PROPERTY, name);
+    } else if (canAssign && match(TOKEN_SLASH_EQUAL)) {
+        emitByte(OP_DUP);
+        emitBytes(OP_GET_PROPERTY, name);
+        expression();
+        emitByte(OP_DIVIDE);
+        emitBytes(OP_SET_PROPERTY, name);
+    } else if (canAssign && match(TOKEN_PERCENT_EQUAL)) {
+        emitByte(OP_DUP);
+        emitBytes(OP_GET_PROPERTY, name);
+        expression();
+        emitByte(OP_MODULUS);
+        emitBytes(OP_SET_PROPERTY, name);
     } else if (match(TOKEN_LEFT_PAREN)) {
         uint8_t argCount = argumentList();
         emitBytes(OP_INVOKE, name);
@@ -1206,6 +1236,31 @@ static void namedVariable(Token name, bool canAssign) {
     if (canAssign && match(TOKEN_EQUAL)) {
         expression();
         emitBytes(setOp, (uint8_t) arg);
+    } else if (canAssign && match(TOKEN_PLUS_EQUAL)) {
+        emitBytes(getOp, (uint8_t) arg);
+        expression();
+        emitByte(OP_ADD);
+        emitBytes(setOp, (uint8_t) arg);
+    } else if (canAssign && match(TOKEN_MINUS_EQUAL)) {
+        emitBytes(getOp, (uint8_t) arg);
+        expression();
+        emitByte(OP_SUBTRACT);
+        emitBytes(setOp, (uint8_t) arg);
+    } else if (canAssign && match(TOKEN_STAR_EQUAL)) {
+        emitBytes(getOp, (uint8_t) arg);
+        expression();
+        emitByte(OP_MULTIPLY);
+        emitBytes(setOp, (uint8_t) arg);
+    } else if (canAssign && match(TOKEN_SLASH_EQUAL)) {
+        emitBytes(getOp, (uint8_t) arg);
+        expression();
+        emitByte(OP_DIVIDE);
+        emitBytes(setOp, (uint8_t) arg);
+    } else if (canAssign && match(TOKEN_PERCENT_EQUAL)) {
+        emitBytes(getOp, (uint8_t) arg);
+        expression();
+        emitByte(OP_MODULUS);
+        emitBytes(setOp, (uint8_t) arg);
     } else {
         emitBytes(getOp, (uint8_t) arg);
     }
@@ -1257,11 +1312,16 @@ ParseRule rules[] = {
         [TOKEN_COMMA] = {NULL, NULL, PREC_NONE},
         [TOKEN_DOT] = {NULL, dot, PREC_CALL},
         [TOKEN_MINUS] = {unary, binary, PREC_TERM},
+        [TOKEN_MINUS_EQUAL] = {NULL, NULL, PREC_NONE},
         [TOKEN_PERCENT] = {NULL, binary, PREC_FACTOR},
+        [TOKEN_PERCENT_EQUAL] = {NULL, NULL, PREC_NONE},
         [TOKEN_PLUS] = {NULL, binary, PREC_TERM},
+        [TOKEN_PLUS_EQUAL] = {NULL, NULL, PREC_NONE},
         [TOKEN_SEMICOLON] = {NULL, NULL, PREC_NONE},
         [TOKEN_SLASH] = {NULL, binary, PREC_FACTOR},
+        [TOKEN_SLASH_EQUAL] = {NULL, NULL, PREC_NONE},
         [TOKEN_STAR] = {NULL, binary, PREC_FACTOR},
+        [TOKEN_STAR_EQUAL] = {NULL, NULL, PREC_NONE},
         [TOKEN_BANG] = {unary, NULL, PREC_NONE},
         [TOKEN_BANG_EQUAL]    = {NULL, binary, PREC_EQUALITY},
         [TOKEN_EQUAL]         = {NULL, NULL, PREC_NONE},
@@ -1311,8 +1371,12 @@ static void parsePrecedence(Precedence precedence) {
         infixRule(canAssign);
     }
 
-    if (canAssign && match(TOKEN_EQUAL)) {
-        error("Invalid assignment target");
+    if (canAssign) {
+        if (match(match(TOKEN_EQUAL)) || match(TOKEN_PLUS_EQUAL)
+            || match(TOKEN_MINUS_EQUAL) || match(TOKEN_STAR_EQUAL)
+            || match(TOKEN_SLASH_EQUAL) || match(TOKEN_PERCENT_EQUAL)) {
+            error("Invalid assignment target");
+        }
     }
 }
 

@@ -130,7 +130,7 @@ static bool callFunctionLike(Obj *callee, ObjFunction *function, int argCount) {
 }
 
 bool callClosure(Obj *callable, int argCount) {
-    return callFunctionLike( callable, ((ObjClosure *) callable)->function, argCount);
+    return callFunctionLike(callable, ((ObjClosure *) callable)->function, argCount);
 }
 
 bool callFunction(Obj *callable, int argCount) {
@@ -194,10 +194,6 @@ static bool invokeFromClass(ObjClass *klass, ObjString *name, int argCount) {
 
 static bool invoke(ObjString *name, int argCount) {
     Value receiver = peek(argCount);
-    if (!IS_INSTANCE(receiver) && !IS_CLASS(receiver)) {
-        runtimeError("Only classes and instances have methods");
-        return false;
-    }
 
     if (IS_INSTANCE(receiver)) {
         ObjInstance *instance = AS_INSTANCE(receiver);
@@ -207,7 +203,7 @@ static bool invoke(ObjString *name, int argCount) {
             return callValue(value, argCount);
         }
         return invokeFromClass(instance->klass, name, argCount);
-    } else {
+    } else if (IS_CLASS(receiver)) {
         ObjClass *klass = AS_CLASS(receiver);
         Value staticMethod;
         if (!tableGet(&klass->staticMethods, name, &staticMethod)) {
@@ -216,6 +212,9 @@ static bool invoke(ObjString *name, int argCount) {
         }
         return CALL_CALLABLE(staticMethod, argCount);
     }
+
+    runtimeError("Only classes and instances have methods");
+    return false;
 }
 
 static bool bindMethod(ObjClass *klass, ObjString *name) {
