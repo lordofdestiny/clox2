@@ -87,6 +87,12 @@ typedef struct Compiler {
 typedef struct ClassCompiler {
     struct ClassCompiler *enclosing;
     bool hasSuperclass;
+    // Tables for checking for duplicate members
+    // No need to be marked by gc because they hold keys
+    // that are functions constants. That means they get marked
+    // when the function is blackened
+    Table methods;
+    Table staticMembers;
 } ClassCompiler;
 
 typedef struct {
@@ -390,7 +396,7 @@ static void addLocal(Token name) {
 }
 
 static void declareVariable() {
-    if (current->scopeDepth == 0)return;
+    if (current->scopeDepth == 0) return;
 
     Token *name = &parser.previous;
     for (int i = current->localCount - 1; i >= 0; i--) {
@@ -561,7 +567,7 @@ static void function(FunctionType type) {
     emitFunction(&compiler, function);
 }
 
-static void method() {
+static void classMember() {
     bool isStatic = match(TOKEN_STATIC);
 
     consume(TOKEN_IDENTIFIER, "Expect method name.");
@@ -576,9 +582,30 @@ static void method() {
             error("Cannot mark 'init' method as static");
         }
     }
-    function(type);
-    emitBytes(OP_METHOD, constant);
-    emitByte(isStatic);
+    Value name = currentChunk()->constants.values[constant];
+    if (check(TOKEN_LEFT_PAREN)) {
+        if (isStatic && !tableSet(&currentClass->staticMembers, AS_STRING(name), NIL_VAL)) {
+            error("Duplicate static member definition.");
+        } else if (!tableSet(&currentClass->methods, AS_STRING(name), NIL_VAL)) {
+            error("Duplicate method definition.");
+        }
+        function(type);
+        emitBytes(OP_METHOD, constant);
+        emitByte(isStatic);
+    } else {
+        if (!tableSet(&currentClass->staticMembers, AS_STRING(name), NIL_VAL)) {
+            error("Duplicate static member definition.");
+        }
+        if (match(TOKEN_EQUAL)) {
+            expression();
+        } else {
+            emitByte(OP_NIL);
+        }
+        consume(TOKEN_SEMICOLON,
+                "Expect ';' after static field declaration");
+        emitBytes(OP_STATIC_FIELD, constant);
+    }
+
 }
 
 static void classDeclaration() {
@@ -592,6 +619,8 @@ static void classDeclaration() {
     ClassCompiler classCompiler;
     classCompiler.hasSuperclass = false;
     classCompiler.enclosing = currentClass;
+    initTable(&classCompiler.methods);
+    initTable(&classCompiler.staticMembers);
     currentClass = &classCompiler;
 
     if (match(TOKEN_LESS)) {
@@ -614,7 +643,7 @@ static void classDeclaration() {
     namedVariable(className, false);
     consume(TOKEN_LEFT_BRACE, "Expect '{' before class body.");
     while (!check(TOKEN_RIGHT_BRACE) && !check(TOKEN_EOF)) {
-        method();
+        classMember();
     }
     consume(TOKEN_RIGHT_BRACE, "Expect '}' after class body.");
     emitByte(OP_POP);
@@ -623,6 +652,8 @@ static void classDeclaration() {
         endScope();
     }
 
+    freeTable(&classCompiler.methods);
+    freeTable(&classCompiler.staticMembers);
     currentClass = classCompiler.enclosing;
 }
 

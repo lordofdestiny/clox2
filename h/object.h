@@ -14,7 +14,6 @@
 
 #define IS_BOUND_METHOD(value) isObjType(value, OBJ_BOUND_METHOD)
 #define IS_CLASS(value) isObjType(value, OBJ_CLASS)
-#define IS_CALLABLE(value) (IS_OBJ(value) && AS_OBJ(value)->vtp->call != NULL)
 #define IS_CLOSURE(value) isObjType(value, OBJ_CLOSURE)
 #define IS_FUNCTION(value) isObjType(value, OBJ_FUNCTION)
 #define IS_INSTANCE(value) isObjType(value, OBJ_INSTANCE)
@@ -30,7 +29,7 @@
 #define AS_STRING(value) ((ObjString*)AS_OBJ(value))
 #define AS_CSTRING(value) (((ObjString*)AS_OBJ(value))->chars)
 
-#define CALL_CALLABLE(callee, argCount) AS_OBJ(callee)->vtp->call(AS_OBJ(callee), argCount)
+#define CALL_OBJ(callee, argCount) AS_OBJ(callee)->vtp->call(AS_OBJ(callee), argCount)
 
 typedef enum {
     OBJ_BOUND_METHOD,
@@ -106,6 +105,7 @@ typedef struct {
     Obj obj;
     ObjString *name;
     Value initializer;
+    Table fields;
     Table methods;
     Table staticMethods;
 } ObjClass;
