@@ -592,7 +592,7 @@ static void classMember() {
         function(type);
         emitBytes(OP_METHOD, constant);
         emitByte(isStatic);
-    } else {
+    } else if(isStatic){
         if (!tableSet(&currentClass->staticMembers, AS_STRING(name), NIL_VAL)) {
             error("Duplicate static member definition.");
         }
@@ -604,6 +604,10 @@ static void classMember() {
         consume(TOKEN_SEMICOLON,
                 "Expect ';' after static field declaration");
         emitBytes(OP_STATIC_FIELD, constant);
+    }else {
+        error("Class fields must be declared as static.");
+        expression();
+        consume(TOKEN_SEMICOLON, "Expected ';' after expression.");
     }
 
 }
