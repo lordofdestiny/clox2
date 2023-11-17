@@ -206,11 +206,12 @@ static bool invoke(ObjString *name, int argCount) {
     } else if (IS_CLASS(receiver)) {
         ObjClass *klass = AS_CLASS(receiver);
         Value staticMethod;
-        if (!tableGet(&klass->staticMethods, name, &staticMethod)) {
-            runtimeError("No static method '%s' for class '%s'.", name->chars, klass->name->chars);
-            return false;
+        if (tableGet(&klass->staticMethods, name, &staticMethod)) {
+            return CALL_OBJ(staticMethod, argCount);
         }
-        return CALL_OBJ(staticMethod, argCount);
+        runtimeError("No static method '%s' for class '%s'.",
+                     name->chars, klass->name->chars);
+        return false;
     }
 
     runtimeError("Only classes and instances have methods");
