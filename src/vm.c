@@ -263,15 +263,18 @@ static void closeUpvalues(const Value *last) {
     }
 }
 
-static void defineMethod(ObjString *name, bool isStatic) {
+static void defineMethod(ObjString *name) {
     Value method = peek(0);
     ObjClass *klass = AS_CLASS(peek(1));
-    if (!isStatic) {
-        tableSet(&klass->methods, name, method);
-        if (name == vm.initString) klass->initializer = method;
-    } else {
-        tableSet(&klass->staticMethods, name, method);
-    }
+    tableSet(&klass->methods, name, method);
+    if (name == vm.initString) klass->initializer = method;
+    pop();
+}
+
+static void defineStaticMethod(ObjString *name) {
+    Value method = peek(0);
+    ObjClass *klass = AS_CLASS(peek(1));
+    tableSet(&klass->staticMethods, name, method);
     pop();
 }
 
@@ -696,8 +699,12 @@ static InterpretResult run() {
         }
         case OP_METHOD: {
             ObjString *name = READ_STRING();
-            bool isStatic = READ_BYTE();
-            defineMethod(name, isStatic);
+            defineMethod(name);
+            break;
+        }
+        case OP_STATIC_METHOD: {
+            ObjString *name = READ_STRING();
+            defineStaticMethod(name);
             break;
         }
         }

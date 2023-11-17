@@ -50,15 +50,6 @@ static int jumpInstruction(const char *name, int sign, Chunk *chunk, int offset)
     return offset + 3;
 }
 
-static int methodInstruction(const char *name, Chunk *chunk, int offset) {
-    uint8_t constant = chunk->code[offset + 1];
-    uint8_t isStatic = chunk->code[offset + 2];
-    printf("%-16s %4d '%s", name, constant, isStatic ? "" : "static ");
-    printValue(chunk->constants.values[constant]);
-    printf("'\n");
-    return offset + 3;
-}
-
 int disassembleInstruction(Chunk *chunk, int offset) {
     printf("%04d ", offset);
     int line = getLine(chunk, offset);
@@ -122,7 +113,8 @@ int disassembleInstruction(Chunk *chunk, int offset) {
     case OP_RETURN: return simpleInstruction("OP_RETURN", offset);
     case OP_CLASS: return constantInstruction("OP_CLASS", chunk, offset);
     case OP_INHERIT: return simpleInstruction("OP_INHERIT", offset);
-    case OP_METHOD: return methodInstruction("OP_METHOD", chunk, offset);
+    case OP_METHOD: return constantInstruction("OP_METHOD", chunk, offset);
+    case OP_STATIC_METHOD: return constantInstruction("OP_STATIC_METHOD", chunk, offset);
     default:printf("Unknown opcode %d\n", instruction);
         return offset + 1;
     }

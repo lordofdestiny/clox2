@@ -249,7 +249,18 @@ static void initCompiler(Compiler *compiler, FunctionType type) {
     // Has to be called here because GC will try to mark its entires
     initTable(&compiler->stringConstants);
 
-    if (type != TYPE_SCRIPT) {
+    if (type == TYPE_LAMBDA) {
+        char *template = "%s/[line %d] lambda";
+        int nameLength = snprintf(NULL, 0, template,
+                                     compiler->enclosing->function->name->chars,
+                                     parser.previous.line);
+        char buffer[nameLength + 1];
+        snprintf(buffer, sizeof(buffer), template,
+                 compiler->enclosing->function->name->chars,
+                 parser.previous.line);
+
+        current->function->name = copyString(buffer, nameLength);
+    } else if (type != TYPE_SCRIPT) {
         current->function->name = copyString(parser.previous.start,
                                              parser.previous.length);
     }
@@ -590,9 +601,8 @@ static void classMember() {
             error("Duplicate method definition.");
         }
         function(type);
-        emitBytes(OP_METHOD, constant);
-        emitByte(isStatic);
-    } else if(isStatic){
+        emitBytes(isStatic ? OP_STATIC_METHOD : OP_METHOD, constant);
+    } else if (isStatic) {
         if (!tableSet(&currentClass->staticMembers, AS_STRING(name), NIL_VAL)) {
             error("Duplicate static member definition.");
         }
@@ -604,7 +614,7 @@ static void classMember() {
         consume(TOKEN_SEMICOLON,
                 "Expect ';' after static field declaration");
         emitBytes(OP_STATIC_FIELD, constant);
-    }else {
+    } else {
         error("Class fields must be declared as static.");
         expression();
         consume(TOKEN_SEMICOLON, "Expected ';' after expression.");
