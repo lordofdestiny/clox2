@@ -390,6 +390,21 @@ static InterpretResult run() {
 #endif
         uint8_t instruction;
         switch (instruction = READ_BYTE()) {
+        case OP_ARRAY_OPEN: {
+            ObjArray *array = newArray();
+            push(OBJ_VAL(array));
+            break;
+        }
+        case OP_ARRAY_CLOSE: {
+            size_t size = READ_SHORT();
+            ObjArray *array = AS_ARRAY(peek(size));
+            Value *elements = vm.stackTop - size;
+            for (size_t i = 0; i < size; i++) {
+                writeValueArray(&array->array, elements[i]);
+            }
+            vm.stackTop = elements;
+            break;
+        }
         case OP_CONSTANT: {
             push(READ_CONSTANT());
             break;
@@ -518,6 +533,55 @@ static InterpretResult run() {
                 push(value);
             }
 
+            break;
+        }
+        case OP_GET_INDEX: {
+            if(!IS_NUMBER(peek(0))){
+                frame->ip = ip;
+                runtimeError("Index must be a number.");
+                return INTERPRET_RUNTIME_ERROR;
+            }
+            if(!IS_OBJ_ARRAY(peek(1))) {
+                frame->ip = ip;
+                runtimeError("Only arrays are indexable.");
+                return INTERPRET_RUNTIME_ERROR;
+            }
+            ptrdiff_t index = (ptrdiff_t) AS_NUMBER(peek(0));
+            ObjArray * array = AS_ARRAY(peek(1));
+            if(index < 0 || index >= array->array.count){
+                frame->ip = ip;
+                runtimeError("Array index out of bounds. Index = %td", index);
+                return INTERPRET_RUNTIME_ERROR;
+            }
+            Value element = array->array.values[index];
+            pop();
+            pop();
+            push(element);
+            break;
+        }
+        case OP_SET_INDEX: {
+             if(!IS_NUMBER(peek(1))){
+                frame->ip = ip;
+                runtimeError("Index must be a number.");
+                return INTERPRET_RUNTIME_ERROR;
+            }
+            if(!IS_OBJ_ARRAY(peek(2))) {
+                frame->ip = ip;
+                runtimeError("Only arrays are indexable.");
+                return INTERPRET_RUNTIME_ERROR;
+            }
+            ptrdiff_t index = (ptrdiff_t) AS_NUMBER(peek(1));
+            ObjArray * array = AS_ARRAY(peek(2));
+            if(index < 0 || index >= array->array.count){
+                frame->ip = ip;
+                runtimeError("Array index out of bounds. Index = %td", index);
+                return INTERPRET_RUNTIME_ERROR;
+            }
+            Value value = peek(0);
+            array->array.values[index] = value;
+            pop();
+            pop();
+            push(value);
             break;
         }
         case OP_GET_SUPER: {

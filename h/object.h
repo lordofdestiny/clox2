@@ -12,6 +12,7 @@
 
 #define OBJ_TYPE(value) (AS_OBJ(value)->type)
 
+#define IS_OBJ_ARRAY(value) isObjType(value, OBJ_ARRAY)
 #define IS_BOUND_METHOD(value) isObjType(value, OBJ_BOUND_METHOD)
 #define IS_CLASS(value) isObjType(value, OBJ_CLASS)
 #define IS_CLOSURE(value) isObjType(value, OBJ_CLOSURE)
@@ -20,6 +21,7 @@
 #define IS_NATIVE(value) isObjType(value, OBJ_NATIVE)
 #define IS_STRING(value) isObjType(value, OBJ_STRING)
 
+#define AS_ARRAY(value) ((ObjArray*) AS_OBJ(value))
 #define AS_BOUND_METHOD(value) ((ObjBoundMethod*)AS_OBJ(value))
 #define AS_CLASS(value) ((ObjClass*)AS_OBJ(value))
 #define AS_CLOSURE(value) ((ObjClosure*)AS_OBJ(value))
@@ -32,6 +34,7 @@
 #define CALL_OBJ(callee, argCount) AS_OBJ(callee)->vtp->call(AS_OBJ(callee), argCount)
 
 typedef enum {
+    OBJ_ARRAY,
     OBJ_BOUND_METHOD,
     OBJ_CLASS,
     OBJ_CLOSURE,
@@ -63,6 +66,11 @@ struct Obj {
     ObjVT *vtp;
     struct Obj *next;
 };
+
+typedef struct {
+    Obj obj;
+    ValueArray array;
+} ObjArray;
 
 typedef struct ObjFunction {
     Obj obj;
@@ -121,6 +129,8 @@ typedef struct {
     Value receiver;
     Obj *method;
 } ObjBoundMethod;
+
+ObjArray *newArray();
 
 ObjBoundMethod *newBoundMethod(Value receiver, Obj *method);
 

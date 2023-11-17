@@ -33,6 +33,43 @@ void printObject(Value value) {
 
 static void printFunctionImpl(ObjFunction *function);
 
+ObjArray *newArray() {
+    ObjArray *array = ALLOCATE_OBJ(ObjArray, OBJ_ARRAY);
+    initValueArray(&array->array);
+    return array;
+}
+
+static void blackenArray(Obj *object) {
+    ObjArray *array = (ObjArray *) object;
+    for (int i = 0; i < array->array.count; i++) {
+        markValue(array->array.values[i]);
+    }
+}
+
+static void freeArray(Obj *object) {
+    ObjArray *array = (ObjArray *) object;
+    freeValueArray(&array->array);
+}
+
+static void printArray(Obj *object) {
+    ObjArray *objArray = (ObjArray *) object;
+    ValueArray *array = &objArray->array;
+    printf("[");
+    for (int i = 0; i < array->count; i++) {
+        if (IS_STRING(array->values[i])) {
+            printf("\"");
+        }
+        printValue(array->values[i]);
+        if (IS_STRING(array->values[i])) {
+            printf("\"");
+        }
+        if (i + 1 != array->count) {
+            printf(", ");
+        }
+    }
+    printf("]");
+}
+
 ObjBoundMethod *newBoundMethod(Value receiver, Obj *method) {
     ObjBoundMethod *bound = ALLOCATE_OBJ(ObjBoundMethod, OBJ_BOUND_METHOD);
     bound->receiver = receiver;
@@ -276,6 +313,12 @@ static bool callNonCallable(Obj *obj, int argCount) {
 static void blackenNoOp(Obj *obj) {}
 
 static ObjVT vtList[] = {
+        [OBJ_ARRAY] = {
+                .call = callNonCallable,
+                .blacken = blackenArray,
+                .free = freeArray,
+                .print = printArray
+        },
         [OBJ_BOUND_METHOD] = {
                 .call = callBoundMethod,
                 .blacken = blackenBoundMethod,

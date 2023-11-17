@@ -9,6 +9,8 @@
 #include "value.h"
 
 typedef enum {
+    OP_ARRAY_OPEN,
+    OP_ARRAY_CLOSE,
     OP_CONSTANT,
     OP_NIL,
     OP_TRUE,
@@ -25,6 +27,8 @@ typedef enum {
     OP_STATIC_FIELD,
     OP_GET_PROPERTY,
     OP_SET_PROPERTY,
+    OP_GET_INDEX,
+    OP_SET_INDEX,
     OP_GET_SUPER,
     OP_EQUAL,
     OP_GREATER,

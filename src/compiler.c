@@ -21,7 +21,8 @@
 
 typedef enum {
     PREC_NONE,
-    PREC_ASSIGNMENT,    // =
+    PREC_ASSIGNMENT,    // =, +=, -=, *=, /=, %=
+    PREC_CONTAINER,
     PREC_CONDITIONAL,   // ?:
     PREC_OR,            // or
     PREC_AND,           // and
@@ -30,7 +31,7 @@ typedef enum {
     PREC_TERM,          // + -
     PREC_FACTOR,        // * /
     PREC_UNARY,         // ! -
-    PREC_CALL,          // ()
+    PREC_CALL_INDEX,          // ()
     PREC_PRIMARY
 } Precedence;
 
@@ -252,8 +253,8 @@ static void initCompiler(Compiler *compiler, FunctionType type) {
     if (type == TYPE_LAMBDA) {
         char *template = "%s/[line %d] lambda";
         int nameLength = snprintf(NULL, 0, template,
-                                     compiler->enclosing->function->name->chars,
-                                     parser.previous.line);
+                                  compiler->enclosing->function->name->chars,
+                                  parser.previous.line);
         char buffer[nameLength + 1];
         snprintf(buffer, sizeof(buffer), template,
                  compiler->enclosing->function->name->chars,
@@ -530,6 +531,8 @@ static void lambda();
 static void expression() {
     if (check(TOKEN_VERTICAL_LINE)) {
         lambda();
+    } else if (check(TOKEN_LEFT_BRACKET)) {
+        parsePrecedence(PREC_CONTAINER);
     } else {
         parsePrecedence(PREC_ASSIGNMENT);
     }
@@ -1197,6 +1200,37 @@ static void dot(bool canAssign) {
     }
 }
 
+static void element(bool canAssign) {
+    expression();
+    consume(TOKEN_RIGHT_BRACKET, "Expect ']' after array access.");
+    if (canAssign && match(TOKEN_EQUAL)) {
+        expression();
+        emitByte(OP_SET_INDEX);
+    } else if (canAssign && match(TOKEN_PLUS_EQUAL)) {
+        emitBytes(OP_DUP, OP_GET_INDEX);
+        expression();
+        emitBytes(OP_ADD, OP_SET_INDEX);
+    } else if (canAssign && match(TOKEN_MINUS_EQUAL)) {
+        emitBytes(OP_DUP, OP_GET_INDEX);
+        expression();
+        emitBytes(OP_SUBTRACT, OP_SET_INDEX);
+    } else if (canAssign && match(TOKEN_STAR_EQUAL)) {
+        emitBytes(OP_DUP, OP_GET_INDEX);
+        expression();
+        emitBytes(OP_MULTIPLY, OP_SET_INDEX);
+    } else if (canAssign && match(TOKEN_SLASH_EQUAL)) {
+        emitBytes(OP_DUP, OP_GET_INDEX);
+        expression();
+        emitBytes(OP_DIVIDE, OP_SET_INDEX);
+    } else if (canAssign && match(TOKEN_PERCENT_EQUAL)) {
+        emitBytes(OP_DUP, OP_GET_INDEX);
+        expression();
+        emitBytes(OP_MODULUS, OP_SET_INDEX);
+    } else {
+        emitByte(OP_GET_INDEX);
+    }
+}
+
 #pragma clang diagnostic push
 #pragma ide diagnostic ignored "UnusedParameter"
 
@@ -1346,16 +1380,34 @@ static void unary(bool canAssign) {
     }
 }
 
+static void array(bool canAssign) {
+    emitByte(OP_ARRAY_OPEN);
+    int size = 0;
+    do {
+        size++;
+        if (size > UINT16_MAX) {
+            error("Array literal can have no more than 65536 elements");
+        }
+        expression();
+    } while (match(TOKEN_COMMA));
+    consume(TOKEN_RIGHT_BRACKET, "Expected ']' after array element list.");
+    emitByte(OP_ARRAY_CLOSE);
+    emitByte((size >> 8) & 0xFF);
+    emitByte(size & 0xFF);
+}
+
 ParseRule rules[] = {
-        [TOKEN_LEFT_PAREN] = {grouping, call, PREC_CALL},
+        [TOKEN_LEFT_PAREN] = {grouping, call, PREC_CALL_INDEX},
         [TOKEN_RIGHT_PAREN] = {NULL, NULL, PREC_NONE},
         [TOKEN_LEFT_BRACE] = {NULL, NULL, PREC_NONE},
         [TOKEN_RIGHT_BRACE] = {NULL, NULL, PREC_NONE},
+        [TOKEN_LEFT_BRACKET] = {array, element, PREC_CONTAINER},
+        [TOKEN_RIGHT_BRACKET] = {NULL, NULL, PREC_NONE},
         [TOKEN_COLON] = {NULL, NULL, PREC_NONE},
         [TOKEN_QUESTION] = {NULL, conditional, PREC_CONDITIONAL},
         [TOKEN_VERTICAL_LINE] = {NULL, NULL, PREC_NONE},
         [TOKEN_COMMA] = {NULL, NULL, PREC_NONE},
-        [TOKEN_DOT] = {NULL, dot, PREC_CALL},
+        [TOKEN_DOT] = {NULL, dot, PREC_CALL_INDEX},
         [TOKEN_MINUS] = {unary, binary, PREC_TERM},
         [TOKEN_MINUS_EQUAL] = {NULL, NULL, PREC_NONE},
         [TOKEN_PERCENT] = {NULL, binary, PREC_FACTOR},

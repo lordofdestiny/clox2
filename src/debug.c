@@ -23,6 +23,13 @@ static int constantInstruction(char *name, Chunk *chunk, int offset) {
     return offset + 2;
 }
 
+static int longOperandInstruction(char *name, Chunk *chunk, int offset) {
+    uint16_t constant = (uint16_t) (chunk->code[offset + 1] << 8);
+    constant |= chunk->code[offset + 2];
+    printf("%-16s %4d\n", name, constant);
+    return offset + 3;
+}
+
 static int invokeInstruction(const char *name, Chunk *chunk, int offset) {
     uint8_t constant = chunk->code[offset + 1];
     uint8_t argCount = chunk->code[offset + 2];
@@ -61,6 +68,8 @@ int disassembleInstruction(Chunk *chunk, int offset) {
 
     uint8_t instruction = chunk->code[offset];
     switch (instruction) {
+    case OP_ARRAY_OPEN: return simpleInstruction("OP_ARRAY_OPEN", offset);
+    case OP_ARRAY_CLOSE: return longOperandInstruction("OP_ARRAY_CLOSE", chunk, offset);
     case OP_CONSTANT: return constantInstruction("OP_CONSTANT", chunk, offset);
     case OP_NIL: return simpleInstruction("OP_NIL", offset);
     case OP_TRUE: return simpleInstruction("OP_TRUE", offset);
@@ -77,6 +86,8 @@ int disassembleInstruction(Chunk *chunk, int offset) {
     case OP_STATIC_FIELD: return constantInstruction("OP_STATIC_FIELD", chunk, offset);
     case OP_GET_PROPERTY: return constantInstruction("OP_GET_PROPERTY", chunk, offset);
     case OP_SET_PROPERTY: return constantInstruction("OP_SET_PROPERTY", chunk, offset);
+    case OP_GET_INDEX: return simpleInstruction("OP_GET_INDEX", offset);
+    case OP_SET_INDEX: return simpleInstruction("OP_SET_INDEX", offset);
     case OP_GET_SUPER: return constantInstruction("OP_GET_SUPER", chunk, offset);
     case OP_EQUAL: return simpleInstruction("OP_EQUAL", offset);
     case OP_GREATER: return simpleInstruction("OP_GREATER", offset);
