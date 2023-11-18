@@ -157,9 +157,6 @@ bool callBoundMethod(Obj *callable, int argCount) {
 
 bool callNative(Obj *callable, int argCount) {
     ObjNative *native = (ObjNative *) callable;
-    /* IDEA Recognize calls to native functions at compile time
-     *  so that this check can be removed
-     */
     if (native->arity != -1 && argCount != native->arity) {
         runtimeError("Expected %d arguments but got %d", native->arity, argCount);
         return false;
@@ -175,47 +172,50 @@ bool callNative(Obj *callable, int argCount) {
 }
 
 static bool callValue(Value callee, int argCount) {
-    /*
-     * TODO only check if value is an OBJ. Add function that throws the
-     *  runtime error and returns false so that callValue can be simpler. */
     if (IS_OBJ(callee)) return CALL_OBJ(callee, argCount);
     runtimeError("Can only call functions and classes.");
     return false;
 }
 
-static bool invokeFromClass(ObjClass *klass, ObjString *name, int argCount) {
+static bool invokeFromImpl(Table *methods, ObjString *name, int argCount) {
     Value method;
-    if (!tableGet(&klass->methods, name, &method)) {
-        runtimeError("Undefined property '%s'.", name->chars);
-        return false;
+    if (tableGet(methods, name, &method)) {
+        return CALL_OBJ(method, argCount);
     }
-    return CALL_OBJ(method, argCount);
+    runtimeError("Undefined property '%s'.", name->chars);
+    return false;
 }
 
 static bool invoke(ObjString *name, int argCount) {
     Value receiver = peek(argCount);
 
-    if (IS_INSTANCE(receiver)) {
-        ObjInstance *instance = AS_INSTANCE(receiver);
-        Value value;
-        if (tableGet(&instance->fields, name, &value)) {
-            vm.stackTop[-argCount - 1] = value;
-            return callValue(value, argCount);
-        }
-        return invokeFromClass(instance->klass, name, argCount);
-    } else if (IS_CLASS(receiver)) {
-        ObjClass *klass = AS_CLASS(receiver);
-        Value staticMethod;
-        if (tableGet(&klass->staticMethods, name, &staticMethod)) {
-            return CALL_OBJ(staticMethod, argCount);
-        }
-        runtimeError("No static method '%s' for class '%s'.",
-                     name->chars, klass->name->chars);
+    if (!IS_INSTANCE(receiver) && !IS_CLASS(receiver)) {
+        runtimeError("Only classes and instances have methods");
         return false;
     }
 
-    runtimeError("Only classes and instances have methods");
-    return false;
+    Obj *object = AS_OBJ(receiver);
+
+    Value value;
+    Table *fields = IS_CLASS(receiver)
+                    ? &((ObjClass *) object)->fields
+                    : &((ObjInstance *) object)->fields;
+    if (tableGet(fields, name, &value)) {
+        if (IS_INSTANCE(value)) {
+            vm.stackTop[-argCount - 1] = value;
+        }
+        return callValue(value, argCount);
+    }
+
+    if (IS_CLASS(receiver)) {
+        return invokeFromImpl(
+                &((ObjClass *) object)->staticMethods,
+                name, argCount);
+    } else {
+        return invokeFromImpl(
+                &((ObjInstance *) object)->klass->methods,
+                name, argCount);
+    }
 }
 
 static bool bindMethod(ObjClass *klass, ObjString *name) {
@@ -283,17 +283,21 @@ static bool isFalsy(Value value) {
     return IS_NIL(value) || (IS_BOOL(value) && !AS_BOOL(value));
 }
 
+static ObjString *concatenateImpl(char const *buffer1, int length1, char const *buffer2, int length2) {
+    int length = length1 + length2;
+    char *chars = ALLOCATE(char, (size_t) length + 1);
+    snprintf(chars, length + 1, "%s%s", buffer1, buffer2);
+    chars[length] = '\0';
+    return takeString(chars, length);
+}
+
 static void concatenate() {
     ObjString *b = AS_STRING(peek(0));
     ObjString *a = AS_STRING(peek(1));
-
-    int length = a->length + b->length;
-    char *chars = ALLOCATE(char, (size_t) length + 1);
-    memcpy(chars, a->chars, a->length);
-    memcpy(chars + a->length, b->chars, b->length);
-    chars[length] = '\0';
-
-    ObjString *result = takeString(chars, length);
+    ObjString *result = concatenateImpl(
+            a->chars, a->length,
+            b->chars, b->length
+    );
     pop();
     pop();
     push(OBJ_VAL((Obj *) result));
@@ -320,13 +324,9 @@ static void concatenateStringWithPrimitive() {
     char primitiveStr[primitiveStrLen + 1];
     writePrimitiveToBuffer(primitiveStr, a, primitiveStrLen);
 
-    int length = primitiveStrLen + b->length;
-    char *chars = ALLOCATE(char, (size_t) length + 1);
-    memcpy(chars, primitiveStr, primitiveStrLen);
-    memcpy(chars + primitiveStrLen, b->chars, b->length);
-    chars[length] = '\0';
-
-    ObjString *result = takeString(chars, length);
+    ObjString *result = concatenateImpl(
+            primitiveStr, primitiveStrLen,
+            b->chars, b->length);
     pop();
     pop();
     push(OBJ_VAL((Obj *) result));
@@ -340,13 +340,9 @@ static void concatenatePrimitiveWithString() {
     char primitiveStr[primitiveStrLen + 1];
     writePrimitiveToBuffer(primitiveStr, b, primitiveStrLen);
 
-    int length = a->length + primitiveStrLen;
-    char *chars = ALLOCATE(char, (size_t) length + 1);
-    memcpy(chars, a->chars, a->length);
-    memcpy(chars + a->length, primitiveStr, primitiveStrLen);
-    chars[length] = '\0';
-
-    ObjString *result = takeString(chars, length);
+    ObjString *result = concatenateImpl(
+            a->chars, a->length,
+            primitiveStr, primitiveStrLen);
     pop();
     pop();
     push(OBJ_VAL((Obj *) result));
@@ -518,66 +514,58 @@ static InterpretResult run() {
                 return INTERPRET_RUNTIME_ERROR;
             }
             Value receiver = peek(1);
-            if (IS_INSTANCE(receiver)) {
-                ObjInstance *instance = AS_INSTANCE(receiver);
-                tableSet(&instance->fields, READ_STRING(), peek(0));
-                Value value = pop();
-                pop();
-                push(value);
-            } else if (IS_CLASS(receiver)) {
-                ObjClass *klass = AS_CLASS(receiver);
-                ObjString *field = READ_STRING();
-                tableSet(&klass->fields, field, peek(0));
-                Value value = pop();
-                pop();
-                push(value);
-            }
+            Table *fields = IS_INSTANCE(receiver)
+                            ? &AS_INSTANCE(receiver)->fields
+                            : &AS_CLASS(receiver)->fields;
+            tableSet(fields, READ_STRING(), peek(0));
+            Value value = pop();
+            pop();
+            push(value);
 
             break;
         }
         case OP_GET_INDEX: {
-            if(!IS_NUMBER(peek(0))){
+            if (!IS_NUMBER(peek(0))) {
                 frame->ip = ip;
                 runtimeError("Index must be a number.");
                 return INTERPRET_RUNTIME_ERROR;
             }
-            if(!IS_OBJ_ARRAY(peek(1))) {
+            if (!IS_OBJ_ARRAY(peek(1))) {
                 frame->ip = ip;
                 runtimeError("Only arrays are indexable.");
                 return INTERPRET_RUNTIME_ERROR;
             }
             ptrdiff_t index = (ptrdiff_t) AS_NUMBER(peek(0));
-            ObjArray * array = AS_ARRAY(peek(1));
-            if(index < 0 || index >= array->array.count){
+            ObjArray *array = AS_ARRAY(peek(1));
+            if (index < 0 || index >= array->array.count) {
                 frame->ip = ip;
                 runtimeError("Array index out of bounds. Index = %td", index);
                 return INTERPRET_RUNTIME_ERROR;
             }
-            Value element = array->array.values[index];
             pop();
             pop();
-            push(element);
+            push(array->array.values[index]);
             break;
         }
         case OP_SET_INDEX: {
-             if(!IS_NUMBER(peek(1))){
+            if (!IS_NUMBER(peek(1))) {
                 frame->ip = ip;
                 runtimeError("Index must be a number.");
                 return INTERPRET_RUNTIME_ERROR;
             }
-            if(!IS_OBJ_ARRAY(peek(2))) {
+            if (!IS_OBJ_ARRAY(peek(2))) {
                 frame->ip = ip;
                 runtimeError("Only arrays are indexable.");
                 return INTERPRET_RUNTIME_ERROR;
             }
             ptrdiff_t index = (ptrdiff_t) AS_NUMBER(peek(1));
-            ObjArray * array = AS_ARRAY(peek(2));
-            if(index < 0 || index >= array->array.count){
+            ObjArray *array = AS_ARRAY(peek(2));
+            if (index < 0 || index >= array->array.count) {
                 frame->ip = ip;
                 runtimeError("Array index out of bounds. Index = %td", index);
                 return INTERPRET_RUNTIME_ERROR;
             }
-            Value value = peek(0);
+            Value value = pop();
             array->array.values[index] = value;
             pop();
             pop();
@@ -585,9 +573,6 @@ static InterpretResult run() {
             break;
         }
         case OP_GET_SUPER: {
-            /*
-             * TODO enable calling static methods with super keyword
-             * */
             ObjString *name = READ_STRING();
             ObjClass *superclass = AS_CLASS(pop());
 
@@ -701,7 +686,7 @@ static InterpretResult run() {
             ObjString *method = READ_STRING();
             int argCount = READ_BYTE();
             ObjClass *superclass = AS_CLASS(pop());
-            if (!invokeFromClass(superclass, method, argCount)) {
+            if (!invokeFromImpl(&superclass->methods, method, argCount)) {
                 return INTERPRET_RUNTIME_ERROR;
             }
             frame->ip = ip;
