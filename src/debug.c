@@ -68,8 +68,7 @@ int disassembleInstruction(Chunk *chunk, int offset) {
 
     uint8_t instruction = chunk->code[offset];
     switch (instruction) {
-    case OP_ARRAY_OPEN: return simpleInstruction("OP_ARRAY_OPEN", offset);
-    case OP_ARRAY_CLOSE: return longOperandInstruction("OP_ARRAY_CLOSE", chunk, offset);
+    case OP_ARRAY: return longOperandInstruction("OP_ARRAY", chunk, offset);
     case OP_CONSTANT: return constantInstruction("OP_CONSTANT", chunk, offset);
     case OP_NIL: return simpleInstruction("OP_NIL", offset);
     case OP_TRUE: return simpleInstruction("OP_TRUE", offset);

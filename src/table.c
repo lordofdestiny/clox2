@@ -31,8 +31,8 @@ static Entry *findEntry(Entry *entries, int capacity, ObjString *key) {
         if (entry->key == NULL) {
             if (IS_NIL(entry->value)) {
                 return tombstone != NULL ? tombstone : entry;
-            } else {
-                if (tombstone == NULL) tombstone = entry;
+            } else if (tombstone == NULL) {
+                tombstone = entry;
             }
         } else if (entry->key == key) {
             // We found the key

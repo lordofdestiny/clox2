@@ -9,8 +9,7 @@
 #include "value.h"
 
 typedef enum {
-    OP_ARRAY_OPEN,
-    OP_ARRAY_CLOSE,
+    OP_ARRAY,
     OP_CONSTANT,
     OP_NIL,
     OP_TRUE,

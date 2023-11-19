@@ -386,19 +386,16 @@ static InterpretResult run() {
 #endif
         uint8_t instruction;
         switch (instruction = READ_BYTE()) {
-        case OP_ARRAY_OPEN: {
+        case OP_ARRAY: {
             ObjArray *array = newArray();
-            push(OBJ_VAL(array));
-            break;
-        }
-        case OP_ARRAY_CLOSE: {
             size_t size = READ_SHORT();
-            ObjArray *array = AS_ARRAY(peek(size));
             Value *elements = vm.stackTop - size;
+            push(OBJ_VAL(array));
             for (size_t i = 0; i < size; i++) {
                 writeValueArray(&array->array, elements[i]);
             }
             vm.stackTop = elements;
+            push(OBJ_VAL(array));
             break;
         }
         case OP_CONSTANT: {

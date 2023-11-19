@@ -1381,7 +1381,6 @@ static void unary(bool canAssign) {
 }
 
 static void array(bool canAssign) {
-    emitByte(OP_ARRAY_OPEN);
     int size = 0;
     do {
         size++;
@@ -1391,7 +1390,7 @@ static void array(bool canAssign) {
         expression();
     } while (match(TOKEN_COMMA));
     consume(TOKEN_RIGHT_BRACKET, "Expected ']' after array element list.");
-    emitByte(OP_ARRAY_CLOSE);
+    emitByte(OP_ARRAY);
     emitByte((size >> 8) & 0xFF);
     emitByte(size & 0xFF);
 }
