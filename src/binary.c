@@ -6,11 +6,13 @@
 
 #include "../h/binary.h"
 #include "../h/memory.h"
-#include "../h/common.h"
 
 #define SAVE_FAILURE 44
 
 #define LOAD_ARRAY(type, file, dest, count) read_array(file, dest, sizeof(type), count)
+
+#define INIT_GENERIC(type, array) initGenericArray(array, sizeof(type))
+#define GET_ELEMENT(type, array, index) ((type*) getElement(array, index))
 
 typedef enum {
     SEG_FUNCTION = 0xBEEF,
@@ -83,45 +85,51 @@ static Value pollValue(ValueQueue *queue) {
 }
 
 typedef struct {
+    int count;
+    int capacity;
+    size_t elementSize;
+    char *elements;
+} GenericArray;
+
+static void initGenericArray(GenericArray *array, size_t size) {
+    array->count = 0;
+    array->capacity = 0;
+    array->elementSize = size;
+    array->elements = NULL;
+}
+
+static void freeGenericArray(GenericArray *array) {
+    free(array->elements);
+    initGenericArray(array, array->elementSize);
+}
+
+static void appendGenericArray(GenericArray *array, void *item) {
+    if (array->capacity < array->count + 1) {
+        array->capacity = GROW_CAPACITY(array->capacity);
+        void *memory = realloc(array->elements, array->elementSize * array->capacity);
+        if (memory != NULL) {
+            array->elements = memory;
+        } else {
+            fprintf(stderr, "Memory error.\n");
+            exit(1);
+        }
+    }
+    memcpy(array->elements + array->count * array->elementSize, item, array->elementSize);
+    array->count++;
+}
+
+static void *getElement(GenericArray *array, size_t index) {
+    return array->elements + index * array->elementSize;
+}
+
+typedef struct {
     ObjFunction *function;
     int id;
 } FunctionId;
 
-typedef struct {
-    int count;
-    int capacity;
-    FunctionId *ids;
-} FunctionIdList;
-
-static void initFunctionIdList(FunctionIdList *list) {
-    list->count = 0;
-    list->capacity = 0;
-    list->ids = NULL;
-}
-
-static void freeFunctionIdList(FunctionIdList *list) {
-    free(list->ids);
-    initFunctionIdList(list);
-}
-
-static void addFunctionId(FunctionIdList *list, FunctionId id) {
-    if (list->capacity < list->count + 1) {
-        list->capacity = GROW_CAPACITY(list->capacity);
-        void *memory = realloc(list->ids, sizeof(FunctionId) * list->capacity);
-        if (memory != NULL) {
-            list->ids = (FunctionId *) memory;
-        } else {
-            fprintf(stderr, "Memory error.\n");
-            exit(SAVE_FAILURE);
-        }
-    }
-    list->ids[list->count] = id;
-    list->count++;
-}
-
-static FunctionId *findFunctionId(FunctionIdList *list, ObjFunction *function) {
-    for (int i = 0; i < list->count; i++) {
-        FunctionId *id = &list->ids[i];
+static FunctionId *findFunctionId(GenericArray *functionIds, ObjFunction *function) {
+    for (int i = 0; i < functionIds->count; i++) {
+        FunctionId *id = GET_ELEMENT(FunctionId, functionIds, i);
         if (function == id->function) {
             return id;
         }
@@ -133,38 +141,6 @@ typedef struct {
     long position;
     ObjFunction *function;
 } FilePatch;
-
-typedef struct {
-    int count;
-    int capacity;
-    FilePatch *patches;
-} FilePatchList;
-
-static void initFilePatchList(FilePatchList *list) {
-    list->count = 0;
-    list->capacity = 0;
-    list->patches = NULL;
-}
-
-static void freeFilePatchList(FilePatchList *list) {
-    free(list->patches);
-    initFilePatchList(list);
-}
-
-static void addFilePatch(FilePatchList *list, FilePatch id) {
-    if (list->capacity < list->count + 1) {
-        list->capacity = GROW_CAPACITY(list->capacity);
-        void *memory = realloc(list->patches, sizeof(FilePatch) * list->capacity);
-        if (memory != NULL) {
-            list->patches = (FilePatch *) memory;
-        } else {
-            fprintf(stderr, "Memory error.\n");
-            exit(SAVE_FAILURE);
-        }
-    }
-    list->patches[list->count] = id;
-    list->count++;
-}
 
 static void write_int(FILE *out, int num) {
     if (NULL == out) {
@@ -244,7 +220,7 @@ static void writeFunctionCode(FILE *file, ObjFunction *function) {
 }
 
 static void writeFunctionConstants(FILE *file, ObjFunction *function,
-                                   FilePatchList *patchList, ValueQueue *queue) {
+                                   GenericArray *patchList, ValueQueue *queue) {
     write_int(file, SEG_FUNCTION_CONSTANTS);
     ValueArray *constants = &function->chunk.constants;
     write_int(file, constants->count);
@@ -263,7 +239,7 @@ static void writeFunctionConstants(FILE *file, ObjFunction *function,
                 enqueueValue(queue, value);
             }
             write_byte(file, OUT_TAG_FUNCTION);
-            addFilePatch(patchList, (FilePatch) {
+            appendGenericArray(patchList, &(FilePatch) {
                     .function = AS_FUNCTION(value),
                     .position = ftell(file)
             });
@@ -276,7 +252,7 @@ static void writeFunctionConstants(FILE *file, ObjFunction *function,
 }
 
 static void writeFunction(FILE *file, ObjFunction *function,
-                          FilePatchList *patchList, ValueQueue *queue) {
+                          GenericArray *patchList, ValueQueue *queue) {
     write_int(file, SEG_FUNCTION);
     writeFunctionHeader(file, function);
     writeFunctionCode(file, function);
@@ -284,9 +260,9 @@ static void writeFunction(FILE *file, ObjFunction *function,
     write_int(file, SEG_FUNCTION_END);
 }
 
-void patchFileRefs(FILE *file, FilePatchList *patchList, FunctionIdList *ids) {
+void patchFileRefs(FILE *file, GenericArray *patchList, GenericArray *ids) {
     for (int i = 0; i < patchList->count; i++) {
-        FilePatch *patch = &patchList->patches[i];
+        FilePatch *patch = GET_ELEMENT(FilePatch, patchList, i);
         FunctionId *fid = findFunctionId(ids, patch->function);
         if (fid == NULL) {
             fprintf(stderr, "Found a patch for non existent function.");
@@ -307,25 +283,27 @@ void writeBinary(ObjFunction *compiled, const char *path) {
     ValueQueue queue;
     initValueQueue(&queue);
 
-    FunctionIdList ids;
-    initFunctionIdList(&ids);
+    GenericArray ids;
+    INIT_GENERIC(FunctionId, &ids);
 
-    FilePatchList patchList;
-    initFilePatchList(&patchList);
+    GenericArray patchList;
+    INIT_GENERIC(FilePatch, &patchList);
 
     int id = 0;
-    addFunctionId(&ids, (FunctionId) {
+    FunctionId fid = (FunctionId) {
             .id = id++,
             .function = compiled
-    });
+    };
+    appendGenericArray(&ids, &fid);
     writeFunction(file, compiled, &patchList, &queue);
     while (queue.count > 0) {
         Value value = pollValue(&queue);
         ObjFunction *function = AS_FUNCTION(value);
-        addFunctionId(&ids, (FunctionId) {
+        fid = (FunctionId) {
                 .id = id++,
                 .function = function
-        });
+        };
+        appendGenericArray(&ids, &fid);
         writeFunction(file, function, &patchList, &queue);
     }
 
@@ -333,13 +311,11 @@ void writeBinary(ObjFunction *compiled, const char *path) {
     write_int(file, SEG_FILE_END);
 
     freeValueQueue(&queue);
-    freeFunctionIdList(&ids);
-    freeFilePatchList(&patchList);
+    freeGenericArray(&ids);
+    freeGenericArray(&patchList);
 
     fclose(file);
 }
-
-#undef SAVE_FAILURE
 
 #define LOAD_FAILURE 33
 
@@ -354,38 +330,6 @@ typedef struct {
     int patchWith; // Function to patch with
     int position; // Index in constants array
 } FunctionPatch;
-
-typedef struct {
-    int count;
-    int capacity;
-    FunctionPatch *patches;
-} FunctionPatchList;
-
-static void initFunctionPatchList(FunctionPatchList *list) {
-    list->count = 0;
-    list->capacity = 0;
-    list->patches = NULL;
-}
-
-static void freeFunctionPatchList(FunctionPatchList *list) {
-    free(list->patches);
-    initFunctionPatchList(list);
-}
-
-static void addFunctionPatch(FunctionPatchList *list, FunctionPatch patch) {
-    if (list->capacity < list->count + 1) {
-        list->capacity = GROW_CAPACITY(list->capacity);
-        void *memory = realloc(list->patches, sizeof(FunctionPatch) * list->capacity);
-        if (memory != NULL) {
-            list->patches = (FunctionPatch *) memory;
-        } else {
-            fprintf(stderr, "memory error.\n");
-            exit(LOAD_FAILURE);
-        }
-    }
-    list->patches[list->count] = patch;
-    list->count++;
-}
 
 static int read_int(FILE *file) {
     int value;
@@ -491,7 +435,7 @@ static void loadFunctionCode(FILE *file, ObjFunction *function) {
 }
 
 static void loadFunctionConstants(FILE *file, ObjFunction *function,
-                                  int id, FunctionPatchList *patchList) {
+                                  int id, GenericArray *patchList) {
     checkSegment(file, SEG_FUNCTION_CONSTANTS);
     ValueArray *constants = &function->chunk.constants;
     initValueArray(constants);
@@ -506,11 +450,12 @@ static void loadFunctionConstants(FILE *file, ObjFunction *function,
             writeValueArray(constants, OBJ_VAL((Obj *) string));
         } else if (tag == OUT_TAG_FUNCTION) {
             int missingFunction = read_int(file);
-            addFunctionPatch(patchList, (FunctionPatch) {
+            FunctionPatch patch = (FunctionPatch) {
                     .position = i,
                     .toPatch = id,
                     .patchWith = missingFunction
-            });
+            };
+            appendGenericArray(patchList, &patch);
             writeValueArray(constants, NIL_VAL);
         } else {
             fprintf(stderr, "Unexpected value tag. Found '%02X' at %08lX\n", tag, ftell(file) - 1);
@@ -519,8 +464,7 @@ static void loadFunctionConstants(FILE *file, ObjFunction *function,
     }
 }
 
-static ObjFunction *loadFunction(FILE *file, int id,
-                                 FunctionPatchList *patchList) {
+static ObjFunction *loadFunction(FILE *file, int id, GenericArray *patchList) {
     ObjFunction *function = newFunction();
     checkSegment(file, SEG_FUNCTION);
     loadFunctionHeader(file, function);
@@ -536,15 +480,15 @@ static ObjFunction *loadFunction(FILE *file, int id,
     return function;
 }
 
-static void patchFunctionRefs(FunctionPatchList *patchList, ValueArray *functions) {
+static void patchFunctionRefs(GenericArray *patchList, GenericArray *functions) {
     for (int i = 0; i < patchList->count; i++) {
-        FunctionPatch *patch = &patchList->patches[i];
+        FunctionPatch *patch = GET_ELEMENT(FunctionPatch, patchList, i);
         if (patch->patchWith > functions->count || patch->toPatch > functions->count) {
             fprintf(stderr, "Invalid function id to patch.");
             exit(LOAD_FAILURE);
         }
-        ObjFunction *toPatch = AS_FUNCTION(functions->values[patch->toPatch]);
-        ObjFunction *patchWith = AS_FUNCTION(functions->values[patch->patchWith]);
+        ObjFunction *toPatch = *GET_ELEMENT(ObjFunction*, functions, patch->toPatch);
+        ObjFunction *patchWith = *GET_ELEMENT(ObjFunction*, functions, patch->patchWith);
         toPatch->chunk.constants.values[patch->position] = OBJ_VAL((Obj *) patchWith);
     }
 }
@@ -555,27 +499,25 @@ ObjFunction *loadBinary(const char *path) {
         fprintf(stderr, "Could not open file \"%s\".\n", path);
         exit(74);
     }
-    ValueArray functions;
-    FunctionPatchList patchList;
+    GenericArray functions;
+    INIT_GENERIC(ObjFunction*, &functions);
 
-    initValueArray(&functions);
-    initFunctionPatchList(&patchList);
+    GenericArray patchList;
+    INIT_GENERIC(FunctionPatch, &patchList);
 
     int id = 0;
     ObjFunction *script = loadFunction(file, id++, &patchList);
-    writeValueArray(&functions, OBJ_VAL(script));
+    appendGenericArray(&functions, &script);
     while (!feof(file) && peek_int(file) != SEG_FILE_END) {
         ObjFunction *function = loadFunction(file, id++, &patchList);
-        writeValueArray(&functions, OBJ_VAL(function));
+        appendGenericArray(&functions, &function);
     }
     // Patch here
     patchFunctionRefs(&patchList, &functions);
 
-    freeValueArray(&functions);
-    freeFunctionPatchList(&patchList);
+    freeGenericArray(&functions);
+    freeGenericArray(&patchList);
 
     fclose(file);
     return script;
 }
-
-#undef LOAD_FAILURE
