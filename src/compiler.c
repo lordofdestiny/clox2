@@ -932,7 +932,7 @@ static void switchStatement() {
     int previousCaseSkip = -1;
     int previousFallthroughLocation = -1;
 
-    // Reserve a stack space for the switch helper location
+    // Reserve a stack space for the switch helper position
     // That is used to save the switched expression result
     current->localCount++;
 

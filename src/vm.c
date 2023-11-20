@@ -64,6 +64,14 @@ static void defineNative(const char *name, int arity, NativeFn function) {
 
 void initVM() {
     resetStack();
+    vm.objects = NULL;
+
+    vm.grayCount = 0;
+    vm.grayCapacity = 0;
+    vm.grayStack = NULL;
+    vm.bytesAllocated = 0;
+    vm.nextGC = 1024 * 1024;
+
     initTable(&vm.globals);
     initTable(&vm.strings);
 
@@ -71,14 +79,6 @@ void initVM() {
     // because of GC
     vm.initString = NULL;
     vm.initString = copyString("init", 4);
-    vm.objects = NULL;
-
-    vm.bytesAllocated = 0;
-    vm.nextGC = 1024 * 1024;
-
-    vm.grayCount = 0;
-    vm.grayCapacity = 0;
-    vm.grayStack = NULL;
 
     // Define native methods
     for (int i = 0; nativeMethods[i].name != NULL; i++) {
@@ -92,6 +92,7 @@ void freeVM() {
     freeTable(&vm.strings);
     vm.initString = NULL;
     freeObjects();
+    free(vm.grayStack);
 #ifdef DEBUG_LOG_GC
     printf("%td bytes still allocated by the VM.\n", vm.bytesAllocated);
 #endif
@@ -389,7 +390,7 @@ static InterpretResult run() {
         case OP_ARRAY: {
             ObjArray *array = newArray();
             size_t size = READ_SHORT();
-            Value *elements = vm.stackTop - size;
+            Value * elements = vm.stackTop - size;
             push(OBJ_VAL(array));
             for (size_t i = 0; i < size; i++) {
                 writeValueArray(&array->array, elements[i]);
@@ -768,6 +769,14 @@ static InterpretResult run() {
 InterpretResult interpret(const char *source) {
     ObjFunction *function = compile(source);
     if (function == NULL) return INTERPRET_COMPILE_ERROR;
+    push(OBJ_VAL((Obj *) function));
+    callFunction((Obj *) function, 0);
+
+    return run();
+}
+
+InterpretResult interpretCompiled(ObjFunction *function) {
+    if (function == NULL) return INTERPRET_RUNTIME_ERROR;
     push(OBJ_VAL((Obj *) function));
     callFunction((Obj *) function, 0);
 

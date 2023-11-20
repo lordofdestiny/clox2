@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.24)
+cmake_minimum_required(VERSION 3.22)
 project(clox2 C)
 
 set(CMAKE_C_STANDARD 17)
@@ -25,6 +25,11 @@ add_executable(clox2 main.c
         src/table.c
         h/table.h
         src/native.c
-        h/native.h)
+        h/native.h
+        src/output.c
+        h/output.h
+        h/output.h
+        src/load.c
+        h/load.h)
 
 target_link_libraries(clox2 PUBLIC m)

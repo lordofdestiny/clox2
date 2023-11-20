@@ -1,10 +1,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
 #include "h/chunk.h"
 #include "h/vm.h"
-#include <time.h>
+#include "h/compiler.h"
+#include "h/output.h"
+#include "h/load.h"
 
 static void repl() {
     char line[1024];
@@ -57,6 +60,20 @@ static void runFile(const char *path) {
     if (result == INTERPRET_RUNTIME_ERROR) exit(70);
 }
 
+static void runBinaryFile(const char *path) {
+    ObjFunction *compiled = load(path);
+    InterpretResult result = interpretCompiled(compiled);
+
+    if (result == INTERPRET_RUNTIME_ERROR) exit(70);
+}
+
+static void compileFile(const char *src_path, const char *dest_path) {
+    char *source = readFile(src_path);
+    ObjFunction *code = compile(source);
+    free(source);
+    outputToBinary(code, dest_path);
+}
+
 int main(int argc, char *argv[]) {
     clock_t start = clock();
     initVM();
@@ -65,15 +82,19 @@ int main(int argc, char *argv[]) {
         repl();
     } else if (argc == 2) {
         runFile(argv[1]);
+    } else if (argc == 3 && !strcmp(argv[1], "--bin")) {
+        runBinaryFile(argv[2]);
+    } else if (argc == 4 && !strcmp(argv[2], "--save")) {
+        compileFile(argv[1], argv[3]);
     } else {
-        fprintf(stderr, "Usage: clox [path]\n");
+        fprintf(stderr, "Usage: clox [path] | [src_path --save dest_path] | [--bin bin_path]\n");
         exit(64);
     }
 
     freeVM();
     clock_t end = clock();
 
-    printf("Total execution time: %f seconds\n", ((float) (end - start)) / CLOCKS_PER_SEC);
+    printf("Execution time: %.6f seconds\n", ((float) (end - start)) / CLOCKS_PER_SEC);
 
     return 0;
 }

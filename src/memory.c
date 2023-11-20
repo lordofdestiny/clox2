@@ -56,7 +56,10 @@ void markObject(Obj *object) {
         Obj **newGrayStack = (Obj **) realloc(vm.grayStack, sizeof(Obj *) * vm.grayCapacity);
 
         // Shut down if it can't allocate more space for gray stack
-        if (newGrayStack == NULL) exit(1);
+        if (newGrayStack == NULL) {
+            free(vm.grayStack);
+            exit(1);
+        }
 
         vm.grayStack = newGrayStack;
     }
