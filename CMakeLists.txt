@@ -26,10 +26,8 @@ add_executable(clox2 main.c
         h/table.h
         src/native.c
         h/native.h
-        src/output.c
-        h/output.h
-        h/output.h
-        src/load.c
-        h/load.h)
+        src/binary.c
+        h/binary.h
+        h/binary.h)
 
 target_link_libraries(clox2 PUBLIC m)

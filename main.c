@@ -6,8 +6,7 @@
 #include "h/chunk.h"
 #include "h/vm.h"
 #include "h/compiler.h"
-#include "h/output.h"
-#include "h/load.h"
+#include "h/binary.h"
 
 static void repl() {
     char line[1024];
@@ -61,7 +60,7 @@ static void runFile(const char *path) {
 }
 
 static void runBinaryFile(const char *path) {
-    ObjFunction *compiled = load(path);
+    ObjFunction *compiled = loadBinary(path);
     InterpretResult result = interpretCompiled(compiled);
 
     if (result == INTERPRET_RUNTIME_ERROR) exit(70);
@@ -71,7 +70,7 @@ static void compileFile(const char *src_path, const char *dest_path) {
     char *source = readFile(src_path);
     ObjFunction *code = compile(source);
     free(source);
-    outputToBinary(code, dest_path);
+    writeBinary(code, dest_path);
 }
 
 int main(int argc, char *argv[]) {
