@@ -21,7 +21,6 @@ static Obj *allocateObject(size_t size, ObjType type) {
     object->type = type;
     object->isMarked = false;
     object->vtp = &vtList[type];
-
     object->next = vm.objects;
     vm.objects = object;
     return object;
@@ -49,6 +48,7 @@ static void blackenArray(Obj *object) {
 static void freeArray(Obj *object) {
     ObjArray *array = (ObjArray *) object;
     freeValueArray(&array->array);
+    FREE(ObjArray, object);
 }
 
 static void printArray(Obj *object) {
@@ -269,7 +269,7 @@ ObjString *copyString(const char *chars, int length) {
 static void freeString(Obj *object) {
     ObjString *string = (ObjString *) object;
     FREE_ARRAY(char, string->chars, (size_t) string->length + 1);
-    FREE(ObjString, string);
+    FREE(ObjString, object);
 }
 
 static void printString(Obj *obj) {
