@@ -7,6 +7,7 @@
 #include <stdarg.h>
 #include <string.h>
 #include <math.h>
+#include <limits.h>
 #include "../h/common.h"
 #include "../h/value.h"
 #include "../h/compiler.h"
@@ -62,6 +63,54 @@ static void defineNative(const char *name, int arity, NativeFn function) {
     pop();
 }
 
+static ObjClass *nativeClass(const char *name) {
+    push(OBJ_VAL((Obj *) copyString(name, (int) strlen(name))));
+    ObjClass *klass = newClass(AS_STRING(vm.stack[0]));
+    push(OBJ_VAL((Obj *) klass));
+    tableSet(&vm.globals, AS_STRING(vm.stack[0]), vm.stack[1]);
+    pop();
+    pop();
+    return klass;
+}
+
+static bool initExceptionNative(int argCount, Value *args) {
+    if (argCount > 1) {
+        args[-1] = NATIVE_ERROR("Exit takes either 0 arguments or one a string.");
+        return false;
+    }
+    ObjInstance *exception = AS_INSTANCE(args[-1]);
+    const char *message = "message";
+    int msg_len = (int) strlen(message);
+    ObjString *messageString = tableFindOrAddString(
+            &vm.strings, message,
+            msg_len, hashString(message, msg_len));
+    if (argCount == 0) {
+        const char *defaultText = "Exception occurred.";
+        int len = (int) strlen(defaultText);
+        ObjString *messageText = tableFindOrAddString(
+                &vm.strings, defaultText,
+                len, hashString(defaultText, len));
+        tableSet(&exception->fields, messageString, OBJ_VAL(messageText));
+    } else {
+        if (!IS_STRING(args[0])) {
+            args[-1] = NATIVE_ERROR("Expected a string as an argument");
+            return false;
+        }
+        tableSet(&exception->fields, messageString, OBJ_VAL(args[0]));
+    }
+    args[-1] = OBJ_VAL((Obj *) exception);
+    return true;
+}
+
+static void addNativeMethod(ObjClass *klass, const char *name, NativeFn method, int arity) {
+    push(OBJ_VAL((Obj *) copyString(name, (int) strlen(name))));
+    push(OBJ_VAL((Obj *) newNative(method, arity)));
+    tableSet(&klass->methods, AS_STRING(vm.stack[0]), vm.stack[1]);
+    if (AS_STRING(vm.stack[0]) == vm.initString) klass->initializer = vm.stack[1];
+    pop();
+    pop();
+}
+
 void initVM() {
     resetStack();
     vm.objects = NULL;
@@ -85,6 +134,9 @@ void initVM() {
         NativeMethodDef *def = &nativeMethods[i];
         defineNative(def->name, def->arity, def->function);
     }
+
+    ObjClass *exception = nativeClass("Exception");
+    addNativeMethod(exception, "init", initExceptionNative, -1);
 }
 
 void freeVM() {
@@ -390,7 +442,7 @@ static InterpretResult run() {
         case OP_ARRAY: {
             ObjArray *array = newArray();
             size_t size = READ_SHORT();
-            Value * elements = vm.stackTop - size;
+            Value *elements = vm.stackTop - size;
             push(OBJ_VAL(array));
             for (size_t i = 0; i < size; i++) {
                 writeValueArray(&array->array, elements[i]);

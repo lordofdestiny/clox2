@@ -81,8 +81,8 @@ int main(int argc, char *argv[]) {
         repl();
     } else if (argc == 2) {
         runFile(argv[1]);
-    } else if (argc == 3 && !strcmp(argv[1], "--bin")) {
-        runBinaryFile(argv[2]);
+    } else if (argc == 3 && !strcmp(argv[2], "--bin")) {
+        runBinaryFile(argv[1]);
     } else if (argc == 4 && !strcmp(argv[2], "--save")) {
         compileFile(argv[1], argv[3]);
     } else {

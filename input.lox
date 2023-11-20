@@ -1,3 +1,8 @@
+print Exception().message;
+print Exception("Custom message").message;
+
+exit();
+
 var N = 20;
 
 fun fib(n) {

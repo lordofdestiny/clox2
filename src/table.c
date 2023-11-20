@@ -137,6 +137,15 @@ ObjString *tableFindString(Table *table, const char *chars,
     }
 }
 
+ObjString *tableFindOrAddString(Table *table, const char *chars,
+                                int length, uint32_t hash) {
+    ObjString *string = tableFindString(table, chars, length, hash);
+    if (string != NULL) return string;
+    string = copyString(chars, length);
+    tableSet(table, string, NIL_VAL);
+    return string;
+}
+
 void tableRemoveWhite(Table *table) {
     for (int i = 0; i < table->capacity; i++) {
         Entry *entry = &table->entries[i];

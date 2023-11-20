@@ -8,8 +8,6 @@
 #include <stdlib.h>
 #include <time.h>
 
-#define NATIVE_ERROR(msg) (OBJ_VAL((Obj*) copyString(msg, strlen(msg))))
-
 static bool hasFieldNative(int argCount, Value *args) {
     if (!IS_INSTANCE(args[0])) {
         args[-1] = NATIVE_ERROR("Function 'hasField' expects an instance as the first argument.");
