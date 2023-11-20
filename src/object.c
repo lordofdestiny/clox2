@@ -180,6 +180,19 @@ static void printFunction(Obj *obj) {
     printFunctionImpl(((ObjFunction *) obj));
 }
 
+ObjExceptionRecord *newObjExceptionRecord(int catchStart) {
+    ObjExceptionRecord *rec = ALLOCATE_OBJ(ObjExceptionRecord, OBJ_EXCEPTION_RECORD);
+    rec->catchBlock = catchStart;
+    return rec;
+}
+
+static void freeExceptionRecord(Obj *object) {
+    FREE(ObjExceptionRecord, object);
+}
+
+static void printExceptionRecord(Obj *obj) {
+}
+
 ObjInstance *newInstance(ObjClass *klass) {
     ObjInstance *instance = ALLOCATE_OBJ(ObjInstance, OBJ_INSTANCE);
     instance->klass = klass;
@@ -342,6 +355,12 @@ static ObjVT vtList[] = {
                 .blacken = blackenFunction,
                 .free =freeFunction,
                 .print = printFunction
+        },
+        [OBJ_EXCEPTION_RECORD] = {
+                .call =callNonCallable,
+                .blacken = blackenNoOp,
+                .free = freeExceptionRecord,
+                .print = printExceptionRecord,
         },
         [OBJ_INSTANCE] = {
                 .call = callNonCallable,

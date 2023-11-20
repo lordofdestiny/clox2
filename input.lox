@@ -1,6 +1,12 @@
 print Exception().message;
 print Exception("Custom message").message;
 
+try {
+    print "hello";
+}catch {
+    print "no hello";
+}
+
 exit();
 
 var N = 20;

@@ -38,6 +38,7 @@ typedef enum {
     OBJ_BOUND_METHOD,
     OBJ_CLASS,
     OBJ_CLOSURE,
+    OBJ_EXCEPTION_RECORD,
     OBJ_FUNCTION,
     OBJ_INSTANCE,
     OBJ_NATIVE,
@@ -79,6 +80,11 @@ typedef struct ObjFunction {
     Chunk chunk;
     ObjString *name;
 } ObjFunction;
+
+typedef struct {
+    Obj obj;
+    int catchBlock;
+} ObjExceptionRecord;
 
 typedef struct ObjUpvalue {
     Obj obj;
@@ -139,6 +145,8 @@ ObjClass *newClass(ObjString *name);
 ObjClosure *newClosure(ObjFunction *function);
 
 ObjFunction *newFunction();
+
+ObjExceptionRecord * newObjExceptionRecord(int catchStart);
 
 ObjInstance *newInstance(ObjClass *klass);
 

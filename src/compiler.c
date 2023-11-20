@@ -253,11 +253,15 @@ static void initCompiler(Compiler *compiler, FunctionType type) {
     if (type == TYPE_LAMBDA) {
         char *template = "%s/[line %d] lambda";
         int nameLength = snprintf(NULL, 0, template,
-                                  compiler->enclosing->function->name->chars,
+                                  compiler->enclosing->function->name != NULL
+                                  ? compiler->enclosing->function->name->chars
+                                  : "script",
                                   parser.previous.line);
         char buffer[nameLength + 1];
         snprintf(buffer, sizeof(buffer), template,
-                 compiler->enclosing->function->name->chars,
+                 compiler->enclosing->function->name != NULL
+                 ? compiler->enclosing->function->name->chars
+                 : "script",
                  parser.previous.line);
 
         current->function->name = copyString(buffer, nameLength);
@@ -842,8 +846,6 @@ static void breakStatement() {
 
     consume(TOKEN_SEMICOLON, "Expect ';' after 'break'.");
 
-    // Pop locals
-//    if (current->loopType == LOOP_LOOP) {
     for (int i = current->localCount - 1;
          i >= 0 && current->locals[i].depth > current->innermostLoopScopeDepth;
          i--) {
@@ -853,7 +855,6 @@ static void breakStatement() {
             emitByte(OP_POP);
         }
     }
-//    }
 
     int breakJump = emitJump(OP_JUMP);
     addBreakLocation(breakJump);
@@ -1034,6 +1035,42 @@ static void whileStatement() {
     current->innermostLoopScopeDepth = surroundingLoopScopeDepth;
 }
 
+
+static void tryStatement() {
+    consume(TOKEN_LEFT_BRACE, "Expected '{' before try body.");
+    int from = currentChunk()->count;
+    beginScope();
+    emitByte(OP_TRY);
+    while (!check(TOKEN_RIGHT_BRACE) && !check(TOKEN_EOF)) {
+        declaration();
+    }
+    emitByte(OP_POP); // Pop exception record
+    endScope();
+    int to = currentChunk()->count;
+    uint8_t tryEnd = emitJump(OP_JUMP);
+    consume(TOKEN_RIGHT_BRACE, "Expected '}' after try body.");
+
+    consume(TOKEN_CATCH, "Expected 'catch' after try block.");
+
+    consume(TOKEN_LEFT_BRACE, "Expected '{' before catch body.");
+    int target = currentChunk()->count;
+    beginScope();
+    while (!check(TOKEN_RIGHT_BRACE) && !check(TOKEN_EOF)) {
+        declaration();
+    }
+    endScope();
+    consume(TOKEN_RIGHT_BRACE, "Expected '}' after catch body.");
+
+    patchJump(tryEnd);
+    addTryCatchBlock(currentChunk(), from, to, target);
+}
+
+void throwStatement() {
+    emitByte(OP_NIL); //TODO Instead of parsing for expression()
+    consume(TOKEN_SEMICOLON, "Expect ';' after 'break'.");
+    emitByte(OP_THROW);
+}
+
 static void synchronize() {
     parser.panicMode = false;
 
@@ -1086,6 +1123,10 @@ static void statement() {
         switchStatement();
     } else if (match(TOKEN_WHILE)) {
         whileStatement();
+    } else if (match(TOKEN_TRY)) {
+        tryStatement();
+    } else if (match(TOKEN_THROW)) {
+        throwStatement();
     } else if (match(TOKEN_LEFT_BRACE)) {
         beginScope();
         block();
