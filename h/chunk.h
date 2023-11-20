@@ -52,7 +52,9 @@ typedef enum {
     OP_CLASS,
     OP_INHERIT,
     OP_METHOD,
-    OP_STATIC_METHOD
+    OP_STATIC_METHOD,
+    OP_TRY,
+    OP_THROW
 } OpCode;
 
 typedef struct {
@@ -61,10 +63,21 @@ typedef struct {
 } LineStart;
 
 typedef struct {
+    int from, to;
+    int target;
+} TryCatchBlock;
+
+typedef struct {
     int count;
     int capacity;
     uint8_t *code;
+
+    int tryCatchBlockCount;
+    int tryCatchBlockCapacity;
+    TryCatchBlock *tryCatchBlocks;
+
     ValueArray constants;
+
     int lineCount;
     int lineCapacity;
     LineStart *lines;
@@ -79,5 +92,7 @@ void writeChunk(Chunk *chunk, uint8_t byte, int line);
 int getLine(Chunk *chunk, int instruction);
 
 int addConstant(Chunk *chunk, Value value);
+
+void addTryCatchBlock(Chunk *chunk, int from, int to, int target);
 
 #endif //CLOX2_CHUNK_H

@@ -807,6 +807,8 @@ static InterpretResult run() {
             defineStaticMethod(name);
             break;
         }
+        case OP_TRY:
+        case OP_THROW:break;
         }
     }
 

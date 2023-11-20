@@ -12,6 +12,10 @@ void initChunk(Chunk *chunk) {
     chunk->capacity = 0;
     chunk->code = NULL;
 
+    chunk->tryCatchBlockCount = 0;
+    chunk->tryCatchBlockCapacity = 0;
+    chunk->tryCatchBlocks = 0;
+
     chunk->lineCount = 0;
     chunk->lineCapacity = 0;
     chunk->lines = NULL;
@@ -75,4 +79,20 @@ int addConstant(Chunk *chunk, Value value) {
     writeValueArray(&chunk->constants, value);
     pop();
     return chunk->constants.count - 1;
+}
+
+void addTryCatchBlock(Chunk *chunk, int from, int to, int target) {
+    if (chunk->tryCatchBlockCapacity < chunk->tryCatchBlockCount + 1) {
+        int oldCapacity = chunk->tryCatchBlockCapacity;
+        chunk->tryCatchBlockCapacity = oldCapacity + 2;
+        chunk->tryCatchBlocks = GROW_ARRAY(
+                TryCatchBlock, chunk->tryCatchBlocks,
+                oldCapacity, chunk->tryCatchBlockCapacity);
+    }
+    chunk->tryCatchBlocks[chunk->tryCatchBlockCount] = (TryCatchBlock) {
+            .from = from,
+            .to = to,
+            .target = target
+    };
+    chunk->tryCatchBlockCount++;
 }
