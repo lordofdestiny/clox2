@@ -7,7 +7,6 @@
 #include <stdarg.h>
 #include <string.h>
 #include <math.h>
-#include <limits.h>
 #include "../h/common.h"
 #include "../h/value.h"
 #include "../h/compiler.h"
@@ -76,26 +75,9 @@ static ObjClass *nativeClass(const char *name) {
     return klass;
 }
 
-static bool initExceptionNative(int argCount, Value *args) {
-    if (argCount > 1) {
-        args[-1] = NATIVE_ERROR("Exit takes either 0 arguments or one a string.");
-        return false;
-    }
-    ObjInstance *exception = AS_INSTANCE(args[-1]);
-    if (argCount == 1) {
-        if (!IS_STRING(args[0])) {
-            args[-1] = NATIVE_ERROR("Expected a string as an argument");
-            return false;
-        }
-        tableSet(&exception->fields, copyString("message", 7), OBJ_VAL(args[0]));
-    } else {
-        tableSet(&exception->fields, copyString("message", 7), NIL_VAL);
-    }
-    args[-1] = OBJ_VAL((Obj *) exception);
-    return true;
-}
-
-static void addNativeMethod(ObjClass *klass, const char *name, NativeFn method, int arity) {
+static void addNativeMethod(ObjClass *klass,
+                            const char *name,
+                            NativeFn method, int arity) {
     push(OBJ_VAL((Obj *) copyString(name, (int) strlen(name))));
     push(OBJ_VAL((Obj *) newNative(method, arity)));
     tableSet(&klass->methods, AS_STRING(vm.stack[0]), vm.stack[1]);
@@ -197,13 +179,12 @@ static bool propagateException(void) {
         for (int numHandlers = frame->handlerCount; numHandlers > 0; numHandlers--) {
             ExceptionHandler handler = frame->handlerStack[numHandlers - 1];
             if (instanceof(exception, handler.klass)) {
-                // Probably needed to not mess up shit
                 frame->handlerCount = numHandlers;
                 frame->ip = &getFrameFunction(frame)->chunk.code[handler.handlerAddress];
                 closeUpvalues(frame->slots);
                 return true;
             } else if (handler.finallyAddress != PLACEHOLDER_ADDRESS) {
-                push(TRUE_VAL); // continue propagating once the "finally" block completes
+                push(TRUE_VAL);
                 frame->handlerCount = numHandlers;
                 frame->ip = &getFrameFunction(frame)->chunk.code[handler.finallyAddress];
                 return true;
@@ -298,14 +279,15 @@ bool callNative(Obj *callable, int argCount) {
     if (native->function(argCount, vm.stackTop - argCount)) {
         vm.stackTop -= argCount;
         return true;
-    } else {
-        runtimeError(AS_STRING(vm.stackTop[-argCount - 1])->chars);
-        return false;
     }
+
+    runtimeError(AS_STRING(vm.stackTop[-argCount - 1])->chars);
+    return false;
 }
 
 static bool callValue(Value callee, int argCount) {
     if (IS_OBJ(callee)) return CALL_OBJ(callee, argCount);
+
     runtimeError("Can only call functions and classes.");
     return false;
 }
@@ -315,6 +297,7 @@ static bool invokeFromImpl(Table *methods, ObjString *name, int argCount) {
     if (tableGet(methods, name, &method)) {
         return CALL_OBJ(method, argCount);
     }
+
     runtimeError("Undefined property '%s'.", name->chars);
     return false;
 }
@@ -364,6 +347,10 @@ static bool bindMethod(ObjClass *klass, ObjString *name) {
     return true;
 }
 
+static ObjUpvalue *getUpvalue(CallFrame *frame, int slot) {
+    return ((ObjClosure *) frame->function)->upvalues[slot];
+}
+
 static ObjUpvalue *captureUpvalue(Value *local) {
     ObjUpvalue *prevUpvalue = NULL;
     ObjUpvalue *upvalue = vm.openUpvalues;
@@ -389,7 +376,8 @@ static ObjUpvalue *captureUpvalue(Value *local) {
 }
 
 static void closeUpvalues(const Value *last) {
-    while (vm.openUpvalues != NULL && vm.openUpvalues->location >= last) {
+    while (vm.openUpvalues != NULL &&
+           vm.openUpvalues->location >= last) {
         ObjUpvalue *upvalue = vm.openUpvalues;
         upvalue->closed = *upvalue->location;
         upvalue->location = &upvalue->closed;
@@ -416,7 +404,8 @@ static bool isFalsy(Value value) {
     return IS_NIL(value) || (IS_BOOL(value) && !AS_BOOL(value));
 }
 
-static ObjString *concatenateImpl(char const *buffer1, int length1, char const *buffer2, int length2) {
+static ObjString *concatenateImpl(char const *buffer1, int length1,
+                                  char const *buffer2, int length2) {
     int length = length1 + length2;
     char *chars = ALLOCATE(char, (size_t) length + 1);
     snprintf(chars, length + 1, "%s%s", buffer1, buffer2);
@@ -531,10 +520,8 @@ static InterpretResult run() {
             push(OBJ_VAL(array));
             break;
         }
-        case OP_CONSTANT: {
-            push(READ_CONSTANT());
+        case OP_CONSTANT:push(READ_CONSTANT());
             break;
-        }
         case OP_NIL: push(NIL_VAL);
             break;
         case OP_TRUE:push(BOOL_VAL(true));
@@ -584,18 +571,18 @@ static InterpretResult run() {
         }
         case OP_GET_UPVALUE: {
             uint8_t slot = READ_BYTE();
-            push(*((ObjClosure *) frame->function)->upvalues[slot]->location);
+            push(*getUpvalue(frame, slot)->location);
             break;
         }
         case OP_SET_UPVALUE: {
             uint8_t slot = READ_BYTE();
-            *((ObjClosure *) frame->function)->upvalues[slot]->location = peek(0);
+            *getUpvalue(frame, slot)->location = peek(0);
             break;
         }
         case OP_STATIC_FIELD: {
             ObjString *field = READ_STRING();
             Value value = peek(0);
-            ObjClass *klass = AS_CLASS(peek(1)); // Class
+            ObjClass *klass = AS_CLASS(peek(1));
             tableSet(&klass->fields, field, value);
             pop();
             break;
@@ -816,10 +803,10 @@ static InterpretResult run() {
             ObjString *method = READ_STRING();
             int argCount = READ_BYTE();
             ObjClass *superclass = AS_CLASS(pop());
+            frame->ip = ip;
             if (!invokeFromImpl(&superclass->methods, method, argCount)) {
                 return INTERPRET_RUNTIME_ERROR;
             }
-            frame->ip = ip;
             frame = &vm.frames[vm.frameCount - 1];
             ip = frame->ip;
             break;
@@ -831,13 +818,9 @@ static InterpretResult run() {
             for (int i = 0; i < closure->upvalueCount; i++) {
                 uint8_t isLocal = READ_BYTE();
                 uint8_t index = READ_BYTE();
-                if (isLocal) {
-                    closure->upvalues[i] =
-                            captureUpvalue(frame->slots + index);
-                } else {
-                    closure->upvalues[i] =
-                            ((ObjClosure *) frame->function)->upvalues[index];
-                }
+                closure->upvalues[i] = isLocal
+                                       ? captureUpvalue(frame->slots + index)
+                                       : getUpvalue(frame, index);
             }
             break;
         }
@@ -893,7 +876,8 @@ static InterpretResult run() {
             Value value = peek(0);
             if (IS_INSTANCE(value)) {
                 tableSet(&AS_INSTANCE(value)->fields,
-                         copyString("stackTrace", 10), stacktrace);
+                         copyString("stackTrace", 10),
+                         stacktrace);
             }
             if (propagateException()) {
                 frame = &vm.frames[vm.frameCount - 1];

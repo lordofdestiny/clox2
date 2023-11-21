@@ -109,3 +109,22 @@ NativeMethodDef nativeMethods[] = {
         {"exit",        -1, exitNative},
         {NULL,          0, NULL}
 };
+
+bool initExceptionNative(int argCount, Value *args) {
+    if (argCount > 1) {
+        args[-1] = NATIVE_ERROR("Exit takes either 0 arguments or one a string.");
+        return false;
+    }
+    ObjInstance *exception = AS_INSTANCE(args[-1]);
+    if (argCount == 1) {
+        if (!IS_STRING(args[0])) {
+            args[-1] = NATIVE_ERROR("Expected a string as an argument");
+            return false;
+        }
+        tableSet(&exception->fields, copyString("message", 7), OBJ_VAL(args[0]));
+    } else {
+        tableSet(&exception->fields, copyString("message", 7), NIL_VAL);
+    }
+    args[-1] = OBJ_VAL((Obj *) exception);
+    return true;
+}

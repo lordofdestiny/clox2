@@ -11,7 +11,6 @@
 
 #define NATIVE_ERROR(msg) (OBJ_VAL((Obj*) copyString(msg, strlen(msg))))
 
-
 typedef struct {
     const char *name;
     const int arity;
@@ -19,5 +18,7 @@ typedef struct {
 } NativeMethodDef;
 
 extern NativeMethodDef nativeMethods[];
+
+bool initExceptionNative(int argCount, Value *args);
 
 #endif //CLOX2_NATIVE_H
