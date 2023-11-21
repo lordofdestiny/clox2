@@ -53,9 +53,10 @@ typedef enum {
     OP_INHERIT,
     OP_METHOD,
     OP_STATIC_METHOD,
+    OP_THROW,
     OP_PUSH_EXCEPTION_HANDLER,
     OP_POP_EXCEPTION_HANDLER,
-    OP_THROW
+    OP_PROPAGATE_EXCEPTION
 } OpCode;
 
 typedef struct {

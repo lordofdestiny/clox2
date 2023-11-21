@@ -165,11 +165,10 @@ static Value getStackTrace(void) {
         ObjFunction *function = getFrameFunction(frame);
         ptrdiff_t instruction = frame->ip - function->chunk.code - 1;
         uint32_t lineno = getLine(&function->chunk, (int) instruction);
-        index += snprintf(&stackTrace[index],
-                          MAX_LINE_LENGTH,
-                          "[line %d] in %s()\n",
-                          lineno,
-                          function->name == NULL ? "script" : function->name->chars);
+        index += snprintf(
+                &stackTrace[index], MAX_LINE_LENGTH,
+                "[line %d] in %s()\n", lineno,
+                function->name == NULL ? "script" : function->name->chars);
     }
     stackTrace = GROW_ARRAY(char, stackTrace, maxStackTraceLength, index + 1);
     return OBJ_VAL(takeString(stackTrace, index));
@@ -183,6 +182,7 @@ static bool instanceof(ObjInstance *instance, Value klass) {
 static void closeUpvalues(const Value *last);
 
 static bool propagateException(void) {
+#define PLACEHOLDER_ADDRESS 0xffff
     Value value = peek(0);
     if (!IS_INSTANCE(value)) {
         // TODO add printValueError, same as printValue
@@ -199,9 +199,13 @@ static bool propagateException(void) {
             if (instanceof(exception, handler.klass)) {
                 // Probably needed to not mess up shit
                 frame->handlerCount = numHandlers;
-                printf("Handler count: %d\n", numHandlers);
                 frame->ip = &getFrameFunction(frame)->chunk.code[handler.handlerAddress];
                 closeUpvalues(frame->slots);
+                return true;
+            } else if (handler.finallyAddress != PLACEHOLDER_ADDRESS) {
+                push(TRUE_VAL); // continue propagating once the "finally" block completes
+                frame->handlerCount = numHandlers;
+                frame->ip = &getFrameFunction(frame)->chunk.code[handler.finallyAddress];
                 return true;
             }
         }
@@ -222,17 +226,19 @@ static bool propagateException(void) {
         fflush(stderr);
     }
     return false;
+#undef PLACEHOLDER_ADDRESS
 }
 
-static void pushExceptionHandler(Value type, uint16_t handlerAddress) {
+static void pushExceptionHandler(Value type, uint16_t handlerAddress, uint16_t finallyAddress) {
     CallFrame *frame = &vm.frames[vm.frameCount - 1];
     if (frame->handlerCount == MAX_HANDLER_FRAMES) {
         runtimeError("Too many nexted exception handlers in one function.");
         return;
     }
     frame->handlerStack[frame->handlerCount++] = (ExceptionHandler) {
-            .handlerAddress=handlerAddress,
-            .klass = type
+            .klass = type,
+            .handlerAddress = handlerAddress,
+            .finallyAddress = finallyAddress,
     };
 }
 
@@ -899,16 +905,28 @@ static InterpretResult run() {
         case OP_PUSH_EXCEPTION_HANDLER: {
             ObjString *typeName = READ_STRING();
             uint16_t handlerAddress = READ_SHORT();
+            uint16_t finallyAddress = READ_SHORT();
             Value value;
             if (!tableGet(&vm.globals, typeName, &value) || !IS_CLASS(value)) {
+                frame->ip = ip;
                 runtimeError("'%s' is not a type to catch", typeName->chars);
                 return INTERPRET_RUNTIME_ERROR;
             }
-            pushExceptionHandler(value, handlerAddress);
+            pushExceptionHandler(value, handlerAddress, finallyAddress);
             break;
         }
         case OP_POP_EXCEPTION_HANDLER:frame->handlerCount--;
             break;
+        case OP_PROPAGATE_EXCEPTION: {
+            frame->handlerCount--;
+            frame->ip = ip;
+            if (propagateException()) {
+                frame = &vm.frames[vm.frameCount - 1];
+                ip = frame->ip;
+                break;
+            }
+            return INTERPRET_RUNTIME_ERROR;
+        }
         }
     }
 

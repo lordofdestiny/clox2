@@ -21,8 +21,8 @@
 
 typedef enum {
     PREC_NONE,
-    PREC_ASSIGNMENT,    // =, +=, -=, *=, /=, %=
-    PREC_CONTAINER,
+    PREC_ASSIGNMENT,    // = += -= *= /= %=
+    PREC_CONTAINER,     // [ element1, ... , elementN ]
     PREC_CONDITIONAL,   // ?:
     PREC_OR,            // or
     PREC_AND,           // and
@@ -31,7 +31,7 @@ typedef enum {
     PREC_TERM,          // + -
     PREC_FACTOR,        // * /
     PREC_UNARY,         // ! -
-    PREC_CALL_INDEX,          // ()
+    PREC_CALL_INDEX,    // func(a, ... ,z), arr[i]
     PREC_PRIMARY
 } Precedence;
 
@@ -250,7 +250,7 @@ static void initCompiler(Compiler *compiler, FunctionType type) {
     compiler->function = newFunction();
     current = compiler;
 
-    // Has to be called here because GC will try to mark its entires
+    // Has to be called here because GC will try to mark its entries
     initTable(&compiler->stringConstants);
 
     if (type == TYPE_LAMBDA) {
@@ -1055,12 +1055,18 @@ static void tryCatchStatement() {
     int handlerAddress = currentChunk()->count;
     emitBytes(0xFF, 0xFF);
 
+    int finallyAddress = currentChunk()->count;
+    emitBytes(0xFF, 0xFF);
+
     statement();
     emitByte(OP_POP_EXCEPTION_HANDLER);
 
-    uint8_t successJump = emitJump(OP_JUMP);
+    bool tryOnly = true;
 
+    uint8_t successJump = emitJump(OP_JUMP);
     if (match(TOKEN_CATCH)) {
+        tryOnly = false;
+
         beginScope();
         consume(TOKEN_LEFT_PAREN, "Expect '(' after catch.");
         consume(TOKEN_IDENTIFIER, "Expect type name to catch.");
@@ -1080,8 +1086,25 @@ static void tryCatchStatement() {
         statement();
         endScope();
     }
-
     patchJump(successJump);
+
+    if (match(TOKEN_FINALLY)) {
+        tryOnly = false;
+        emitByte(OP_FALSE);
+
+        patchAddress(finallyAddress);
+        statement();
+
+        int continueExecution = emitJump(OP_JUMP_IF_FALSE);
+        emitByte(OP_POP);
+        emitByte(OP_PROPAGATE_EXCEPTION);
+        patchJump(continueExecution);
+        emitByte(OP_POP);
+    }
+
+    if (tryOnly) {
+        error("Try must be followed by a catch and/or finally block.");
+    }
 }
 
 void throwStatement() {
@@ -1318,7 +1341,7 @@ static void literal(bool canAssign) {
 #pragma ide diagnostic ignored "UnusedParameter"
 
 static void grouping(bool canAssign) {
-#pragma clang diagnostic
+#pragma clang diagnostic pop
 
     expression();
     consume(TOKEN_RIGHT_PAREN, "Expect ')' after expression");
@@ -1500,6 +1523,7 @@ ParseRule rules[] = {
         [TOKEN_CLASS]         = {NULL, NULL, PREC_NONE},
         [TOKEN_ELSE]          = {NULL, NULL, PREC_NONE},
         [TOKEN_FALSE]         = {literal, NULL, PREC_NONE},
+        [TOKEN_FINALLY]       = {NULL, NULL, PREC_NONE},
         [TOKEN_FOR]           = {NULL, NULL, PREC_NONE},
         [TOKEN_FUN]           = {NULL, NULL, PREC_NONE},
         [TOKEN_IF]            = {NULL, NULL, PREC_NONE},

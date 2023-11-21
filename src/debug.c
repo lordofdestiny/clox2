@@ -53,16 +53,22 @@ static int byteInstruction(const char *name, Chunk *chunk, int offset) {
 static int jumpInstruction(const char *name, int sign, Chunk *chunk, int offset) {
     uint16_t jump = (uint16_t) (chunk->code[offset + 1] << 8);
     jump |= chunk->code[offset + 2];
+
     printf("%-16s %4d -> %d\n", name, offset, offset + 3 + sign * jump);
     return offset + 3;
 }
 
 static int exceptionHandlerInstruction(const char *name, Chunk *chunk, int offset) {
     uint8_t type = chunk->code[offset + 1];
+
     uint16_t handlerAddress = (uint16_t) (chunk->code[offset + 2] << 8);
     handlerAddress |= chunk->code[offset + 3];
-    printf("%-16s %4d -> %d\n", name, type, handlerAddress);
-    return offset + 4;
+
+    uint16_t finallyAddress = (uint16_t) (chunk->code[offset + 4] << 8);
+    finallyAddress |= chunk->code[offset + 5];
+
+    printf("%-16s %4d -> %d, %d\n", name, type, handlerAddress, finallyAddress);
+    return offset + 6;
 }
 
 int disassembleInstruction(Chunk *chunk, int offset) {
@@ -136,6 +142,7 @@ int disassembleInstruction(Chunk *chunk, int offset) {
     case OP_THROW: return simpleInstruction("OP_THROW", offset);
     case OP_PUSH_EXCEPTION_HANDLER:return exceptionHandlerInstruction("OP_PUSH_EXCEPTION_HANDLER", chunk, offset);
     case OP_POP_EXCEPTION_HANDLER: return simpleInstruction("OP_POP_EXCEPTION_HANDLER", offset);
+    case OP_PROPAGATE_EXCEPTION: return simpleInstruction("OP_PROPAGATE_EXCEPTION", offset);
     default:printf("Unknown opcode %d\n", instruction);
         return offset + 1;
     }

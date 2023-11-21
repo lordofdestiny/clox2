@@ -15,8 +15,9 @@
 #define MAX_HANDLER_FRAMES 16
 
 typedef struct {
-    uint16_t handlerAddress;
     Value klass;
+    uint16_t handlerAddress;
+    uint16_t finallyAddress;
 } ExceptionHandler;
 
 typedef struct {
