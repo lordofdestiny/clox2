@@ -236,6 +236,11 @@ static void patchJump(int offset) {
     currentChunk()->code[offset + 1] = jump & 0xFF;
 }
 
+static void patchAddress(int offset) {
+    currentChunk()->code[offset] = (currentChunk()->count >> 8) & 0xff;
+    currentChunk()->code[offset + 1] = currentChunk()->count & 0xff;
+}
+
 static void initCompiler(Compiler *compiler, FunctionType type) {
     compiler->enclosing = current;
     compiler->function = NULL;
@@ -733,6 +738,36 @@ void addBreakLocation(int location) {
     loc->count++;
 }
 
+// TODO look into optimizing 'break' by unwinding stack
+//  through the VM, closing upvalues directly from OP_CLOSE_UPVALUE
+//  might still need to emit OP_POP for other values
+//  What if we add a custom instruction
+static void breakStatement() {
+    if (current->loopType == LOOP_NONE && currentBreakLocations == NULL) {
+        error("Can't use 'break' outside a loop/switch statements.");
+    }
+
+    if (currentBreakLocations != NULL &&
+        currentBreakLocations->count == MAX_BREAK_LOCATIONS) {
+        error("Too many break statements in the loop");
+    }
+
+    consume(TOKEN_SEMICOLON, "Expect ';' after 'break'.");
+
+    for (int i = current->localCount - 1;
+         i >= 0 && current->locals[i].depth > current->innermostLoopScopeDepth;
+         i--) {
+        if (current->locals[i].isCaptured) {
+            emitByte(OP_CLOSE_UPVALUE);
+        } else {
+            emitByte(OP_POP);
+        }
+    }
+
+    int breakJump = emitJump(OP_JUMP);
+    addBreakLocation(breakJump);
+}
+
 static void forStatement() {
     beginScope();
 
@@ -831,32 +866,10 @@ static void forStatement() {
     endScope();
 }
 
-static void breakStatement() {
-    if (current->loopType == LOOP_NONE && currentBreakLocations == NULL) {
-        error("Can't use 'break' outside a loop/switch statements.");
-    }
-
-    if (currentBreakLocations != NULL &&
-        currentBreakLocations->count == MAX_BREAK_LOCATIONS) {
-        error("Too many break statements in the loop");
-    }
-
-    consume(TOKEN_SEMICOLON, "Expect ';' after 'break'.");
-
-    for (int i = current->localCount - 1;
-         i >= 0 && current->locals[i].depth > current->innermostLoopScopeDepth;
-         i--) {
-        if (current->locals[i].isCaptured) {
-            emitByte(OP_CLOSE_UPVALUE);
-        } else {
-            emitByte(OP_POP);
-        }
-    }
-
-    int breakJump = emitJump(OP_JUMP);
-    addBreakLocation(breakJump);
-}
-
+// TODO look into optimizing 'continue' by unwinding stack
+//  through the VM, closing upvalues directly from OP_CLOSE_UPVALUE
+//  might still need to emit OP_POP for other values
+//  What if we add a custom instruction
 static void continueStatement() {
     if (current->loopType == LOOP_NONE) {
         error("Can't use 'continue' outside of a loop.");
@@ -1033,37 +1046,46 @@ static void whileStatement() {
 }
 
 
-static void tryStatement() {
-    consume(TOKEN_LEFT_BRACE, "Expected '{' before try body.");
-    int from = currentChunk()->count;
-    beginScope();
-    emitByte(OP_TRY);
-    while (!check(TOKEN_RIGHT_BRACE) && !check(TOKEN_EOF)) {
-        declaration();
+static void tryCatchStatement() {
+    emitByte(OP_PUSH_EXCEPTION_HANDLER);
+
+    int exceptionType = currentChunk()->count;
+    emitByte(0xFF);
+
+    int handlerAddress = currentChunk()->count;
+    emitBytes(0xFF, 0xFF);
+
+    statement();
+    emitByte(OP_POP_EXCEPTION_HANDLER);
+
+    uint8_t successJump = emitJump(OP_JUMP);
+
+    if (match(TOKEN_CATCH)) {
+        beginScope();
+        consume(TOKEN_LEFT_PAREN, "Expect '(' after catch.");
+        consume(TOKEN_IDENTIFIER, "Expect type name to catch.");
+        // TODO test how this behaves with random values
+        uint8_t name = identifierConstant(&parser.previous);
+        currentChunk()->code[exceptionType] = name;
+        patchAddress(handlerAddress);
+        if (match(TOKEN_AS)) {
+            consume(TOKEN_IDENTIFIER, "Expect identifier for exception instance.");
+            addLocal(parser.previous);
+            markInitialized();
+            uint8_t ex_var = resolveLocal(current, &parser.previous);
+            emitBytes(OP_SET_LOCAL, ex_var);
+        }
+        consume(TOKEN_RIGHT_PAREN, "Expect ')' after catch statement.");
+        emitByte(OP_POP_EXCEPTION_HANDLER);
+        statement();
+        endScope();
     }
-    emitByte(OP_POP); // Pop exception record
-    endScope();
-    int to = currentChunk()->count;
-    uint8_t tryEnd = emitJump(OP_JUMP);
-    consume(TOKEN_RIGHT_BRACE, "Expected '}' after try body.");
 
-    consume(TOKEN_CATCH, "Expected 'catch' after try block.");
-
-    consume(TOKEN_LEFT_BRACE, "Expected '{' before catch body.");
-    int target = currentChunk()->count;
-    beginScope();
-    while (!check(TOKEN_RIGHT_BRACE) && !check(TOKEN_EOF)) {
-        declaration();
-    }
-    endScope();
-    consume(TOKEN_RIGHT_BRACE, "Expected '}' after catch body.");
-
-    patchJump(tryEnd);
-    addTryCatchBlock(currentChunk(), from, to, target);
+    patchJump(successJump);
 }
 
 void throwStatement() {
-    emitByte(OP_NIL); //TODO Instead of parsing for expression()
+    expression();
     consume(TOKEN_SEMICOLON, "Expect ';' after 'break'.");
     emitByte(OP_THROW);
 }
@@ -1127,7 +1149,7 @@ static void statement() {
     } else if (match(TOKEN_WHILE)) {
         whileStatement();
     } else if (match(TOKEN_TRY)) {
-        tryStatement();
+        tryCatchStatement();
     } else if (match(TOKEN_THROW)) {
         throwStatement();
     } else if (match(TOKEN_LEFT_BRACE)) {
@@ -1474,6 +1496,7 @@ ParseRule rules[] = {
         [TOKEN_STRING]        = {string, NULL, PREC_NONE},
         [TOKEN_NUMBER]        = {number, NULL, PREC_NONE},
         [TOKEN_AND]           = {NULL, and_, PREC_AND},
+        [TOKEN_AS]            = {NULL, NULL, PREC_NONE},
         [TOKEN_CLASS]         = {NULL, NULL, PREC_NONE},
         [TOKEN_ELSE]          = {NULL, NULL, PREC_NONE},
         [TOKEN_FALSE]         = {literal, NULL, PREC_NONE},

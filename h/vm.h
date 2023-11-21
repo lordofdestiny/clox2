@@ -12,11 +12,19 @@
 
 #define FRAMES_MAX 64
 #define STACK_MAX (FRAMES_MAX * UINT8_COUNT)
+#define MAX_HANDLER_FRAMES 16
+
+typedef struct {
+    uint16_t handlerAddress;
+    Value klass;
+} ExceptionHandler;
 
 typedef struct {
     Obj *function;
     uint8_t *ip;
     Value *slots;
+    uint8_t handlerCount;
+    ExceptionHandler handlerStack[MAX_HANDLER_FRAMES];
 } CallFrame;
 
 typedef struct {

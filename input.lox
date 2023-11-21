@@ -1,50 +1,54 @@
-print Exception().message;
-print Exception("Custom message").message;
+class Test {}
+class Exception{}
 
 try {
-    print "hello";
-}catch {
-    print "no hello";
+    try {
+        throw Test();
+    } catch(Exception) {
+        print "A";
+    }
+} catch(Test) {
+    print "B";
 }
+throw Test();
 
-exit();
 
-var N = 20;
-
-fun fib(n) {
-    if(n < 2) return n;
-    return fib(n-2) + fib(n-1);
-}
-
+// var N = 20;
+//
+// fun fib(n) {
+//     if(n < 2) return n;
+//     return fib(n-2) + fib(n-1);
+// }
+//
 // var start = clock();
 // var result = fib(N);
 // var end = clock();
 // print result;
 // print end - start;
-
-class Fibo {
-    static calc(n) {
-        var t = |x| x;
-        if( n < 2) return n;
-        return Fibo.calc(n-1) + Fibo.calc(n-2);
-    }
-    fib(n) {
-        if(n < 2) return n;
-        return this.fib(n-2) + this.fib(n-1);
-    }
-}
-
-var start = clock();
-var result = Fibo.calc(N);
-var end = clock();
-print result;
-print end - start;
-
-var start = clock();
-var result = Fibo().fib(N);
-var end = clock();
-print result;
-print end - start;
+//
+// class Fibo {
+//     static calc(n) {
+//         var t = |x| x;
+//         if( n < 2) return n;
+//         return Fibo.calc(n-1) + Fibo.calc(n-2);
+//     }
+//     fib(n) {
+//         if(n < 2) return n;
+//         return this.fib(n-2) + this.fib(n-1);
+//     }
+// }
+//
+// var start = clock();
+// var result = Fibo.calc(N);
+// var end = clock();
+// print result;
+// print end - start;
+//
+// var start = clock();
+// var result = Fibo().fib(N);
+// var end = clock();
+// print result;
+// print end - start;
 
 
 //for(var i = 0; i < 50000000; i = i+1) {

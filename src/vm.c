@@ -22,6 +22,9 @@ static void resetStack() {
     vm.stackTop = vm.stack;
     vm.frameCount = 0;
     vm.openUpvalues = NULL;
+    for (int i = 0; i < vm.frameCount; i++) {
+        vm.frames[i].handlerCount = 0;
+    }
 }
 
 static inline ObjFunction *getFrameFunction(CallFrame *frame) {
@@ -79,24 +82,14 @@ static bool initExceptionNative(int argCount, Value *args) {
         return false;
     }
     ObjInstance *exception = AS_INSTANCE(args[-1]);
-    const char *message = "message";
-    int msg_len = (int) strlen(message);
-    ObjString *messageString = tableFindOrAddString(
-            &vm.strings, message,
-            msg_len, hashString(message, msg_len));
-    if (argCount == 0) {
-        const char *defaultText = "Exception occurred.";
-        int len = (int) strlen(defaultText);
-        ObjString *messageText = tableFindOrAddString(
-                &vm.strings, defaultText,
-                len, hashString(defaultText, len));
-        tableSet(&exception->fields, messageString, OBJ_VAL(messageText));
-    } else {
+    if (argCount == 1) {
         if (!IS_STRING(args[0])) {
             args[-1] = NATIVE_ERROR("Expected a string as an argument");
             return false;
         }
-        tableSet(&exception->fields, messageString, OBJ_VAL(args[0]));
+        tableSet(&exception->fields, copyString("message", 7), OBJ_VAL(args[0]));
+    } else {
+        tableSet(&exception->fields, copyString("message", 7), NIL_VAL);
     }
     args[-1] = OBJ_VAL((Obj *) exception);
     return true;
@@ -162,6 +155,86 @@ static Value peek(int distance) {
     return vm.stackTop[-1 - distance];
 }
 
+static Value getStackTrace(void) {
+#define MAX_LINE_LENGTH 512
+    int maxStackTraceLength = vm.frameCount * MAX_LINE_LENGTH;
+    char *stackTrace = ALLOCATE(char, maxStackTraceLength);
+    uint16_t index = 0;
+    for (int i = vm.frameCount - 1; i >= 0; i--) {
+        CallFrame *frame = &vm.frames[i];
+        ObjFunction *function = getFrameFunction(frame);
+        ptrdiff_t instruction = frame->ip - function->chunk.code - 1;
+        uint32_t lineno = getLine(&function->chunk, (int) instruction);
+        index += snprintf(&stackTrace[index],
+                          MAX_LINE_LENGTH,
+                          "[line %d] in %s()\n",
+                          lineno,
+                          function->name == NULL ? "script" : function->name->chars);
+    }
+    stackTrace = GROW_ARRAY(char, stackTrace, maxStackTraceLength, index + 1);
+    return OBJ_VAL(takeString(stackTrace, index));
+#undef MAX_LINE_LENGTH
+}
+
+static bool instanceof(ObjInstance *instance, Value klass) {
+    return IS_CLASS(klass) && instance->klass == AS_CLASS(klass);
+}
+
+static void closeUpvalues(const Value *last);
+
+static bool propagateException(void) {
+    Value value = peek(0);
+    if (!IS_INSTANCE(value)) {
+        // TODO add printValueError, same as printValue
+        //  but prints to stderr
+        fprintf(stderr, "Unhandled value\n");
+        return false;
+    }
+    ObjInstance *exception = AS_INSTANCE(value);
+
+    while (vm.frameCount > 0) {
+        CallFrame *frame = &vm.frames[vm.frameCount - 1];
+        for (int numHandlers = frame->handlerCount; numHandlers > 0; numHandlers--) {
+            ExceptionHandler handler = frame->handlerStack[numHandlers - 1];
+            if (instanceof(exception, handler.klass)) {
+                // Probably needed to not mess up shit
+                frame->handlerCount = numHandlers;
+                printf("Handler count: %d\n", numHandlers);
+                frame->ip = &getFrameFunction(frame)->chunk.code[handler.handlerAddress];
+                closeUpvalues(frame->slots);
+                return true;
+            }
+        }
+        vm.frameCount--;
+    }
+    fprintf(stderr, "Unhandled %s", exception->klass->name->chars);
+    Value exceptionClass, message;
+    if (tableGet(&vm.globals, copyString("Exception", 9), &exceptionClass) &&
+        exception->klass == AS_CLASS(exceptionClass) &&
+        tableGet(&exception->fields, copyString("message", 7), &message) &&
+        IS_STRING(message)) {
+        fprintf(stderr, ": \"%s\"", AS_STRING(message)->chars);
+    }
+    fprintf(stderr, "\n");
+    Value stacktrace;
+    if (tableGet(&exception->fields, copyString("stackTrace", 10), &stacktrace)) {
+        fprintf(stderr, "%s", AS_CSTRING(stacktrace));
+        fflush(stderr);
+    }
+    return false;
+}
+
+static void pushExceptionHandler(Value type, uint16_t handlerAddress) {
+    CallFrame *frame = &vm.frames[vm.frameCount - 1];
+    if (frame->handlerCount == MAX_HANDLER_FRAMES) {
+        runtimeError("Too many nexted exception handlers in one function.");
+        return;
+    }
+    frame->handlerStack[frame->handlerCount++] = (ExceptionHandler) {
+            .handlerAddress=handlerAddress,
+            .klass = type
+    };
+}
 
 static bool callFunctionLike(Obj *callee, ObjFunction *function, int argCount) {
     if (argCount != function->arity) {
@@ -179,6 +252,7 @@ static bool callFunctionLike(Obj *callee, ObjFunction *function, int argCount) {
     frame->function = (Obj *) callee;
     frame->ip = function->chunk.code;
     frame->slots = vm.stackTop - argCount - 1;
+    frame->handlerCount = 0;
     return true;
 }
 
@@ -807,8 +881,34 @@ static InterpretResult run() {
             defineStaticMethod(name);
             break;
         }
-        case OP_TRY:
-        case OP_THROW:break;
+        case OP_THROW: {
+            frame->ip = ip;
+            Value stacktrace = getStackTrace();
+            Value value = peek(0);
+            if (IS_INSTANCE(value)) {
+                tableSet(&AS_INSTANCE(value)->fields,
+                         copyString("stackTrace", 10), stacktrace);
+            }
+            if (propagateException()) {
+                frame = &vm.frames[vm.frameCount - 1];
+                ip = frame->ip;
+                break;
+            }
+            return INTERPRET_RUNTIME_ERROR;
+        }
+        case OP_PUSH_EXCEPTION_HANDLER: {
+            ObjString *typeName = READ_STRING();
+            uint16_t handlerAddress = READ_SHORT();
+            Value value;
+            if (!tableGet(&vm.globals, typeName, &value) || !IS_CLASS(value)) {
+                runtimeError("'%s' is not a type to catch", typeName->chars);
+                return INTERPRET_RUNTIME_ERROR;
+            }
+            pushExceptionHandler(value, handlerAddress);
+            break;
+        }
+        case OP_POP_EXCEPTION_HANDLER:frame->handlerCount--;
+            break;
         }
     }
 
