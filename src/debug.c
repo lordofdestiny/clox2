@@ -17,7 +17,7 @@ void disassembleChunk(Chunk *chunk, const char *name) {
 
 static int constantInstruction(char *name, Chunk *chunk, int offset) {
     uint8_t constant = chunk->code[offset + 1];
-    printf("%-16s %4d '", name, constant);
+    printf("%-29s %4d '", name, constant);
     printValue(stdout, chunk->constants.values[constant]);
     printf("'\n");
     return offset + 2;
@@ -26,14 +26,14 @@ static int constantInstruction(char *name, Chunk *chunk, int offset) {
 static int longOperandInstruction(char *name, Chunk *chunk, int offset) {
     uint16_t constant = (uint16_t) (chunk->code[offset + 1] << 8);
     constant |= chunk->code[offset + 2];
-    printf("%-16s %4d\n", name, constant);
+    printf("%-29s %4d\n", name, constant);
     return offset + 3;
 }
 
 static int invokeInstruction(const char *name, Chunk *chunk, int offset) {
     uint8_t constant = chunk->code[offset + 1];
     uint8_t argCount = chunk->code[offset + 2];
-    printf("%-16s (%d args) %4d '", name, argCount, constant);
+    printf("%-29s (%d args) %4d '", name, argCount, constant);
     printValue(stdout, chunk->constants.values[constant]);
     printf("'\n");
     return offset + 3;
@@ -46,7 +46,7 @@ static int simpleInstruction(const char *name, int offset) {
 
 static int byteInstruction(const char *name, Chunk *chunk, int offset) {
     uint8_t slot = chunk->code[offset + 1];
-    printf("%-16s %4d\n", name, slot);
+    printf("%-29s %4d\n", name, slot);
     return offset + 2;
 }
 
@@ -54,14 +54,14 @@ static int jumpInstruction(const char *name, int sign, Chunk *chunk, int offset)
     uint16_t jump = (uint16_t) (chunk->code[offset + 1] << 8);
     jump |= chunk->code[offset + 2];
 
-    printf("%-16s %4d -> %d\n", name, offset, offset + 3 + sign * jump);
+    printf("%-29s %4d -> %d\n", name, offset, offset + 3 + sign * jump);
     return offset + 3;
 }
 
 static int closureInstruction(const char *name, Chunk *chunk, int offset) {
     offset++;
     uint8_t constant = chunk->code[offset++];
-    printf("%-16s %4d ", name, constant);
+    printf("%-29s %4d ", name, constant);
     printValue(stdout, chunk->constants.values[constant]);
     printf("\n");
 
@@ -84,7 +84,11 @@ static int exceptionHandlerInstruction(const char *name, Chunk *chunk, int offse
     uint16_t finallyAddress = (uint16_t) (chunk->code[offset + 4] << 8);
     finallyAddress |= chunk->code[offset + 5];
 
-    printf("%-16s %4d -> %d, %d\n", name, type, handlerAddress, finallyAddress);
+    if (finallyAddress != 0xFFFF) {
+        printf("%-29s %4d -> %d, %d\n", name, type, handlerAddress, finallyAddress);
+    } else {
+        printf("%-29s %4d -> %d\n", name, type, handlerAddress);
+    }
     return offset + 6;
 }
 
