@@ -50,15 +50,15 @@ void freeValueArray(ValueArray *array) {
 
 #ifdef NAN_BOXING
 
-void printValue(Value value) {
+void printValue(FILE *out, Value value) {
     if (IS_BOOL(value)) {
-        printf(AS_BOOL(value) ? "true" : "false");
+        fprintf(out, AS_BOOL(value) ? "true" : "false");
     } else if (IS_NIL(value)) {
-        printf("nil");
+        fprintf(out, "nil");
     } else if (IS_NUMBER(value)) {
-        printf("%g", AS_NUMBER(value));
+        fprintf(out, "%g", AS_NUMBER(value));
     } else if (IS_OBJ(value)) {
-        printObject(value);
+        printObject(out, value);
     }
 }
 

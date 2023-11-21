@@ -26,11 +26,11 @@ static Obj *allocateObject(size_t size, ObjType type) {
     return object;
 }
 
-void printObject(Value value) {
-    AS_OBJ(value)->vtp->print(AS_OBJ(value));
+void printObject(FILE *out, Value value) {
+    AS_OBJ(value)->vtp->print(AS_OBJ(value), out);
 }
 
-static void printFunctionImpl(ObjFunction *function);
+static void printFunctionImpl(ObjFunction *function, FILE *out);
 
 ObjArray *newArray() {
     ObjArray *array = ALLOCATE_OBJ(ObjArray, OBJ_ARRAY);
@@ -51,15 +51,15 @@ static void freeArray(Obj *object) {
     FREE(ObjArray, object);
 }
 
-static void printArray(Obj *object) {
+static void printArray(Obj *object, FILE *out) {
     ObjArray *objArray = (ObjArray *) object;
     ValueArray *array = &objArray->array;
-    printf("[");
+    fprintf(out, "[");
     for (int i = 0; i < array->count; i++) {
         if (IS_STRING(array->values[i])) {
             printf("\"");
         }
-        printValue(array->values[i]);
+        printValue(out, array->values[i]);
         if (IS_STRING(array->values[i])) {
             printf("\"");
         }
@@ -87,12 +87,12 @@ static void freeBoundMethod(Obj *object) {
     FREE(ObjBoundMethod, object);
 }
 
-static void printBoundMethod(Obj *obj) {
+static void printBoundMethod(Obj *obj, FILE *out) {
     Obj *method = ((ObjBoundMethod *) obj)->method;
     ObjFunction *fun = method->type == OBJ_FUNCTION
                        ? (ObjFunction *) method
                        : ((ObjClosure *) method)->function;
-    printFunctionImpl(fun);
+    printFunctionImpl(fun, out);
 }
 
 ObjClass *newClass(ObjString *name) {
@@ -119,8 +119,8 @@ static void freeClass(Obj *object) {
     FREE(ObjClass, object);
 }
 
-static void printClass(Obj *obj) {
-    printf("<class %s>", ((ObjClass *) obj)->name->chars);
+static void printClass(Obj *obj, FILE *out) {
+    fprintf(out, "<class %s>", ((ObjClass *) obj)->name->chars);
 }
 
 ObjClosure *newClosure(ObjFunction *function) {
@@ -151,8 +151,8 @@ static void freeClosure(Obj *object) {
     FREE(ObjClosure, object);
 }
 
-static void printClosure(Obj *obj) {
-    printFunctionImpl(((ObjClosure *) obj)->function);
+static void printClosure(Obj *obj, FILE *out) {
+    printFunctionImpl(((ObjClosure *) obj)->function, out);
 }
 
 ObjFunction *newFunction() {
@@ -176,8 +176,8 @@ static void freeFunction(Obj *object) {
     FREE(ObjFunction, object);
 }
 
-static void printFunction(Obj *obj) {
-    printFunctionImpl(((ObjFunction *) obj));
+static void printFunction(Obj *obj, FILE *out) {
+    printFunctionImpl(((ObjFunction *) obj), out);
 }
 
 ObjInstance *newInstance(ObjClass *klass) {
@@ -199,9 +199,9 @@ static void freeInstance(Obj *object) {
     FREE(ObjInstance, object);
 }
 
-static void printInstance(Obj *obj) {
+static void printInstance(Obj *obj, FILE *out) {
     ObjInstance *instance = (ObjInstance *) obj;
-    printf("<instance %s>", instance->klass->name->chars);
+    fprintf(out, "<instance %s>", instance->klass->name->chars);
 }
 
 ObjNative *newNative(NativeFn function, int arity) {
@@ -215,9 +215,8 @@ static void freeNative(Obj *object) {
     FREE(ObjNative, object);
 }
 
-static void printNative(Obj *obj) {
-    // TODO see if this can be done in a way that displays more information
-    printf("<native fn>");
+static void printNative(Obj *obj, FILE *out) {
+    fprintf(out, "<native fn>");
 }
 
 static ObjString *allocateString(char *chars, int length,
@@ -272,8 +271,8 @@ static void freeString(Obj *object) {
     FREE(ObjString, object);
 }
 
-static void printString(Obj *obj) {
-    printf("%s", ((ObjString *) obj)->chars);
+static void printString(Obj *obj, FILE *out) {
+    fprintf(out, "%s", ((ObjString *) obj)->chars);
 }
 
 ObjUpvalue *newUpvalue(Value *slot) {
@@ -292,17 +291,19 @@ static void freeUpvalue(Obj *object) {
     FREE(ObjUpvalue, object);
 }
 
-static void printUpvalue(Obj *obj) {
-    // TODO see if this can be done in a way that displays more information
-    printf("upvalue");
+static void printUpvalue(Obj *obj, FILE *out) {
+    ObjUpvalue *upvalue = (ObjUpvalue *) obj;
+    fprintf(out, "<upvalue ");
+    printValue(out, *upvalue->location);
+    fprintf(out, ">");
 }
 
-static void printFunctionImpl(ObjFunction *function) {
+static void printFunctionImpl(ObjFunction *function, FILE *out) {
     if (function->name == NULL) {
         printf("<script>");
         return;
     }
-    printf("<fn %s>", function->name->chars);
+    fprintf(out, "<fn %s>", function->name->chars);
 }
 
 static bool callNonCallable(Obj *obj, int argCount) {

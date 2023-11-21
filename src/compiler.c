@@ -1070,7 +1070,6 @@ static void tryCatchStatement() {
         beginScope();
         consume(TOKEN_LEFT_PAREN, "Expect '(' after catch.");
         consume(TOKEN_IDENTIFIER, "Expect type name to catch.");
-        // TODO test how this behaves with random values
         uint8_t name = identifierConstant(&parser.previous);
         currentChunk()->code[exceptionType] = name;
         patchAddress(handlerAddress);

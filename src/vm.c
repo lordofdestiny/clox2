@@ -185,9 +185,9 @@ static bool propagateException(void) {
 #define PLACEHOLDER_ADDRESS 0xffff
     Value value = peek(0);
     if (!IS_INSTANCE(value)) {
-        // TODO add printValueError, same as printValue
-        //  but prints to stderr
-        fprintf(stderr, "Unhandled value\n");
+        fprintf(stderr, "Unhandled ");
+        printValue(stderr, value);
+        fprintf(stderr, "\n");
         return false;
     }
     ObjInstance *exception = AS_INSTANCE(value);
@@ -788,7 +788,7 @@ static InterpretResult run() {
             ip -= offset;
             break;
         }
-        case OP_PRINT: printValue(pop());
+        case OP_PRINT: printValue(stdout, pop());
             printf("\n");
             break;
         case OP_CALL: {
@@ -909,7 +909,7 @@ static InterpretResult run() {
             Value value;
             if (!tableGet(&vm.globals, typeName, &value) || !IS_CLASS(value)) {
                 frame->ip = ip;
-                runtimeError("'%s' is not a type to catch", typeName->chars);
+                runtimeError("Type '%s' is undefined in the global scope.", typeName->chars);
                 return INTERPRET_RUNTIME_ERROR;
             }
             pushExceptionHandler(value, handlerAddress, finallyAddress);

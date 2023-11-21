@@ -5,6 +5,7 @@
 #ifndef CLOX2_VALUE_H
 #define CLOX2_VALUE_H
 
+#include <stdio.h>
 #include <string.h>
 #include "common.h"
 
@@ -104,6 +105,6 @@ void writeValueArray(ValueArray *array, Value value);
 
 void freeValueArray(ValueArray *array);
 
-void printValue(Value value);
+void printValue(FILE *out, Value value);
 
 #endif //CLOX2_VALUE_H

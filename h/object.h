@@ -51,7 +51,7 @@ typedef void (*BlackenFn)(Obj *);
 
 typedef void (*FreeFn)(Obj *);
 
-typedef void (*PrintFn)(Obj *);
+typedef void (*PrintFn)(Obj *, FILE *out);
 
 typedef struct {
     CallableFn call;
@@ -152,7 +152,7 @@ ObjUpvalue *newUpvalue(Value *slot);
 
 uint32_t hashString(const char *chars, int length);
 
-void printObject(Value value);
+void printObject(FILE *out, Value value);
 
 static inline bool isObjType(Value value, ObjType type) {
     return IS_OBJ(value) && AS_OBJ(value)->type == type;
