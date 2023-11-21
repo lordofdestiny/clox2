@@ -536,7 +536,7 @@ static void parameterList() {
 static void lambda();
 
 static void expression() {
-    if (check(TOKEN_VERTICAL_LINE)) {
+    if (match(TOKEN_VERTICAL_LINE)) {
         lambda();
     } else if (check(TOKEN_LEFT_BRACKET)) {
         parsePrecedence(PREC_CONTAINER);
@@ -558,14 +558,17 @@ static void lambda() {
     initCompiler(&compiler, TYPE_LAMBDA);
     beginScope();
 
-    consume(TOKEN_VERTICAL_LINE, "Expect '(' after function name.");
     if (!check(TOKEN_VERTICAL_LINE)) {
         parameterList();
     }
-    consume(TOKEN_VERTICAL_LINE, "Expected '|' after parameters.");
+    consume(TOKEN_VERTICAL_LINE, "Expected '|' after lambda parameter list.");
 
-    expression();
-    emitByte(OP_RETURN);
+    if (match(TOKEN_LEFT_BRACE)) {
+        block();
+    } else {
+        expression();
+        emitByte(OP_RETURN);
+    }
     ObjFunction *function = endCompiler();
     emitFunction(&compiler, function);
 }
