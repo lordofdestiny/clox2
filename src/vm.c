@@ -159,14 +159,19 @@ static Value peek(int distance) {
     return vm.stackTop[-1 - distance];
 }
 
+static void unpackPrimitive(int distance) {
+    Value value = AS_INSTANCE(peek(distance))->this_;
+    vm.stackTop[-1 - distance] = value;
+}
+
 static bool promote(int distance, ObjClass *klass) {
     Value value = peek(distance);
     push(OBJ_VAL(newPrimitive(value, klass))); // This
     push(value); // Value being promoted passed as an argument to the ctor
     if (CALL_OBJ(klass->initializer, 1)) { // call the class ctor
         Value promoted = pop(); // Pop result of ctor call - promoted value
-//        pop(); // Pop the value that was promoted
         vm.stackTop[-1 - distance] = promoted;
+
         return true;
     }
     return false;
@@ -535,14 +540,11 @@ static InterpretResult run() {
     do {                         \
         if (IS_INSTANCE(peek(0))\
                 && (IS_NUMBER(AS_INSTANCE(peek(0))->this_))) {\
-                Value num = AS_INSTANCE(peek(0))->this_;\
-                pop();\
-                push(num);\
+                unpackPrimitive(0); \
             } \
             if (IS_INSTANCE(peek(1))\
                 && (IS_NUMBER(AS_INSTANCE(peek(1))->this_))) {\
-                Value num = AS_INSTANCE(peek(1))->this_;\
-                vm.stackTop[-1 - 1] = num; \
+                unpackPrimitive(1); \
             }                         \
         if(!IS_NUMBER(peek(0)) || !IS_NUMBER(peek(1))){ \
             frame->ip = ip;                     \
@@ -709,6 +711,14 @@ static InterpretResult run() {
             break;
         }
         case OP_GET_INDEX: {
+            if (IS_INSTANCE(peek(0))
+                && IS_NUMBER(AS_INSTANCE(peek(0))->this_)) {
+                unpackPrimitive(0);
+            }
+            if (IS_INSTANCE(peek(1))
+                && IS_ARRAY(AS_INSTANCE(peek(1))->this_)) {
+                unpackPrimitive(1);
+            }
             if (!IS_NUMBER(peek(0))) {
                 frame->ip = ip;
                 runtimeError("Index must be a number.");
@@ -723,7 +733,7 @@ static InterpretResult run() {
             ObjArray *array = AS_ARRAY(peek(1));
             if (index < 0 || index >= array->array.count) {
                 frame->ip = ip;
-                runtimeError("Array index out of bounds. Index = %td", index);
+                runtimeError("Array index out of bounds. Length = %d, Index = %td", array->array.count, index);
                 return INTERPRET_RUNTIME_ERROR;
             }
             pop();
@@ -732,6 +742,14 @@ static InterpretResult run() {
             break;
         }
         case OP_SET_INDEX: {
+            if (IS_INSTANCE(peek(1))
+                && IS_NUMBER(AS_INSTANCE(peek(1))->this_)) {
+                unpackPrimitive(1);
+            }
+            if (IS_INSTANCE(peek(2))
+                && IS_ARRAY(AS_INSTANCE(peek(2))->this_)) {
+                unpackPrimitive(2);
+            }
             if (!IS_NUMBER(peek(1))) {
                 frame->ip = ip;
                 runtimeError("Index must be a number.");
@@ -746,7 +764,7 @@ static InterpretResult run() {
             ObjArray *array = AS_ARRAY(peek(2));
             if (index < 0 || index >= array->array.count) {
                 frame->ip = ip;
-                runtimeError("Array index out of bounds. Index = %td", index);
+                runtimeError("Array index out of bounds. Length = %d, Index = %td", array->array.count, index);
                 return INTERPRET_RUNTIME_ERROR;
             }
             Value value = pop();
@@ -785,16 +803,13 @@ static InterpretResult run() {
             if (IS_INSTANCE(peek(0))
                 && (IS_NUMBER(AS_INSTANCE(peek(0))->this_) ||
                     IS_STRING(AS_INSTANCE(peek(0))->this_))) {
-                Value num = AS_INSTANCE(peek(0))->this_;
-                pop();
-                push(num);
+                unpackPrimitive(0);
             }
 
             if (IS_INSTANCE(peek(1))
-                && (IS_NUMBER(AS_INSTANCE(peek(1))->this_))
-                || IS_STRING(AS_INSTANCE(peek(1))->this_)) {
-                Value num = AS_INSTANCE(peek(1))->this_;
-                vm.stackTop[-1 - 1] = num;
+                && (IS_NUMBER(AS_INSTANCE(peek(1))->this_)
+                    || IS_STRING(AS_INSTANCE(peek(1))->this_))) {
+                unpackPrimitive(1);
             }
 
             if (IS_STRING(peek(0)) && IS_STRING(peek(1))) {
@@ -823,15 +838,11 @@ static InterpretResult run() {
         case OP_MODULUS: {
             if (IS_INSTANCE(peek(0))
                 && (IS_NUMBER(AS_INSTANCE(peek(0))->this_))) {
-                Value num = AS_INSTANCE(peek(0))->this_;
-                pop();
-                push(num);
+                unpackPrimitive(0);
             }
-
             if (IS_INSTANCE(peek(1))
                 && (IS_NUMBER(AS_INSTANCE(peek(1))->this_))) {
-                Value num = AS_INSTANCE(peek(1))->this_;
-                vm.stackTop[-1 - 1] = num;
+                unpackPrimitive(1);
             }
             if (IS_NUMBER(peek(0)) && IS_NUMBER(peek(1))) {
                 double b = AS_NUMBER(pop());
@@ -847,7 +858,11 @@ static InterpretResult run() {
         case OP_NOT: push(BOOL_VAL(isFalsy(pop())));
             break;
         case OP_NEGATE:
-            if (!IS_NUMBER(peek(0)) || !(IS_INSTANCE(peek(0)) && IS_NUMBER(AS_INSTANCE(peek(0))->this_))) {
+            if (IS_INSTANCE(peek(0))
+                && IS_NUMBER(AS_INSTANCE(peek(0))->this_)) {
+                unpackPrimitive(0);
+            }
+            if (!IS_NUMBER(peek(0))) {
                 frame->ip = ip;
                 runtimeError("Operand must be a number.");
                 return INTERPRET_RUNTIME_ERROR;

@@ -305,9 +305,9 @@ bool initStringNative(int argCount, Value *args) {
     }
 
     if (IS_BOOL(value) || IS_INSTANCE(value) && IS_BOOL(AS_INSTANCE(value)->this_)) {
-        bool b = IS_BOOL(value)
-                 ? value
-                 : AS_INSTANCE(value)->this_;
+        bool b = AS_BOOL(IS_BOOL(value)
+                          ? value
+                          : AS_INSTANCE(value)->this_);
 
         if (b) {
             instance->this_ = OBJ_VAL(copyString("true", 4));
@@ -360,14 +360,11 @@ bool initArrayNative(int argCount, Value *args) {
     }
 
     if (IS_NUMBER(value) || IS_INSTANCE(value) && IS_NUMBER(AS_INSTANCE(value)->this_)) {
-        int len = (int) (IS_NUMBER(value)
-                         ? value
-                         : AS_INSTANCE(value)->this_);
+        int len = (int) AS_NUMBER(IS_NUMBER(value)
+                                   ? value
+                                   : AS_INSTANCE(value)->this_);
         ObjArray *array_ = newArray();
-        for (int i = 0; i < len; i++) {
-            // TODO optimize zero initialization of an array
-            writeValueArray(&array_->array, NUMBER_VAL(0));
-        }
+        valueInitValueArray(&array_->array, NIL_VAL, len);
         instance->this_ = OBJ_VAL(array_);
         tableSet(&instance->fields, copyString("length", 6), NUMBER_VAL(len));
         return true;

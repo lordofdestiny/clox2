@@ -49,6 +49,26 @@ void writeValueArray(ValueArray *array, Value value) {
     array->count++;
 }
 
+static int nextPowerOfTwo(int n) {
+    int i = 0;
+    for (--n; n > 0; n >>= 1) {
+        i++;
+    }
+    return 1 << i;
+}
+
+void valueInitValueArray(ValueArray *array, Value initial, int count) {
+    if (array->capacity < count) {
+        int oldCapacity = array->capacity;
+        array->capacity = nextPowerOfTwo(count);
+        array->values = GROW_ARRAY(Value, array->values, oldCapacity, array->capacity);
+    }
+    for(int i = 0; i < count; i++) {
+        array->values[i] = initial;
+    }
+    array->count = count;
+}
+
 void copyValueArray(ValueArray *src, ValueArray *dest) {
     if (src->capacity > dest->capacity) {
         // Grow dest to size of capacity

@@ -103,7 +103,9 @@ void initValueArray(ValueArray *array);
 
 void writeValueArray(ValueArray *array, Value value);
 
-void copyValueArray(ValueArray* src, ValueArray* dest);
+void copyValueArray(ValueArray *src, ValueArray *dest);
+
+void valueInitValueArray(ValueArray *array, Value initial, int count);
 
 void freeValueArray(ValueArray *array);
 
