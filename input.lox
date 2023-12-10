@@ -1,17 +1,15 @@
-class Test {}
-class Exception{}
+var array = [1,2,3];
+print array;
+print array.length.toPrecision(6);
 
-try {
-    try {
-        throw Test();
-    } catch(Exception) {
-        print "A";
-    }
-} catch(Test) {
-    print "B";
-}
-throw Test();
+print 44.54.toPrecision(6);
 
+print Boolean(false) == Boolean(false);
+print false == Boolean(false);
+print Number(1.0) == Number(1);
+print Number(1.0) == 1.000;
+print "Hello" == String("Hello");
+print Array(array) == array;
 
 // var N = 20;
 //
@@ -28,7 +26,6 @@ throw Test();
 //
 // class Fibo {
 //     static calc(n) {
-//         var t = |x| x;
 //         if( n < 2) return n;
 //         return Fibo.calc(n-1) + Fibo.calc(n-2);
 //     }

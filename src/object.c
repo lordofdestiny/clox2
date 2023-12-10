@@ -183,12 +183,14 @@ static void printFunction(Obj *obj, FILE *out) {
 ObjInstance *newInstance(ObjClass *klass) {
     ObjInstance *instance = ALLOCATE_OBJ(ObjInstance, OBJ_INSTANCE);
     instance->klass = klass;
+    instance->this_ = OBJ_VAL(instance);
     initTable(&instance->fields);
     return instance;
 }
 
 static void blackenInstance(Obj *object) {
     ObjInstance *instance = (ObjInstance *) object;
+    markValue(instance->this_);
     markObject((Obj *) instance->klass);
     markTable(&instance->fields);
 }
@@ -201,7 +203,11 @@ static void freeInstance(Obj *object) {
 
 static void printInstance(Obj *obj, FILE *out) {
     ObjInstance *instance = (ObjInstance *) obj;
-    fprintf(out, "<instance %s>", instance->klass->name->chars);
+    if (IS_INSTANCE(instance->this_)) {
+        fprintf(out, "<instance %s>", instance->klass->name->chars);
+    } else {
+        printValue(out, instance->this_);
+    }
 }
 
 ObjNative *newNative(NativeFn function, int arity) {
@@ -219,8 +225,16 @@ static void printNative(Obj *obj, FILE *out) {
     fprintf(out, "<native fn>");
 }
 
-static ObjString *allocateString(char *chars, int length,
-                                 uint32_t hash) {
+ObjInstance *newPrimitive(Value value, ObjClass *klass) {
+    ObjInstance *primitive = ALLOCATE_OBJ(ObjInstance, OBJ_INSTANCE);
+    primitive->this_ = value;
+    primitive->klass = klass;
+    initTable(&primitive->fields);
+    return primitive;
+}
+
+ObjString *allocateString(char *chars, int length,
+                          uint32_t hash) {
     ObjString *string = ALLOCATE_OBJ(ObjString, OBJ_STRING);
     string->length = length;
     string->chars = chars;

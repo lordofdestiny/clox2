@@ -6,7 +6,7 @@
 #include "../h/object.h"
 #include "../h/debug.h"
 
-void disassembleChunk(Chunk *chunk, const char *name) {
+void disassembleChunk(Chunk* chunk, const char* name) {
     printf("== %s ==\n", name);
 
     for (int offset = 0; offset < chunk->count;) {
@@ -15,7 +15,7 @@ void disassembleChunk(Chunk *chunk, const char *name) {
 }
 
 
-static int constantInstruction(char *name, Chunk *chunk, int offset) {
+static int constantInstruction(char* name, Chunk* chunk, int offset) {
     uint8_t constant = chunk->code[offset + 1];
     printf("%-29s %4d '", name, constant);
     printValue(stdout, chunk->constants.values[constant]);
@@ -23,14 +23,14 @@ static int constantInstruction(char *name, Chunk *chunk, int offset) {
     return offset + 2;
 }
 
-static int longOperandInstruction(char *name, Chunk *chunk, int offset) {
+static int longOperandInstruction(char* name, Chunk* chunk, int offset) {
     uint16_t constant = (uint16_t) (chunk->code[offset + 1] << 8);
     constant |= chunk->code[offset + 2];
     printf("%-29s %4d\n", name, constant);
     return offset + 3;
 }
 
-static int invokeInstruction(const char *name, Chunk *chunk, int offset) {
+static int invokeInstruction(const char* name, Chunk* chunk, int offset) {
     uint8_t constant = chunk->code[offset + 1];
     uint8_t argCount = chunk->code[offset + 2];
     printf("%-29s (%d args) %4d '", name, argCount, constant);
@@ -39,18 +39,18 @@ static int invokeInstruction(const char *name, Chunk *chunk, int offset) {
     return offset + 3;
 }
 
-static int simpleInstruction(const char *name, int offset) {
+static int simpleInstruction(const char* name, int offset) {
     printf("%s\n", name);
     return offset + 1;
 }
 
-static int byteInstruction(const char *name, Chunk *chunk, int offset) {
+static int byteInstruction(const char* name, Chunk* chunk, int offset) {
     uint8_t slot = chunk->code[offset + 1];
     printf("%-29s %4d\n", name, slot);
     return offset + 2;
 }
 
-static int jumpInstruction(const char *name, int sign, Chunk *chunk, int offset) {
+static int jumpInstruction(const char* name, int sign, Chunk* chunk, int offset) {
     uint16_t jump = (uint16_t) (chunk->code[offset + 1] << 8);
     jump |= chunk->code[offset + 2];
 
@@ -58,14 +58,14 @@ static int jumpInstruction(const char *name, int sign, Chunk *chunk, int offset)
     return offset + 3;
 }
 
-static int closureInstruction(const char *name, Chunk *chunk, int offset) {
+static int closureInstruction(const char* name, Chunk* chunk, int offset) {
     offset++;
     uint8_t constant = chunk->code[offset++];
     printf("%-29s %4d ", name, constant);
     printValue(stdout, chunk->constants.values[constant]);
     printf("\n");
 
-    ObjFunction *function = AS_FUNCTION(chunk->constants.values[constant]);
+    ObjFunction* function = AS_FUNCTION(chunk->constants.values[constant]);
     for (int j = 0; j < function->upvalueCount; j++) {
         int isLocal = chunk->code[offset++];
         int index = chunk->code[offset++];
@@ -75,7 +75,7 @@ static int closureInstruction(const char *name, Chunk *chunk, int offset) {
     return offset;
 }
 
-static int exceptionHandlerInstruction(const char *name, Chunk *chunk, int offset) {
+static int exceptionHandlerInstruction(const char* name, Chunk* chunk, int offset) {
     uint8_t type = chunk->code[offset + 1];
 
     uint16_t handlerAddress = (uint16_t) (chunk->code[offset + 2] << 8);
@@ -92,7 +92,7 @@ static int exceptionHandlerInstruction(const char *name, Chunk *chunk, int offse
     return offset + 6;
 }
 
-int disassembleInstruction(Chunk *chunk, int offset) {
+int disassembleInstruction(Chunk* chunk, int offset) {
     printf("%04d ", offset);
     int line = getLine(chunk, offset);
     if (offset > 0 && line == getLine(chunk, offset - 1)) {
@@ -129,6 +129,7 @@ int disassembleInstruction(Chunk *chunk, int offset) {
     case OP_ADD: return simpleInstruction("OP_ADD", offset);
     case OP_SUBTRACT: return simpleInstruction("OP_SUBTRACT", offset);
     case OP_MULTIPLY: return simpleInstruction("OP_MULTIPLY", offset);
+    case OP_MODULUS: return simpleInstruction("OP_MODULUS", offset);
     case OP_DIVIDE: return simpleInstruction("OP_DIVIDE", offset);
     case OP_NOT: return simpleInstruction("OP_NOT", offset);
     case OP_NEGATE: return simpleInstruction("OP_NEGATE", offset);
@@ -146,7 +147,8 @@ int disassembleInstruction(Chunk *chunk, int offset) {
     case OP_METHOD: return constantInstruction("OP_METHOD", chunk, offset);
     case OP_STATIC_METHOD: return constantInstruction("OP_STATIC_METHOD", chunk, offset);
     case OP_THROW: return simpleInstruction("OP_THROW", offset);
-    case OP_PUSH_EXCEPTION_HANDLER:return exceptionHandlerInstruction("OP_PUSH_EXCEPTION_HANDLER", chunk, offset);
+    case OP_PUSH_EXCEPTION_HANDLER:
+        return exceptionHandlerInstruction("OP_PUSH_EXCEPTION_HANDLER", chunk, offset);
     case OP_POP_EXCEPTION_HANDLER: return simpleInstruction("OP_POP_EXCEPTION_HANDLER", offset);
     case OP_PROPAGATE_EXCEPTION: return simpleInstruction("OP_PROPAGATE_EXCEPTION", offset);
     default:printf("Unknown opcode %d\n", instruction);

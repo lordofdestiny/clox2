@@ -5,6 +5,8 @@
 #ifndef CLOX2_OBJECT_H
 #define CLOX2_OBJECT_H
 
+#include <stdio.h>
+
 #include "common.h"
 #include "value.h"
 #include "chunk.h"
@@ -12,7 +14,7 @@
 
 #define OBJ_TYPE(value) (AS_OBJ(value)->type)
 
-#define IS_OBJ_ARRAY(value) isObjType(value, OBJ_ARRAY)
+#define IS_ARRAY(value) isObjType(value, OBJ_ARRAY)
 #define IS_BOUND_METHOD(value) isObjType(value, OBJ_BOUND_METHOD)
 #define IS_CLASS(value) isObjType(value, OBJ_CLASS)
 #define IS_CLOSURE(value) isObjType(value, OBJ_CLOSURE)
@@ -27,7 +29,7 @@
 #define AS_CLOSURE(value) ((ObjClosure*)AS_OBJ(value))
 #define AS_FUNCTION(value) ((ObjFunction *) AS_OBJ(value))
 #define AS_INSTANCE(value) ((ObjInstance*) AS_OBJ(value))
-#define AS_NATIVE(value) (((ObjNative*) AS_OBJ(value)))
+#define AS_NATIVE(value) ((ObjNative*) AS_OBJ(value))
 #define AS_STRING(value) ((ObjString*)AS_OBJ(value))
 #define AS_CSTRING(value) (((ObjString*)AS_OBJ(value))->chars)
 
@@ -120,6 +122,7 @@ typedef struct {
 
 typedef struct {
     Obj obj;
+    Value this_;
     ObjClass *klass;
     Table fields;
 } ObjInstance;
@@ -141,6 +144,8 @@ ObjClosure *newClosure(ObjFunction *function);
 ObjFunction *newFunction();
 
 ObjInstance *newInstance(ObjClass *klass);
+
+ObjInstance *newPrimitive(Value value, ObjClass *klass);
 
 ObjNative *newNative(NativeFn function, int arity);
 

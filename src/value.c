@@ -9,6 +9,12 @@
 #include "../h/value.h"
 
 bool valuesEqual(Value a, Value b) {
+    if (IS_INSTANCE(a) && !IS_INSTANCE(AS_INSTANCE(a)->this_)) {
+        a = AS_INSTANCE(a)->this_;
+    }
+    if (IS_INSTANCE(b) && !IS_INSTANCE(AS_INSTANCE(b)->this_)) {
+        b = AS_INSTANCE(b)->this_;
+    }
 #ifdef NAN_BOXING
     if (IS_NUMBER(a) && IS_NUMBER(b)) {
         return AS_NUMBER(a) == AS_NUMBER(b);
@@ -41,6 +47,20 @@ void writeValueArray(ValueArray *array, Value value) {
 
     array->values[array->count] = value;
     array->count++;
+}
+
+void copyValueArray(ValueArray *src, ValueArray *dest) {
+    if (src->capacity > dest->capacity) {
+        // Grow dest to size of capacity
+        int oldCapacity = dest->capacity;
+        dest->capacity = src->capacity;
+        dest->values = GROW_ARRAY(Value, dest->values, oldCapacity, dest->capacity);
+    }
+
+    for (int i = 0; i < src->count; i++) {
+        dest->values[i] = src->values[i];
+    }
+    dest->count = src->count;
 }
 
 void freeValueArray(ValueArray *array) {

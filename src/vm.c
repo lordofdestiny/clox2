@@ -57,6 +57,15 @@ void runtimeError(const char *format, ...) {
     resetStack();
 }
 
+ObjClass *getGlobalClass(const char *name) {
+    Value value;
+    if (tableGet(&vm.globals, copyString(name, (int) strlen(name)), &value)) {
+        if (!IS_CLASS(value)) return NULL;
+        return (ObjClass *) AS_OBJ(value);
+    }
+    return NULL;
+}
+
 static void defineNative(const char *name, int arity, NativeFn function) {
     push(OBJ_VAL((Obj *) copyString(name, (int) strlen(name))));
     push(OBJ_VAL((Obj *) newNative(function, arity)));
@@ -112,6 +121,19 @@ void initVM() {
 
     ObjClass *exception = nativeClass("Exception");
     addNativeMethod(exception, "init", initExceptionNative, -1);
+
+    ObjClass *number = nativeClass("Number");
+    addNativeMethod(number, "init", initNumberNative, -1);
+    addNativeMethod(number, "toPrecision", toPrecisionNative, 1);
+
+    ObjClass *boolean = nativeClass("Boolean");
+    addNativeMethod(boolean, "init", initBooleanNative, -1);
+
+    ObjClass *string = nativeClass("String");
+    addNativeMethod(string, "init", initStringNative, -1);
+
+    ObjClass *array = nativeClass("Array");
+    addNativeMethod(array, "init", initArrayNative, -1);
 }
 
 void freeVM() {
@@ -135,6 +157,33 @@ Value pop() {
 
 static Value peek(int distance) {
     return vm.stackTop[-1 - distance];
+}
+
+static bool promote(int distance, ObjClass *klass) {
+    Value value = peek(distance);
+    push(OBJ_VAL(newPrimitive(value, klass))); // This
+    push(value); // Value being promoted passed as an argument to the ctor
+    if (CALL_OBJ(klass->initializer, 1)) { // call the class ctor
+        Value promoted = pop(); // Pop result of ctor call - promoted value
+//        pop(); // Pop the value that was promoted
+        vm.stackTop[-1 - distance] = promoted;
+        return true;
+    }
+    return false;
+}
+
+static bool tryPromote(int distance) {
+    Value value = peek(distance);
+    if (!IS_OBJ(value)) {
+        if (IS_NIL(value)) return false;
+        if (IS_BOOL(value))return promote(distance, getGlobalClass("Boolean"));
+        else return promote(distance, getGlobalClass("Number")); // NUMBER
+    }
+    if (IS_ARRAY(value)) return promote(distance, getGlobalClass("Array"));
+    else if (IS_STRING(value)) return promote(distance, getGlobalClass("String"));
+    else
+        return IS_CLASS(value) ||
+               IS_INSTANCE(value);
 }
 
 static Value getStackTrace(void) {
@@ -401,7 +450,11 @@ static void defineStaticMethod(ObjString *name) {
 }
 
 static bool isFalsy(Value value) {
-    return IS_NIL(value) || (IS_BOOL(value) && !AS_BOOL(value));
+    return IS_NIL(value)
+           || (IS_BOOL(value) && !AS_BOOL(value))
+           || (IS_INSTANCE(value)
+               && IS_BOOL(AS_INSTANCE(value)->this_)
+               && !AS_BOOL(AS_INSTANCE(value)->this_));
 }
 
 static ObjString *concatenateImpl(char const *buffer1, int length1,
@@ -480,6 +533,17 @@ static InterpretResult run() {
 #define READ_STRING() AS_STRING(READ_CONSTANT())
 #define BINARY_OP(valueType, op) \
     do {                         \
+        if (IS_INSTANCE(peek(0))\
+                && (IS_NUMBER(AS_INSTANCE(peek(0))->this_))) {\
+                Value num = AS_INSTANCE(peek(0))->this_;\
+                pop();\
+                push(num);\
+            } \
+            if (IS_INSTANCE(peek(1))\
+                && (IS_NUMBER(AS_INSTANCE(peek(1))->this_))) {\
+                Value num = AS_INSTANCE(peek(1))->this_;\
+                vm.stackTop[-1 - 1] = num; \
+            }                         \
         if(!IS_NUMBER(peek(0)) || !IS_NUMBER(peek(1))){ \
             frame->ip = ip;                     \
             runtimeError("Operands must be numbers");   \
@@ -497,7 +561,7 @@ static InterpretResult run() {
         for (Value *slot = vm.stack; slot < vm.stackTop; slot++) {
             printf("[ ");
             if (IS_STRING(*slot)) printf("\"");
-            printValue(*slot);
+            printValue(stdout, *slot);
             if (IS_STRING(*slot)) printf("\"");
             printf(" ]");
         }
@@ -588,7 +652,9 @@ static InterpretResult run() {
             break;
         }
         case OP_GET_PROPERTY: {
-            if (!IS_INSTANCE(peek(0)) && !IS_CLASS(peek(0))) {
+            tryPromote(0);
+            if (!IS_INSTANCE(peek(0)) &&
+                !IS_CLASS(peek(0))) {
                 frame->ip = ip;
                 runtimeError("Only instances and classes have properties.");
                 return INTERPRET_RUNTIME_ERROR;
@@ -625,6 +691,7 @@ static InterpretResult run() {
             break;
         }
         case OP_SET_PROPERTY: {
+            tryPromote(1);
             if (!IS_INSTANCE(peek(1)) && !IS_CLASS(peek(1))) {
                 frame->ip = ip;
                 runtimeError("Only instances have fields.");
@@ -647,7 +714,7 @@ static InterpretResult run() {
                 runtimeError("Index must be a number.");
                 return INTERPRET_RUNTIME_ERROR;
             }
-            if (!IS_OBJ_ARRAY(peek(1))) {
+            if (!IS_ARRAY(peek(1))) {
                 frame->ip = ip;
                 runtimeError("Only arrays are indexable.");
                 return INTERPRET_RUNTIME_ERROR;
@@ -670,7 +737,7 @@ static InterpretResult run() {
                 runtimeError("Index must be a number.");
                 return INTERPRET_RUNTIME_ERROR;
             }
-            if (!IS_OBJ_ARRAY(peek(2))) {
+            if (!IS_ARRAY(peek(2))) {
                 frame->ip = ip;
                 runtimeError("Only arrays are indexable.");
                 return INTERPRET_RUNTIME_ERROR;
@@ -715,6 +782,21 @@ static InterpretResult run() {
              *  call a version of "toString" for a value, before concatenating
              *  it with a string
              * */
+            if (IS_INSTANCE(peek(0))
+                && (IS_NUMBER(AS_INSTANCE(peek(0))->this_) ||
+                    IS_STRING(AS_INSTANCE(peek(0))->this_))) {
+                Value num = AS_INSTANCE(peek(0))->this_;
+                pop();
+                push(num);
+            }
+
+            if (IS_INSTANCE(peek(1))
+                && (IS_NUMBER(AS_INSTANCE(peek(1))->this_))
+                || IS_STRING(AS_INSTANCE(peek(1))->this_)) {
+                Value num = AS_INSTANCE(peek(1))->this_;
+                vm.stackTop[-1 - 1] = num;
+            }
+
             if (IS_STRING(peek(0)) && IS_STRING(peek(1))) {
                 concatenate();
             } else if (IS_NUMBER(peek(0)) && IS_NUMBER(peek(1))) {
@@ -739,6 +821,18 @@ static InterpretResult run() {
         case OP_DIVIDE: BINARY_OP(NUMBER_VAL, /);
             break;
         case OP_MODULUS: {
+            if (IS_INSTANCE(peek(0))
+                && (IS_NUMBER(AS_INSTANCE(peek(0))->this_))) {
+                Value num = AS_INSTANCE(peek(0))->this_;
+                pop();
+                push(num);
+            }
+
+            if (IS_INSTANCE(peek(1))
+                && (IS_NUMBER(AS_INSTANCE(peek(1))->this_))) {
+                Value num = AS_INSTANCE(peek(1))->this_;
+                vm.stackTop[-1 - 1] = num;
+            }
             if (IS_NUMBER(peek(0)) && IS_NUMBER(peek(1))) {
                 double b = AS_NUMBER(pop());
                 double a = AS_NUMBER(pop());
@@ -753,12 +847,17 @@ static InterpretResult run() {
         case OP_NOT: push(BOOL_VAL(isFalsy(pop())));
             break;
         case OP_NEGATE:
-            if (!IS_NUMBER(peek(0))) {
+            if (!IS_NUMBER(peek(0)) || !(IS_INSTANCE(peek(0)) && IS_NUMBER(AS_INSTANCE(peek(0))->this_))) {
                 frame->ip = ip;
                 runtimeError("Operand must be a number.");
                 return INTERPRET_RUNTIME_ERROR;
             }
-            push(NUMBER_VAL(-AS_NUMBER(pop())));
+            if (IS_NUMBER(peek(0))) {
+                push(NUMBER_VAL(-AS_NUMBER(pop())));
+            } else {
+                ObjInstance *instance = AS_INSTANCE(peek(0));
+                instance->this_ = NUMBER_VAL(-AS_NUMBER(instance->this_));
+            }
             break;
         case OP_JUMP: {
             uint16_t offset = READ_SHORT();
@@ -791,6 +890,7 @@ static InterpretResult run() {
         case OP_INVOKE: {
             ObjString *method = READ_STRING();
             int argCount = READ_BYTE();
+            tryPromote(argCount);
             frame->ip = ip;
             if (!invoke(method, argCount)) {
                 return INTERPRET_RUNTIME_ERROR;

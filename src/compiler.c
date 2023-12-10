@@ -35,7 +35,7 @@ typedef enum {
     PREC_PRIMARY
 } Precedence;
 
-typedef void (*ParseFn)(bool canAssign);
+typedef void (* ParseFn)(bool canAssign);
 
 typedef struct {
     ParseFn prefix;
@@ -69,8 +69,8 @@ typedef enum LoopType {
 } LoopType;
 
 typedef struct Compiler {
-    struct Compiler *enclosing;
-    ObjFunction *function;
+    struct Compiler* enclosing;
+    ObjFunction* function;
     FunctionType type;
 
     Local locals[UINT8_COUNT];
@@ -86,7 +86,7 @@ typedef struct Compiler {
 } Compiler;
 
 typedef struct ClassCompiler {
-    struct ClassCompiler *enclosing;
+    struct ClassCompiler* enclosing;
     bool hasSuperclass;
     // Tables for checking for duplicate members
     // No need to be marked by gc because they hold keys
@@ -104,14 +104,14 @@ typedef struct {
 } Parser;
 
 Parser parser;
-Compiler *current = NULL;
-ClassCompiler *currentClass = NULL;
+Compiler* current = NULL;
+ClassCompiler* currentClass = NULL;
 
-static Chunk *currentChunk() {
+static Chunk* currentChunk() {
     return &current->function->chunk;
 }
 
-static void errorAt(Token *token, const char *message) {
+static void errorAt(Token* token, const char* message) {
     if (parser.panicMode) return;
     parser.panicMode = true;
     fprintf(stderr, "[line %d] Error", token->line);
@@ -127,11 +127,11 @@ static void errorAt(Token *token, const char *message) {
     parser.hadError = true;
 }
 
-static void error(const char *message) {
+static void error(const char* message) {
     errorAt(&parser.previous, message);
 }
 
-static void errorAtCurrent(const char *message) {
+static void errorAtCurrent(const char* message) {
     errorAt(&parser.current, message);
 }
 
@@ -146,7 +146,7 @@ static void advance() {
     }
 }
 
-static void consume(TokenType type, const char *message) {
+static void consume(TokenType type, const char* message) {
     if (parser.current.type == type) {
         advance();
         return;
@@ -212,8 +212,8 @@ static void emitConstant(Value value) {
     emitBytes(OP_CONSTANT, makeConstant(value));
 }
 
-static void emitFunction(Compiler *compiler, ObjFunction *function) {
-    uint8_t constant = makeConstant(OBJ_VAL((Obj *) function));
+static void emitFunction(Compiler* compiler, ObjFunction* function) {
+    uint8_t constant = makeConstant(OBJ_VAL((Obj*) function));
     if (function->upvalueCount > 0) {
         emitBytes(OP_CLOSURE, constant);
 
@@ -241,7 +241,7 @@ static void patchAddress(int offset) {
     currentChunk()->code[offset + 1] = currentChunk()->count & 0xff;
 }
 
-static void initCompiler(Compiler *compiler, FunctionType type) {
+static void initCompiler(Compiler* compiler, FunctionType type) {
     compiler->enclosing = current;
     compiler->function = NULL;
     compiler->type = type;
@@ -254,7 +254,7 @@ static void initCompiler(Compiler *compiler, FunctionType type) {
     initTable(&compiler->stringConstants);
 
     if (type == TYPE_LAMBDA) {
-        char *template = "%s/[line %d] lambda";
+        char* template = "%s/[line %d] lambda";
         int nameLength = snprintf(NULL, 0, template,
                                   compiler->enclosing->function->name != NULL
                                   ? compiler->enclosing->function->name->chars
@@ -273,7 +273,7 @@ static void initCompiler(Compiler *compiler, FunctionType type) {
                                              parser.previous.length);
     }
 
-    Local *local = &current->locals[current->localCount++];
+    Local* local = &current->locals[current->localCount++];
     local->depth = 0;
     local->isCaptured = false;
     if (type != TYPE_FUNCTION) {
@@ -290,9 +290,9 @@ static void initCompiler(Compiler *compiler, FunctionType type) {
 
 }
 
-static ObjFunction *endCompiler() {
+static ObjFunction* endCompiler() {
     emitReturn();
-    ObjFunction *function = current->function;
+    ObjFunction* function = current->function;
 #ifdef DEBUG_PRINT_CODE
     if (!parser.hadError) {
         disassembleChunk(currentChunk(), function->name != NULL
@@ -330,31 +330,31 @@ static void statement();
 
 static void declaration();
 
-static ParseRule *getRule(TokenType type);
+static ParseRule* getRule(TokenType type);
 
 static void parsePrecedence(Precedence precedence);
 
 static void namedVariable(Token name, bool canAssign);
 
-static uint8_t identifierConstant(Token *name) {
-    ObjString *string = copyString(name->start, name->length);
+static uint8_t identifierConstant(Token* name) {
+    ObjString* string = copyString(name->start, name->length);
     Value indexValue;
     if (tableGet(&current->stringConstants, string, &indexValue)) {
         return (uint8_t) AS_NUMBER(indexValue);
     }
-    uint8_t index = makeConstant(OBJ_VAL((Obj *) string));
+    uint8_t index = makeConstant(OBJ_VAL((Obj*) string));
     tableSet(&current->stringConstants, string, NUMBER_VAL((double) index));
     return index;
 }
 
-static bool identifiersEqual(Token *a, Token *b) {
+static bool identifiersEqual(Token* a, Token* b) {
     if (a->length != b->length) return false;
     return memcmp(a->start, b->start, a->length) == 0;
 }
 
-static int resolveLocal(Compiler *compiler, Token *name) {
+static int resolveLocal(Compiler* compiler, Token* name) {
     for (int i = compiler->localCount - 1; i >= 0; i--) {
-        Local *local = &compiler->locals[i];
+        Local* local = &compiler->locals[i];
         if (identifiersEqual(name, &local->name)) {
             if (local->depth == -1) {
                 error("Can't read local variable in it's own initializer");
@@ -365,11 +365,11 @@ static int resolveLocal(Compiler *compiler, Token *name) {
     return -1;
 }
 
-static int addUpvalue(Compiler *compiler, uint8_t index, bool isLocal) {
+static int addUpvalue(Compiler* compiler, uint8_t index, bool isLocal) {
     int upvalueCount = compiler->function->upvalueCount;
 
     for (int i = 0; i < upvalueCount; i++) {
-        Upvalue *upvalue = &compiler->upvalues[i];
+        Upvalue* upvalue = &compiler->upvalues[i];
         if (upvalue->index == index && upvalue->isLocal == isLocal) {
             return i;
         }
@@ -385,7 +385,7 @@ static int addUpvalue(Compiler *compiler, uint8_t index, bool isLocal) {
     return compiler->function->upvalueCount++;
 }
 
-static int resolveUpvalue(Compiler *compiler, Token *name) {
+static int resolveUpvalue(Compiler* compiler, Token* name) {
     if (compiler->enclosing == NULL) return -1;
 
     int local = resolveLocal(compiler->enclosing, name);
@@ -408,7 +408,7 @@ static void addLocal(Token name) {
         error("Too many local variables in function.");
         return;
     }
-    Local *local = &current->locals[current->localCount++];
+    Local* local = &current->locals[current->localCount++];
     local->name = name;
     local->depth = -1;
     local->isCaptured = false;
@@ -417,9 +417,9 @@ static void addLocal(Token name) {
 static void declareVariable() {
     if (current->scopeDepth == 0) return;
 
-    Token *name = &parser.previous;
+    Token* name = &parser.previous;
     for (int i = current->localCount - 1; i >= 0; i--) {
-        Local *local = &current->locals[i];
+        Local* local = &current->locals[i];
         if (local->depth != -1 && local->depth < current->scopeDepth) {
             break;
         }
@@ -446,7 +446,7 @@ static uint8_t argumentList() {
     return argCount;
 }
 
-static uint8_t parseVariable(const char *errorMessage) {
+static uint8_t parseVariable(const char* errorMessage) {
     consume(TOKEN_IDENTIFIER, errorMessage);
 
     declareVariable();
@@ -473,7 +473,7 @@ static void variable(bool canAssign) {
     namedVariable(parser.previous, canAssign);
 }
 
-static Token syntheticToken(const char *text) {
+static Token syntheticToken(const char* text) {
     Token token;
     token.start = text;
     token.length = (int) strlen(text);
@@ -569,7 +569,7 @@ static void lambda() {
         expression();
         emitByte(OP_RETURN);
     }
-    ObjFunction *function = endCompiler();
+    ObjFunction* function = endCompiler();
     emitFunction(&compiler, function);
 }
 
@@ -587,7 +587,7 @@ static void function(FunctionType type) {
 
     block();
 
-    ObjFunction *function = endCompiler(); // endScope() not needed because compiler ends here
+    ObjFunction* function = endCompiler(); // endScope() not needed because compiler ends here
     emitFunction(&compiler, function);
 }
 
@@ -714,19 +714,19 @@ static void expressionStatement() {
 #define MAX_BREAK_LOCATIONS 255
 
 typedef struct BreakLocations {
-    struct BreakLocations *prev;
+    struct BreakLocations* prev;
     int count;
     int locations[MAX_BREAK_LOCATIONS];
 } BreakLocations;
-BreakLocations *currentBreakLocations = NULL;
+BreakLocations* currentBreakLocations = NULL;
 
-void initBreakLocations(BreakLocations *locations) {
+void initBreakLocations(BreakLocations* locations) {
     locations->count = 0;
     locations->prev = currentBreakLocations;
     currentBreakLocations = locations;
 }
 
-void leaveBreakLocations(BreakLocations *locations) {
+void leaveBreakLocations(BreakLocations* locations) {
     // Patch locations for break statement
     for (int i = 0; i < locations->count; i++) {
         patchJump(locations->locations[i]);
@@ -735,7 +735,7 @@ void leaveBreakLocations(BreakLocations *locations) {
 }
 
 void addBreakLocation(int location) {
-    BreakLocations *loc = currentBreakLocations;
+    BreakLocations* loc = currentBreakLocations;
     if (loc == NULL || loc->count >= MAX_BREAK_LOCATIONS) return;
     loc->locations[loc->count] = location;
     loc->count++;
@@ -1204,9 +1204,8 @@ static void conditional(bool canAssign) {
 
 static void binary(bool canAssign) {
 #pragma clang diagnostic pop
-
     TokenType operatorType = parser.previous.type;
-    ParseRule *rule = getRule(operatorType);
+    ParseRule* rule = getRule(operatorType);
     parsePrecedence((Precedence) (rule->precedence + 1));
 
     switch (operatorType) {
@@ -1380,8 +1379,8 @@ static void or_(bool canAssign) {
 static void string(bool canAssign) {
 #pragma clang diagnostic pop
 
-    emitConstant(OBJ_VAL((Obj *) copyString(parser.previous.start + 1,
-                                            parser.previous.length - 2)));
+    emitConstant(OBJ_VAL((Obj*) copyString(parser.previous.start + 1,
+                                           parser.previous.length - 2)));
 }
 
 #pragma clang diagnostic push
@@ -1487,61 +1486,61 @@ static void array(bool canAssign) {
 }
 
 ParseRule rules[] = {
-        [TOKEN_LEFT_PAREN]    = {grouping, call, PREC_CALL_INDEX},
-        [TOKEN_RIGHT_PAREN]   = {NULL, NULL, PREC_NONE},
-        [TOKEN_LEFT_BRACE]    = {NULL, NULL, PREC_NONE},
-        [TOKEN_RIGHT_BRACE]   = {NULL, NULL, PREC_NONE},
-        [TOKEN_LEFT_BRACKET]  = {array, element, PREC_CONTAINER},
-        [TOKEN_RIGHT_BRACKET] = {NULL, NULL, PREC_NONE},
-        [TOKEN_COLON]         = {NULL, NULL, PREC_NONE},
-        [TOKEN_QUESTION]      = {NULL, conditional, PREC_CONDITIONAL},
-        [TOKEN_VERTICAL_LINE] = {NULL, NULL, PREC_NONE},
-        [TOKEN_COMMA]         = {NULL, NULL, PREC_NONE},
-        [TOKEN_DOT]           = {NULL, dot, PREC_CALL_INDEX},
-        [TOKEN_MINUS]         = {unary, binary, PREC_TERM},
-        [TOKEN_MINUS_EQUAL]   = {NULL, NULL, PREC_NONE},
-        [TOKEN_PERCENT]       = {NULL, binary, PREC_FACTOR},
-        [TOKEN_PERCENT_EQUAL] = {NULL, NULL, PREC_NONE},
-        [TOKEN_PLUS]          = {NULL, binary, PREC_TERM},
-        [TOKEN_PLUS_EQUAL]    = {NULL, NULL, PREC_NONE},
-        [TOKEN_SEMICOLON]     = {NULL, NULL, PREC_NONE},
-        [TOKEN_SLASH]         = {NULL, binary, PREC_FACTOR},
-        [TOKEN_SLASH_EQUAL]   = {NULL, NULL, PREC_NONE},
-        [TOKEN_STAR]          = {NULL, binary, PREC_FACTOR},
-        [TOKEN_STAR_EQUAL]    = {NULL, NULL, PREC_NONE},
-        [TOKEN_BANG]          = {unary, NULL, PREC_NONE},
-        [TOKEN_BANG_EQUAL]    = {NULL, binary, PREC_EQUALITY},
-        [TOKEN_EQUAL]         = {NULL, NULL, PREC_NONE},
-        [TOKEN_EQUAL_EQUAL]   = {NULL, binary, PREC_EQUALITY},
-        [TOKEN_GREATER]       = {NULL, binary, PREC_COMPARISON},
-        [TOKEN_GREATER_EQUAL] = {NULL, binary, PREC_COMPARISON},
-        [TOKEN_LESS]          = {NULL, binary, PREC_COMPARISON},
-        [TOKEN_LESS_EQUAL]    = {NULL, binary, PREC_COMPARISON},
-        [TOKEN_IDENTIFIER]    = {variable, NULL, PREC_NONE},
-        [TOKEN_STRING]        = {string, NULL, PREC_NONE},
-        [TOKEN_NUMBER]        = {number, NULL, PREC_NONE},
-        [TOKEN_AND]           = {NULL, and_, PREC_AND},
-        [TOKEN_AS]            = {NULL, NULL, PREC_NONE},
-        [TOKEN_CLASS]         = {NULL, NULL, PREC_NONE},
-        [TOKEN_ELSE]          = {NULL, NULL, PREC_NONE},
-        [TOKEN_FALSE]         = {literal, NULL, PREC_NONE},
-        [TOKEN_FINALLY]       = {NULL, NULL, PREC_NONE},
-        [TOKEN_FOR]           = {NULL, NULL, PREC_NONE},
-        [TOKEN_FUN]           = {NULL, NULL, PREC_NONE},
-        [TOKEN_IF]            = {NULL, NULL, PREC_NONE},
-        [TOKEN_NIL]           = {literal, NULL, PREC_NONE},
-        [TOKEN_OR]            = {NULL, or_, PREC_OR},
-        [TOKEN_PRINT]         = {NULL, NULL, PREC_NONE},
-        [TOKEN_RETURN]        = {NULL, NULL, PREC_NONE},
-        [TOKEN_SUPER]         = {super_, NULL, PREC_NONE},
-        [TOKEN_THIS]          = {this_, NULL, PREC_NONE},
-        [TOKEN_THROW]         = {NULL, NULL, PREC_NONE},
-        [TOKEN_TRY]           = {NULL, NULL, PREC_NONE},
-        [TOKEN_TRUE]          = {literal, NULL, PREC_NONE},
-        [TOKEN_VAR]           = {NULL, NULL, PREC_NONE},
-        [TOKEN_WHILE]         = {NULL, NULL, PREC_NONE},
-        [TOKEN_ERROR]         = {NULL, NULL, PREC_NONE},
-        [TOKEN_EOF]           = {NULL, NULL, PREC_NONE},
+    [TOKEN_LEFT_PAREN]    = {grouping, call, PREC_CALL_INDEX},
+    [TOKEN_RIGHT_PAREN]   = {NULL, NULL, PREC_NONE},
+    [TOKEN_LEFT_BRACE]    = {NULL, NULL, PREC_NONE},
+    [TOKEN_RIGHT_BRACE]   = {NULL, NULL, PREC_NONE},
+    [TOKEN_LEFT_BRACKET]  = {array, element, PREC_CONTAINER},
+    [TOKEN_RIGHT_BRACKET] = {NULL, NULL, PREC_NONE},
+    [TOKEN_COLON]         = {NULL, NULL, PREC_NONE},
+    [TOKEN_QUESTION]      = {NULL, conditional, PREC_CONDITIONAL},
+    [TOKEN_VERTICAL_LINE] = {NULL, NULL, PREC_NONE},
+    [TOKEN_COMMA]         = {NULL, NULL, PREC_NONE},
+    [TOKEN_DOT]           = {NULL, dot, PREC_CALL_INDEX},
+    [TOKEN_MINUS]         = {unary, binary, PREC_TERM},
+    [TOKEN_MINUS_EQUAL]   = {NULL, NULL, PREC_NONE},
+    [TOKEN_PERCENT]       = {NULL, binary, PREC_FACTOR},
+    [TOKEN_PERCENT_EQUAL] = {NULL, NULL, PREC_NONE},
+    [TOKEN_PLUS]          = {NULL, binary, PREC_TERM},
+    [TOKEN_PLUS_EQUAL]    = {NULL, NULL, PREC_NONE},
+    [TOKEN_SEMICOLON]     = {NULL, NULL, PREC_NONE},
+    [TOKEN_SLASH]         = {NULL, binary, PREC_FACTOR},
+    [TOKEN_SLASH_EQUAL]   = {NULL, NULL, PREC_NONE},
+    [TOKEN_STAR]          = {NULL, binary, PREC_FACTOR},
+    [TOKEN_STAR_EQUAL]    = {NULL, NULL, PREC_NONE},
+    [TOKEN_BANG]          = {unary, NULL, PREC_NONE},
+    [TOKEN_BANG_EQUAL]    = {NULL, binary, PREC_EQUALITY},
+    [TOKEN_EQUAL]         = {NULL, NULL, PREC_NONE},
+    [TOKEN_EQUAL_EQUAL]   = {NULL, binary, PREC_EQUALITY},
+    [TOKEN_GREATER]       = {NULL, binary, PREC_COMPARISON},
+    [TOKEN_GREATER_EQUAL] = {NULL, binary, PREC_COMPARISON},
+    [TOKEN_LESS]          = {NULL, binary, PREC_COMPARISON},
+    [TOKEN_LESS_EQUAL]    = {NULL, binary, PREC_COMPARISON},
+    [TOKEN_IDENTIFIER]    = {variable, NULL, PREC_NONE},
+    [TOKEN_STRING]        = {string, NULL, PREC_NONE},
+    [TOKEN_NUMBER]        = {number, NULL, PREC_NONE},
+    [TOKEN_AND]           = {NULL, and_, PREC_AND},
+    [TOKEN_AS]            = {NULL, NULL, PREC_NONE},
+    [TOKEN_CLASS]         = {NULL, NULL, PREC_NONE},
+    [TOKEN_ELSE]          = {NULL, NULL, PREC_NONE},
+    [TOKEN_FALSE]         = {literal, NULL, PREC_NONE},
+    [TOKEN_FINALLY]       = {NULL, NULL, PREC_NONE},
+    [TOKEN_FOR]           = {NULL, NULL, PREC_NONE},
+    [TOKEN_FUN]           = {NULL, NULL, PREC_NONE},
+    [TOKEN_IF]            = {NULL, NULL, PREC_NONE},
+    [TOKEN_NIL]           = {literal, NULL, PREC_NONE},
+    [TOKEN_OR]            = {NULL, or_, PREC_OR},
+    [TOKEN_PRINT]         = {NULL, NULL, PREC_NONE},
+    [TOKEN_RETURN]        = {NULL, NULL, PREC_NONE},
+    [TOKEN_SUPER]         = {super_, NULL, PREC_NONE},
+    [TOKEN_THIS]          = {this_, NULL, PREC_NONE},
+    [TOKEN_THROW]         = {NULL, NULL, PREC_NONE},
+    [TOKEN_TRY]           = {NULL, NULL, PREC_NONE},
+    [TOKEN_TRUE]          = {literal, NULL, PREC_NONE},
+    [TOKEN_VAR]           = {NULL, NULL, PREC_NONE},
+    [TOKEN_WHILE]         = {NULL, NULL, PREC_NONE},
+    [TOKEN_ERROR]         = {NULL, NULL, PREC_NONE},
+    [TOKEN_EOF]           = {NULL, NULL, PREC_NONE},
 };
 
 
@@ -1571,11 +1570,11 @@ static void parsePrecedence(Precedence precedence) {
     }
 }
 
-static ParseRule *getRule(TokenType type) {
+static ParseRule* getRule(TokenType type) {
     return &rules[type];
 }
 
-ObjFunction *compile(const char *source) {
+ObjFunction* compile(const char* source) {
     initScanner(source);
     Compiler compiler;
     initCompiler(&compiler, TYPE_SCRIPT);
@@ -1589,14 +1588,14 @@ ObjFunction *compile(const char *source) {
         declaration();
     }
 
-    ObjFunction *function = endCompiler();
+    ObjFunction* function = endCompiler();
     return parser.hadError ? NULL : function;
 }
 
 void markCompilerRoots() {
-    Compiler *compiler = current;
+    Compiler* compiler = current;
     while (compiler != NULL) {
-        markObject((Obj *) compiler->function);
+        markObject((Obj*) compiler->function);
 
         markTable(&compiler->stringConstants);
         compiler = compiler->enclosing;
