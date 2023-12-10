@@ -18,6 +18,8 @@ array[4] = "hello";
 print array;
 print -Number(4) + 4;
 
+exit(0);
+
 // var N = 20;
 //
 // fun fib(n) {

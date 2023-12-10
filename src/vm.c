@@ -98,6 +98,7 @@ static void addNativeMethod(ObjClass *klass,
 void initVM() {
     resetStack();
     vm.objects = NULL;
+    vm.exit_code = 0;
 
     vm.grayCount = 0;
     vm.grayCapacity = 0;
@@ -1043,7 +1044,11 @@ InterpretResult interpret(const char *source) {
     push(OBJ_VAL((Obj *) function));
     callFunction((Obj *) function, 0);
 
-    return run();
+    if (setjmp(vm.exit_state) == 0) {
+        return run();
+    } else {
+        return INTERPRET_EXIT;
+    }
 }
 
 InterpretResult interpretCompiled(ObjFunction *function) {

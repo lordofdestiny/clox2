@@ -50,50 +50,64 @@ static char *readFile(const char *path) {
     return buffer;
 }
 
-static void runFile(const char *path) {
+static int runFile(const char *path) {
     char *source = readFile(path);
     InterpretResult result = interpret(source);
     free(source);
 
-    if (result == INTERPRET_COMPILE_ERROR) exit(65);
-    if (result == INTERPRET_RUNTIME_ERROR) exit(70);
+    switch (result) {
+    case INTERPRET_OK: return 0;
+    case INTERPRET_EXIT: return vm.exit_code;
+    case INTERPRET_COMPILE_ERROR: return 65;
+    case INTERPRET_RUNTIME_ERROR: return 70;
+    }
 }
 
-static void runBinaryFile(const char *path) {
+static int runBinaryFile(const char *path) {
     ObjFunction *compiled = loadBinary(path);
     InterpretResult result = interpretCompiled(compiled);
 
-    if (result == INTERPRET_RUNTIME_ERROR) exit(70);
+    switch (result) {
+    case INTERPRET_EXIT: return vm.exit_code;
+    case INTERPRET_RUNTIME_ERROR: return 70;
+    default: return 0;
+    }
 }
 
-static void compileFile(const char *src_path, const char *dest_path) {
+static int compileFile(const char *src_path, const char *dest_path) {
     char *source = readFile(src_path);
     ObjFunction *code = compile(source);
     free(source);
+    
+    if (code == NULL) return INTERPRET_COMPILE_ERROR;
     writeBinary(code, dest_path);
+
+    return 0;
 }
 
 int main(int argc, char *argv[]) {
+    int exitCode = 0;
     clock_t start = clock();
+
     initVM();
 
     if (argc == 1) {
         repl();
     } else if (argc == 2) {
-        runFile(argv[1]);
+        exitCode = runFile(argv[1]);
     } else if (argc == 3 && !strcmp(argv[2], "--bin")) {
-        runBinaryFile(argv[1]);
+        exitCode = runBinaryFile(argv[1]);
     } else if (argc == 4 && !strcmp(argv[2], "--save")) {
-        compileFile(argv[1], argv[3]);
+        exitCode = compileFile(argv[1], argv[3]);
     } else {
+        exitCode = 65;
         fprintf(stderr, "Usage: clox [path] | [src_path --save dest_path] | [--bin bin_path]\n");
-        exit(64);
     }
 
-    freeVM();
     clock_t end = clock();
-
     printf("Execution time: %.6f seconds\n", ((float) (end - start)) / CLOCKS_PER_SEC);
 
-    return 0;
+    freeVM();
+
+    exit(exitCode);
 }

@@ -8,10 +8,12 @@
 #include <float.h>
 #include <math.h>
 #include <ctype.h>
+#include <setjmp.h>
 
 #include "../h/native.h"
 #include "../h/memory.h"
 #include "../h/object.h"
+#include "../h/vm.h"
 
 static bool hasFieldNative(int argCount, Value *args) {
     if (!IS_INSTANCE(args[0])) {
@@ -93,16 +95,16 @@ static bool exitNative(int argCount, Value *args) {
         return false;
     }
     if (argCount == 0) {
-        exit(0);
+        vm.exit_code = 0;
+        longjmp(vm.exit_state, 1);
     }
     if (!IS_NUMBER(args[0])) {
         args[-1] = NATIVE_ERROR("Exit code must be a number.");
         return false;
     }
-    int exitCode = (int) AS_NUMBER(args[0]);
-    exit(exitCode);
-    args[-1] = NIL_VAL;
-    return true;
+
+    vm.exit_code = (int) AS_NUMBER(args[0]);
+    longjmp(vm.exit_state, 1);
 }
 
 NativeMethodDef nativeMethods[] = {
@@ -306,8 +308,8 @@ bool initStringNative(int argCount, Value *args) {
 
     if (IS_BOOL(value) || IS_INSTANCE(value) && IS_BOOL(AS_INSTANCE(value)->this_)) {
         bool b = AS_BOOL(IS_BOOL(value)
-                          ? value
-                          : AS_INSTANCE(value)->this_);
+                         ? value
+                         : AS_INSTANCE(value)->this_);
 
         if (b) {
             instance->this_ = OBJ_VAL(copyString("true", 4));
@@ -361,8 +363,8 @@ bool initArrayNative(int argCount, Value *args) {
 
     if (IS_NUMBER(value) || IS_INSTANCE(value) && IS_NUMBER(AS_INSTANCE(value)->this_)) {
         int len = (int) AS_NUMBER(IS_NUMBER(value)
-                                   ? value
-                                   : AS_INSTANCE(value)->this_);
+                                  ? value
+                                  : AS_INSTANCE(value)->this_);
         ObjArray *array_ = newArray();
         valueInitValueArray(&array_->array, NIL_VAL, len);
         instance->this_ = OBJ_VAL(array_);

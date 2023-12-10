@@ -5,6 +5,8 @@
 #ifndef CLOX2_VM_H
 #define CLOX2_VM_H
 
+#include <setjmp.h>
+
 #include "chunk.h"
 #include "value.h"
 #include "table.h"
@@ -47,10 +49,13 @@ typedef struct {
     int grayCount;
     int grayCapacity;
     Obj **grayStack;
+    jmp_buf exit_state;
+    int exit_code;
 } VM;
 
 typedef enum {
     INTERPRET_OK,
+    INTERPRET_EXIT,
     INTERPRET_COMPILE_ERROR,
     INTERPRET_RUNTIME_ERROR,
 } InterpretResult;
