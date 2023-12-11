@@ -420,7 +420,6 @@ bool appendArrayNative(int argCount, Value *args) {
 }
 
 bool popArrayNative(int argCount, Value *args) {
-    Value value = args[0]; // Argument
     ObjInstance *instance = AS_INSTANCE(args[-1]); // This
     ObjArray *array = AS_ARRAY(instance->this_);
     ValueArray *va = &array->array;
