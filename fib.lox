@@ -1,11 +1,36 @@
+var N = 40;
+
 fun fib(n) {
     if(n < 2) return n;
     return fib(n-2) + fib(n-1);
+
+}
+
+class Fibo {
+    static calc(n) {
+        if( n < 2) return n;
+        return Fibo.calc(n-1) + Fibo.calc(n-2);
+    }
+    fib(n) {
+        if(n < 2) return n;
+        return this.fib(n-2) + this.fib(n-1);
+    }
 }
 
 var start = clock();
-var result = fib(40);
+var result = fib(N);
 var end = clock();
+print result;
+print end - start;
 
+var start = clock();
+var result = Fibo.calc(N);
+var end = clock();
+print result;
+print end - start;
+
+var start = clock();
+var result = Fibo().fib(N);
+var end = clock();
 print result;
 print end - start;
