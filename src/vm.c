@@ -135,6 +135,8 @@ void initVM() {
 
     ObjClass *array = nativeClass("Array");
     addNativeMethod(array, "init", initArrayNative, -1);
+    addNativeMethod(array, "append", appendArrayNative, 1);
+    addNativeMethod(array, "pop", popArrayNative, 0);
 }
 
 void freeVM() {
@@ -161,8 +163,12 @@ static Value peek(int distance) {
 }
 
 static void unpackPrimitive(int distance) {
-    Value value = AS_INSTANCE(peek(distance))->this_;
-    vm.stackTop[-1 - distance] = value;
+    Value current = peek(distance);
+    Value unpacked;
+    if (IS_INSTANCE(current) &&
+        !(IS_INSTANCE(unpacked = AS_INSTANCE(current)->this_))) {
+        vm.stackTop[-1 - distance] = unpacked;
+    }
 }
 
 static bool promote(int distance, ObjClass *klass) {
@@ -539,14 +545,8 @@ static InterpretResult run() {
 #define READ_STRING() AS_STRING(READ_CONSTANT())
 #define BINARY_OP(valueType, op) \
     do {                         \
-        if (IS_INSTANCE(peek(0))\
-                && (IS_NUMBER(AS_INSTANCE(peek(0))->this_))) {\
-                unpackPrimitive(0); \
-            } \
-            if (IS_INSTANCE(peek(1))\
-                && (IS_NUMBER(AS_INSTANCE(peek(1))->this_))) {\
-                unpackPrimitive(1); \
-            }                         \
+        unpackPrimitive(0); \
+        unpackPrimitive(1); \
         if(!IS_NUMBER(peek(0)) || !IS_NUMBER(peek(1))){ \
             frame->ip = ip;                     \
             runtimeError("Operands must be numbers");   \
@@ -712,14 +712,8 @@ static InterpretResult run() {
             break;
         }
         case OP_GET_INDEX: {
-            if (IS_INSTANCE(peek(0))
-                && IS_NUMBER(AS_INSTANCE(peek(0))->this_)) {
-                unpackPrimitive(0);
-            }
-            if (IS_INSTANCE(peek(1))
-                && IS_ARRAY(AS_INSTANCE(peek(1))->this_)) {
-                unpackPrimitive(1);
-            }
+            unpackPrimitive(0);
+            unpackPrimitive(1);
             if (!IS_NUMBER(peek(0))) {
                 frame->ip = ip;
                 runtimeError("Index must be a number.");
@@ -743,14 +737,8 @@ static InterpretResult run() {
             break;
         }
         case OP_SET_INDEX: {
-            if (IS_INSTANCE(peek(1))
-                && IS_NUMBER(AS_INSTANCE(peek(1))->this_)) {
-                unpackPrimitive(1);
-            }
-            if (IS_INSTANCE(peek(2))
-                && IS_ARRAY(AS_INSTANCE(peek(2))->this_)) {
-                unpackPrimitive(2);
-            }
+            unpackPrimitive(1);
+            unpackPrimitive(2);
             if (!IS_NUMBER(peek(1))) {
                 frame->ip = ip;
                 runtimeError("Index must be a number.");
@@ -801,18 +789,8 @@ static InterpretResult run() {
              *  call a version of "toString" for a value, before concatenating
              *  it with a string
              * */
-            if (IS_INSTANCE(peek(0))
-                && (IS_NUMBER(AS_INSTANCE(peek(0))->this_) ||
-                    IS_STRING(AS_INSTANCE(peek(0))->this_))) {
-                unpackPrimitive(0);
-            }
-
-            if (IS_INSTANCE(peek(1))
-                && (IS_NUMBER(AS_INSTANCE(peek(1))->this_)
-                    || IS_STRING(AS_INSTANCE(peek(1))->this_))) {
-                unpackPrimitive(1);
-            }
-
+            unpackPrimitive(0);
+            unpackPrimitive(1);
             if (IS_STRING(peek(0)) && IS_STRING(peek(1))) {
                 concatenate();
             } else if (IS_NUMBER(peek(0)) && IS_NUMBER(peek(1))) {
@@ -837,14 +815,8 @@ static InterpretResult run() {
         case OP_DIVIDE: BINARY_OP(NUMBER_VAL, /);
             break;
         case OP_MODULUS: {
-            if (IS_INSTANCE(peek(0))
-                && (IS_NUMBER(AS_INSTANCE(peek(0))->this_))) {
-                unpackPrimitive(0);
-            }
-            if (IS_INSTANCE(peek(1))
-                && (IS_NUMBER(AS_INSTANCE(peek(1))->this_))) {
-                unpackPrimitive(1);
-            }
+            unpackPrimitive(0);
+            unpackPrimitive(1);
             if (IS_NUMBER(peek(0)) && IS_NUMBER(peek(1))) {
                 double b = AS_NUMBER(pop());
                 double a = AS_NUMBER(pop());
@@ -858,11 +830,8 @@ static InterpretResult run() {
         }
         case OP_NOT: push(BOOL_VAL(isFalsy(pop())));
             break;
-        case OP_NEGATE:
-            if (IS_INSTANCE(peek(0))
-                && IS_NUMBER(AS_INSTANCE(peek(0))->this_)) {
-                unpackPrimitive(0);
-            }
+        case OP_NEGATE: {
+            unpackPrimitive(0);
             if (!IS_NUMBER(peek(0))) {
                 frame->ip = ip;
                 runtimeError("Operand must be a number.");
@@ -875,6 +844,7 @@ static InterpretResult run() {
                 instance->this_ = NUMBER_VAL(-AS_NUMBER(instance->this_));
             }
             break;
+        }
         case OP_JUMP: {
             uint16_t offset = READ_SHORT();
             ip += offset;
@@ -1036,7 +1006,6 @@ static InterpretResult run() {
 #undef READ_STRING
 #undef BINARY_OP
 }
-
 
 InterpretResult interpret(const char *source) {
     ObjFunction *function = compile(source);

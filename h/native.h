@@ -28,6 +28,8 @@ bool initBooleanNative(int argCount, Value *args);
 bool initStringNative(int argCount, Value *args);
 
 bool initArrayNative(int argCount, Value *args);
+bool appendArrayNative(int argCount, Value *args);
+bool popArrayNative(int argCount, Value *args);
 
 bool toPrecisionNative(int argCount, Value *args);
 

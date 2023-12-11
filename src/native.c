@@ -142,6 +142,12 @@ bool initNumberNative(int argCount, Value *args) {
         return false;
     }
     Value value = args[0]; // Argument
+    if (IS_INSTANCE(value)) {
+        Value unpacked = AS_INSTANCE(value)->this_;
+        if (!IS_INSTANCE(unpacked)) {
+            value = unpacked;
+        }
+    }
     ObjInstance *instance = AS_INSTANCE(args[-1]); // This
 
     if (!IS_NUMBER(value) &&
@@ -211,6 +217,12 @@ bool initBooleanNative(int argCount, Value *args) {
         return false;
     }
     Value value = args[0]; // argument
+    if (IS_INSTANCE(value)) {
+        Value unpacked = AS_INSTANCE(value)->this_;
+        if (!IS_INSTANCE(unpacked)) {
+            value = unpacked;
+        }
+    }
     ObjInstance *instance = AS_INSTANCE(args[-1]); // This
 
     if (!IS_NIL(value) && !IS_NUMBER(value) &&
@@ -278,6 +290,12 @@ bool initStringNative(int argCount, Value *args) {
         return false;
     }
     Value value = args[0]; // argument
+    if (IS_INSTANCE(value)) {
+        Value unpacked = AS_INSTANCE(value)->this_;
+        if (!IS_INSTANCE(unpacked)) {
+            value = unpacked;
+        }
+    }
     ObjInstance *instance = AS_INSTANCE(args[-1]); // This
 
     if (!IS_NUMBER(value) &&
@@ -350,6 +368,12 @@ bool initArrayNative(int argCount, Value *args) {
     }
 
     Value value = args[0]; // argument
+    if (IS_INSTANCE(value)) {
+        Value unpacked = AS_INSTANCE(value)->this_;
+        if (!IS_INSTANCE(unpacked)) {
+            value = unpacked;
+        }
+    }
     ObjInstance *instance = AS_INSTANCE(args[-1]); // This
 
     if (!IS_ARRAY(value) &&
@@ -382,4 +406,26 @@ bool initArrayNative(int argCount, Value *args) {
     }
 
     return false;
+}
+
+bool appendArrayNative(int argCount, Value *args) {
+    Value value = args[0]; // Argument
+    ObjInstance *instance = AS_INSTANCE(args[-1]); // This
+    ObjArray *array = AS_ARRAY(instance->this_);
+
+    writeValueArray(&array->array, value);
+    args[-1] = NIL_VAL;
+
+    return true;
+}
+
+bool popArrayNative(int argCount, Value *args) {
+    Value value = args[0]; // Argument
+    ObjInstance *instance = AS_INSTANCE(args[-1]); // This
+    ObjArray *array = AS_ARRAY(instance->this_);
+    ValueArray *va = &array->array;
+
+    args[-1] = va->values[--va->count];
+
+    return true;
 }
