@@ -337,7 +337,8 @@ bool callNative(Obj *callable, int argCount) {
         return false;
     }
 
-    if (native->function(argCount, vm.stackTop - argCount)) {
+    Value *const args = vm.stackTop - argCount;
+    if (native->function(argCount, args - 1, args)) {
         vm.stackTop -= argCount;
         return true;
     }
