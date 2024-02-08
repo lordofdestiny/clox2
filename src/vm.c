@@ -813,6 +813,20 @@ static InterpretResult run() {
             break;
         case OP_MULTIPLY: BINARY_OP(NUMBER_VAL, *);
             break;
+        case OP_EXPONENT: {
+            unpackPrimitive(0);
+            unpackPrimitive(1);
+            if (IS_NUMBER(peek(0)) && IS_NUMBER(peek(1))) {
+                double b = AS_NUMBER(pop());
+                double a = AS_NUMBER(pop());
+                push(NUMBER_VAL(pow(a, b)));
+            } else {
+                frame->ip = ip;
+                runtimeError("Operands must be two numbers.");
+                return INTERPRET_RUNTIME_ERROR;
+            }
+            break;
+        }
         case OP_DIVIDE: BINARY_OP(NUMBER_VAL, /);
             break;
         case OP_MODULUS: {

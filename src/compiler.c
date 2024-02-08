@@ -30,6 +30,7 @@ typedef enum {
     PREC_COMPARISON,    // < > <= >=
     PREC_TERM,          // + -
     PREC_FACTOR,        // * /
+    PREC_EXPONENT,      // **
     PREC_UNARY,         // ! -
     PREC_CALL_INDEX,    // func(a, ... ,z), arr[i]
     PREC_PRIMARY
@@ -1206,7 +1207,11 @@ static void binary(bool canAssign) {
 #pragma clang diagnostic pop
     TokenType operatorType = parser.previous.type;
     ParseRule* rule = getRule(operatorType);
-    parsePrecedence((Precedence) (rule->precedence + 1));
+    if(operatorType == TOKEN_STAR_STAR) {
+        parsePrecedence((Precedence) rule->precedence);
+    }else {
+        parsePrecedence((Precedence) (rule->precedence + 1));
+    }
 
     switch (operatorType) {
     case TOKEN_PLUS: emitByte(OP_ADD);
@@ -1214,6 +1219,8 @@ static void binary(bool canAssign) {
     case TOKEN_MINUS:emitByte(OP_SUBTRACT);
         break;
     case TOKEN_STAR: emitByte(OP_MULTIPLY);
+        break;
+    case TOKEN_STAR_STAR: emitByte(OP_EXPONENT);
         break;
     case TOKEN_SLASH: emitByte(OP_DIVIDE);
         break;
@@ -1507,6 +1514,7 @@ ParseRule rules[] = {
     [TOKEN_SLASH]         = {NULL, binary, PREC_FACTOR},
     [TOKEN_SLASH_EQUAL]   = {NULL, NULL, PREC_NONE},
     [TOKEN_STAR]          = {NULL, binary, PREC_FACTOR},
+    [TOKEN_STAR_STAR]     = {NULL, binary, PREC_EXPONENT},
     [TOKEN_STAR_EQUAL]    = {NULL, NULL, PREC_NONE},
     [TOKEN_BANG]          = {unary, NULL, PREC_NONE},
     [TOKEN_BANG_EQUAL]    = {NULL, binary, PREC_EQUALITY},
