@@ -7,9 +7,9 @@
 
 #include "object.h"
 
-void writeBinary(ObjFunction *compiled, const char *path);
+void writeBinary(ObjFunction* compiled, const char* path);
 
-ObjFunction *loadBinary(const char *path);
+ObjFunction* loadBinary(const char* path);
 
 
-#endif //CLOX2_BINARY_H
+#endif // CLOX2_BINARY_H

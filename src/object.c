@@ -16,7 +16,7 @@
 
 static ObjVT vtList[];
 
-static Obj *allocateObject(size_t size, ObjType type) {
+static Obj *allocateObject(const size_t size, const ObjType type) {
     Obj *object = (Obj *) reallocate(NULL, 0, size);
     object->type = type;
     object->isMarked = false;
@@ -26,11 +26,11 @@ static Obj *allocateObject(size_t size, ObjType type) {
     return object;
 }
 
-void printObject(FILE *out, Value value) {
+void printObject(FILE *out, const Value value) {
     AS_OBJ(value)->vtp->print(AS_OBJ(value), out);
 }
 
-static void printFunctionImpl(ObjFunction *function, FILE *out);
+static void printFunctionImpl(const ObjFunction *function, FILE *out);
 
 ObjArray *newArray() {
     ObjArray *array = ALLOCATE_OBJ(ObjArray, OBJ_ARRAY);
@@ -39,7 +39,7 @@ ObjArray *newArray() {
 }
 
 static void blackenArray(Obj *object) {
-    ObjArray *array = (ObjArray *) object;
+    const ObjArray *array = (ObjArray *) object;
     for (int i = 0; i < array->array.count; i++) {
         markValue(array->array.values[i]);
     }
@@ -52,8 +52,8 @@ static void freeArray(Obj *object) {
 }
 
 static void printArray(Obj *object, FILE *out) {
-    ObjArray *objArray = (ObjArray *) object;
-    ValueArray *array = &objArray->array;
+    const ObjArray *objArray = (ObjArray *) object;
+    const ValueArray *array = &objArray->array;
     fprintf(out, "[");
     for (int i = 0; i < array->count; i++) {
         if (IS_STRING(array->values[i])) {
@@ -70,7 +70,7 @@ static void printArray(Obj *object, FILE *out) {
     printf("]");
 }
 
-ObjBoundMethod *newBoundMethod(Value receiver, Obj *method) {
+ObjBoundMethod *newBoundMethod(const Value receiver, Obj *method) {
     ObjBoundMethod *bound = ALLOCATE_OBJ(ObjBoundMethod, OBJ_BOUND_METHOD);
     bound->receiver = receiver;
     bound->method = method;
@@ -78,7 +78,7 @@ ObjBoundMethod *newBoundMethod(Value receiver, Obj *method) {
 }
 
 static void blackenBoundMethod(Obj *object) {
-    ObjBoundMethod *bound = (ObjBoundMethod *) object;
+    const ObjBoundMethod *bound = (ObjBoundMethod *) object;
     markValue(bound->receiver);
     markObject((Obj *) bound->method);
 }
@@ -138,7 +138,7 @@ ObjClosure *newClosure(ObjFunction *function) {
 }
 
 static void blackenClosure(Obj *object) {
-    ObjClosure *closure = (ObjClosure *) object;
+    const ObjClosure *closure = (ObjClosure *) object;
     markObject((Obj *) closure->function);
     for (int i = 0; i < closure->upvalueCount; i++) {
         markObject((Obj *) closure->upvalues[i]);
@@ -146,7 +146,7 @@ static void blackenClosure(Obj *object) {
 }
 
 static void freeClosure(Obj *object) {
-    ObjClosure *closure = (ObjClosure *) object;
+    const ObjClosure *closure = (ObjClosure *) object;
     FREE_ARRAY(ObjClosure*, closure->upvalues, closure->upvalueCount);
     FREE(ObjClosure, object);
 }
@@ -202,7 +202,7 @@ static void freeInstance(Obj *object) {
 }
 
 static void printInstance(Obj *obj, FILE *out) {
-    ObjInstance *instance = (ObjInstance *) obj;
+    const ObjInstance *instance = (ObjInstance *) obj;
     if (IS_INSTANCE(instance->this_)) {
         fprintf(out, "<instance %s>", instance->klass->name->chars);
     } else {
@@ -210,7 +210,7 @@ static void printInstance(Obj *obj, FILE *out) {
     }
 }
 
-ObjNative *newNative(NativeFn function, int arity) {
+ObjNative *newNative(const NativeFn function, const int arity) {
     ObjNative *native = ALLOCATE_OBJ(ObjNative, OBJ_NATIVE);
     native->function = function;
     native->arity = arity;
@@ -225,7 +225,7 @@ static void printNative(Obj *obj, FILE *out) {
     fprintf(out, "<native fn>");
 }
 
-ObjInstance *newPrimitive(Value value, ObjClass *klass) {
+ObjInstance *newPrimitive(const Value value, ObjClass *klass) {
     ObjInstance *primitive = ALLOCATE_OBJ(ObjInstance, OBJ_INSTANCE);
     primitive->this_ = value;
     primitive->klass = klass;
@@ -233,8 +233,7 @@ ObjInstance *newPrimitive(Value value, ObjClass *klass) {
     return primitive;
 }
 
-ObjString *allocateString(char *chars, int length,
-                          uint32_t hash) {
+ObjString *allocateString(char *chars, const int length, const uint32_t hash) {
     ObjString *string = ALLOCATE_OBJ(ObjString, OBJ_STRING);
     string->length = length;
     string->chars = chars;
@@ -245,18 +244,18 @@ ObjString *allocateString(char *chars, int length,
     return string;
 }
 
-uint32_t hashString(const char *key, int length) {
+uint32_t hashString(const char *chars, const int length) {
     uint32_t hash = 2166136261u;
     for (int i = 0; i < length; i++) {
-        hash ^= (uint8_t) key[i];
+        hash ^= (uint8_t) chars[i];
         hash *= 16777619;
     }
     return hash;
 }
 
 
-ObjString *takeString(char *chars, int length) {
-    uint32_t hash = hashString(chars, length);
+ObjString *takeString(char *chars, const int length) {
+    const uint32_t hash = hashString(chars, length);
     ObjString *interned = tableFindString(&vm.strings, chars, length,
                                           hash);
     if (interned != NULL) {
@@ -267,8 +266,8 @@ ObjString *takeString(char *chars, int length) {
     return allocateString(chars, length, hash);
 }
 
-ObjString *copyString(const char *chars, int length) {
-    uint32_t hash = hashString(chars, length);
+ObjString *copyString(const char *chars, const int length) {
+    const uint32_t hash = hashString(chars, length);
     ObjString *interned = tableFindString(&vm.strings, chars, length,
                                           hash);
     if (interned != NULL) return interned;
@@ -280,7 +279,7 @@ ObjString *copyString(const char *chars, int length) {
 }
 
 static void freeString(Obj *object) {
-    ObjString *string = (ObjString *) object;
+    const ObjString *string = (ObjString *) object;
     FREE_ARRAY(char, string->chars, (size_t) string->length + 1);
     FREE(ObjString, object);
 }
@@ -306,13 +305,13 @@ static void freeUpvalue(Obj *object) {
 }
 
 static void printUpvalue(Obj *obj, FILE *out) {
-    ObjUpvalue *upvalue = (ObjUpvalue *) obj;
+    const ObjUpvalue *upvalue = (ObjUpvalue *) obj;
     fprintf(out, "<upvalue ");
     printValue(out, *upvalue->location);
     fprintf(out, ">");
 }
 
-static void printFunctionImpl(ObjFunction *function, FILE *out) {
+static void printFunctionImpl(const ObjFunction *function, FILE *out) {
     if (function->name == NULL) {
         printf("<script>");
         return;

@@ -36,13 +36,13 @@ typedef enum {
 } ValueTag;
 
 typedef struct {
-    Value *values;
+    Value* values;
     int bufferCount, bufferCapacity;
     int ringCount, ringCapacity;
     int head, tail;
 } ValueQueue;
 
-static void initValueQueue(ValueQueue *queue) {
+static void initValueQueue(ValueQueue* queue) {
     queue->values = 0;
     queue->bufferCount = 0;
     queue->bufferCapacity = 0;
@@ -52,12 +52,12 @@ static void initValueQueue(ValueQueue *queue) {
     queue->tail = 0;
 }
 
-static void freeValueQueue(ValueQueue *queue) {
+static void freeValueQueue(ValueQueue* queue) {
     free(queue->values);
     initValueQueue(queue);
 }
 
-static bool findInQueue(ValueQueue *queue, Value value) {
+static bool findInQueue(const ValueQueue* queue, const Value value) {
     for (int i = 0; i < queue->bufferCapacity; i++) {
         if (IS_NIL(queue->values[i])) continue;
         if (IS_NUMBER(value) && IS_NUMBER(queue->values[i]) &&
@@ -69,7 +69,7 @@ static bool findInQueue(ValueQueue *queue, Value value) {
     return false;
 }
 
-static void enqueueValue(ValueQueue *queue, Value value) {
+static void enqueueValue(ValueQueue* queue, const Value value) {
     bool expandBuffer = false;
     bool expandRing = false;
     if (queue->ringCapacity != queue->bufferCapacity) {
@@ -83,9 +83,9 @@ static void enqueueValue(ValueQueue *queue, Value value) {
     if (expandBuffer) {
         queue->tail = queue->bufferCapacity;
         queue->bufferCapacity = GROW_CAPACITY(queue->bufferCapacity);
-        void *memory = realloc(queue->values, sizeof(Value) * queue->bufferCapacity);
+        void* memory = realloc(queue->values, sizeof(Value) * queue->bufferCapacity);
         if (memory != NULL) {
-            queue->values = (Value *) memory;
+            queue->values = (Value*) memory;
             for (int i = queue->tail; i < queue->bufferCapacity; i++) {
                 queue->values[i] = NIL_VAL;
             }
@@ -106,8 +106,8 @@ static void enqueueValue(ValueQueue *queue, Value value) {
     queue->tail = (queue->tail + 1) % queue->bufferCapacity;
 }
 
-static Value pollValue(ValueQueue *queue) {
-    Value value = queue->values[queue->head];
+static Value pollValue(ValueQueue* queue) {
+    const Value value = queue->values[queue->head];
     queue->values[queue->head] = NIL_VAL;
     queue->bufferCount--;
     queue->ringCount--;
@@ -121,7 +121,7 @@ static Value pollValue(ValueQueue *queue) {
     return value;
 }
 
-static bool queueEmpty(ValueQueue *queue) {
+static bool queueEmpty(const ValueQueue* queue) {
     return queue->bufferCount == 0;
 }
 
@@ -129,25 +129,25 @@ typedef struct {
     int count;
     int capacity;
     size_t elementSize;
-    char *elements;
+    char* elements;
 } GenericArray;
 
-static void initGenericArray(GenericArray *array, size_t size) {
+static void initGenericArray(GenericArray* array, const size_t size) {
     array->count = 0;
     array->capacity = 0;
     array->elementSize = size;
     array->elements = NULL;
 }
 
-static void freeGenericArray(GenericArray *array) {
+static void freeGenericArray(GenericArray* array) {
     free(array->elements);
     initGenericArray(array, array->elementSize);
 }
 
-static void appendGenericArray(GenericArray *valueIds, void *item) {
+static void appendGenericArray(GenericArray* valueIds, const void* item) {
     if (valueIds->capacity < valueIds->count + 1) {
         valueIds->capacity = GROW_CAPACITY(valueIds->capacity);
-        void *memory = realloc(valueIds->elements, valueIds->elementSize * valueIds->capacity);
+        void* memory = realloc(valueIds->elements, valueIds->elementSize * valueIds->capacity);
         if (memory != NULL) {
             valueIds->elements = memory;
         } else {
@@ -155,11 +155,12 @@ static void appendGenericArray(GenericArray *valueIds, void *item) {
             exit(1);
         }
     }
-    memcpy(valueIds->elements + valueIds->count * valueIds->elementSize, item, valueIds->elementSize);
+    memcpy(
+        valueIds->elements + valueIds->count * valueIds->elementSize, item, valueIds->elementSize);
     valueIds->count++;
 }
 
-static void *getElement(GenericArray *array, size_t index) {
+static void* getElement(GenericArray* array, const size_t index) {
     return array->elements + index * array->elementSize;
 }
 
@@ -168,25 +169,25 @@ typedef struct {
     int id;
 } ValueId;
 
-static ValueId newFunctionValueId(Value value) {
+static ValueId newFunctionValueId(const Value value) {
     static int nextValueId = 0;
-    return (ValueId) {
-            .id = nextValueId++,
-            .value = value
+    return (ValueId){
+        .id = nextValueId++,
+        .value = value
     };
 }
 
-static ValueId newStringValueId(Value value) {
+static ValueId newStringValueId(const Value value) {
     static int nextValueId = 0;
-    return (ValueId) {
-            .id = nextValueId++,
-            .value = value
+    return (ValueId){
+        .id = nextValueId++,
+        .value = value
     };
 }
 
-static ValueId *findValueId(GenericArray *valueIds, Value value) {
+static ValueId* findValueId(GenericArray* valueIds, const Value value) {
     for (int i = 0; i < valueIds->count; i++) {
-        ValueId *id = GET_ELEMENT(ValueId, valueIds, i);
+        ValueId* id = GET_ELEMENT(ValueId, valueIds, i);
         if (IS_NUMBER(value) && IS_NUMBER(id->value) &&
             AS_NUMBER(value) == AS_NUMBER(id->value)) {
             return id;
@@ -201,7 +202,7 @@ typedef struct {
     Value value;
 } FilePatch;
 
-static void write_int(FILE *out, int num) {
+static void write_int(FILE* out, const int num) {
     if (NULL == out) {
         fprintf(stderr, "File was NULL.\n");
         exit(SAVE_FAILURE);
@@ -213,7 +214,7 @@ static void write_int(FILE *out, int num) {
     }
 }
 
-static void write_byte(FILE *out, uint8_t num) {
+static void write_byte(FILE* out, const uint8_t num) {
     if (NULL == out) {
         fprintf(stderr, "File was NULL.\n");
         exit(SAVE_FAILURE);
@@ -225,7 +226,7 @@ static void write_byte(FILE *out, uint8_t num) {
     }
 }
 
-static void write_double(FILE *out, double num) {
+static void write_double(FILE* out, const double num) {
     if (NULL == out) {
         fprintf(stderr, "File was NULL.\n");
         exit(SAVE_FAILURE);
@@ -237,7 +238,7 @@ static void write_double(FILE *out, double num) {
     }
 }
 
-static void write_checked(FILE *f, const void *ptr, size_t size, size_t n) {
+static void write_checked(FILE* f, const void* ptr, const size_t size, const size_t n) {
     if (NULL == f) {
         fprintf(stderr, "I bet you saw THAT coming.\n");
         exit(SAVE_FAILURE);
@@ -249,12 +250,12 @@ static void write_checked(FILE *f, const void *ptr, size_t size, size_t n) {
     }
 }
 
-static void write_string(FILE *out, ObjString *string) {
+static void write_string(FILE* out, const ObjString* string) {
     write_int(out, string->length);
     write_checked(out, string->chars, sizeof(char), string->length);
 }
 
-static void writeFunctionHeader(FILE *file, ObjFunction *function) {
+static void writeFunctionHeader(FILE* file, const ObjFunction* function) {
     write_int(file, SEG_FUNCTION_HEADER);
     if (function->name) {
         write_int(file, SEG_FUNCTION_NAME);
@@ -266,7 +267,7 @@ static void writeFunctionHeader(FILE *file, ObjFunction *function) {
     write_int(file, function->upvalueCount);
 }
 
-static void writeFunctionCode(FILE *file, ObjFunction *function) {
+static void writeFunctionCode(FILE* file, const ObjFunction* function) {
     write_int(file, SEG_FUNCTION_CODE);
 
     write_int(file, function->chunk.count);
@@ -278,14 +279,16 @@ static void writeFunctionCode(FILE *file, ObjFunction *function) {
     write_checked(file, function->chunk.lines, sizeof(LineStart), function->chunk.lineCount);
 }
 
-static void writeFunctionConstants(FILE *file, ObjFunction *function,
-                                   GenericArray *valueIds, GenericArray *patchList,
-                                   ValueQueue *functionQueue, ValueQueue *stringQueue) {
+static void writeFunctionConstants(
+    FILE* file, const ObjFunction* function,
+    GenericArray* valueIds, GenericArray* patchList,
+    ValueQueue* functionQueue, ValueQueue* stringQueue
+) {
     write_int(file, SEG_FUNCTION_CONSTANTS);
-    ValueArray *constants = &function->chunk.constants;
+    const ValueArray* constants = &function->chunk.constants;
     write_int(file, constants->count);
     for (int i = 0; i < constants->count; i++) {
-        Value value = constants->values[i];
+        const Value value = constants->values[i];
 
         if (IS_NUMBER(value)) {
             write_byte(file, OUT_TAG_NUMBER);
@@ -297,20 +300,22 @@ static void writeFunctionConstants(FILE *file, ObjFunction *function,
                 appendGenericArray(valueIds, &vid);
                 enqueueValue(stringQueue, value);
             }
-            appendGenericArray(patchList, &(FilePatch) {
+            appendGenericArray(
+                patchList, &(FilePatch){
                     .value = value,
                     .position = ftell(file)
-            });
+                });
             write_int(file, 0x7FFFFFFF);
         } else if (IS_FUNCTION(value)) {
             if (!findInQueue(functionQueue, value)) {
                 enqueueValue(functionQueue, value);
             }
             write_byte(file, OUT_TAG_FUNCTION);
-            appendGenericArray(patchList, &(FilePatch) {
+            appendGenericArray(
+                patchList, &(FilePatch){
                     .value = value,
                     .position = ftell(file)
-            });
+                });
             write_int(file, 0x7FFFFFFF);
         } else {
             fprintf(stderr, "Invalid value type in constant array.");
@@ -319,10 +324,12 @@ static void writeFunctionConstants(FILE *file, ObjFunction *function,
     }
 }
 
-static void writeFunction(FILE *file, ObjFunction *function,
-                          GenericArray *valueIds, GenericArray *patchList,
-                          ValueQueue *functionQueue, ValueQueue *stringQueue) {
-    ValueId vid = newFunctionValueId(OBJ_VAL(function));
+static void writeFunction(
+    FILE* file, ObjFunction* function,
+    GenericArray* valueIds, GenericArray* patchList,
+    ValueQueue* functionQueue, ValueQueue* stringQueue
+) {
+    const ValueId vid = newFunctionValueId(OBJ_VAL(function));
     appendGenericArray(valueIds, &vid);
 
     write_int(file, SEG_FUNCTION);
@@ -332,10 +339,10 @@ static void writeFunction(FILE *file, ObjFunction *function,
     write_int(file, SEG_FUNCTION_END);
 }
 
-void patchFileRefs(FILE *file, GenericArray *patchList, GenericArray *valueIds) {
+void patchFileRefs(FILE* file, GenericArray* patchList, GenericArray* valueIds) {
     for (int i = 0; i < patchList->count; i++) {
-        FilePatch *patch = GET_ELEMENT(FilePatch, patchList, i);
-        ValueId *fid = findValueId(valueIds, patch->value);
+        const FilePatch* patch = GET_ELEMENT(FilePatch, patchList, i);
+        const ValueId* fid = findValueId(valueIds, patch->value);
         if (fid == NULL) {
             fprintf(stderr, "Found a patch for non existent value.");
             exit(SAVE_FAILURE);
@@ -346,18 +353,18 @@ void patchFileRefs(FILE *file, GenericArray *patchList, GenericArray *valueIds) 
     fseek(file, 0L, SEEK_END);
 }
 
-void writeStrings(FILE *file, ValueQueue *strings) {
+void writeStrings(FILE* file, ValueQueue* strings) {
     write_int(file, SEG_STRINGS);
     while (!queueEmpty(strings)) {
-        Value value = pollValue(strings);
-        ObjString *string = AS_STRING(value);
+        const Value value = pollValue(strings);
+        const ObjString* string = AS_STRING(value);
         write_string(file, string);
     }
     write_int(file, SEG_END_STRINGS);
 }
 
-void writeBinary(ObjFunction *compiled, const char *path) {
-    FILE *file = fopen(path, "w+b");
+void writeBinary(ObjFunction* compiled, const char* path) {
+    FILE* file = fopen(path, "w+b");
     if (file == NULL) {
         fprintf(stderr, "File does not exist");
         exit(SAVE_FAILURE);
@@ -377,8 +384,8 @@ void writeBinary(ObjFunction *compiled, const char *path) {
     write_int(file, SEG_FUNCTIONS);
     writeFunction(file, compiled, &valueIds, &patchList, &functionQueue, &stringQueue);
     while (!queueEmpty(&functionQueue)) {
-        Value value = pollValue(&functionQueue);
-        ObjFunction *function = AS_FUNCTION(value);
+        const Value value = pollValue(&functionQueue);
+        ObjFunction* function = AS_FUNCTION(value);
         writeFunction(file, function, &valueIds, &patchList, &functionQueue, &stringQueue);
     }
     write_int(file, SEG_END_FUNCTIONS);
@@ -410,7 +417,7 @@ typedef struct {
     ValueTag type;
 } FunctionPatch;
 
-static int read_int(FILE *file) {
+static int read_int(FILE* file) {
     int value;
     if (fread(&value, sizeof(int), 1, file) != 1) {
         if (feof(file)) {
@@ -424,14 +431,14 @@ static int read_int(FILE *file) {
 }
 
 
-static int peek_int(FILE *file) {
-    long location = ftell(file);
-    int value = read_int(file);
+static int peek_int(FILE* file) {
+    const long location = ftell(file);
+    const int value = read_int(file);
     fseek(file, location - ftell(file), SEEK_CUR);
     return value;
 }
 
-static uint8_t read_byte(FILE *file) {
+static uint8_t read_byte(FILE* file) {
     uint8_t value;
     if (fread(&value, sizeof(uint8_t), 1, file) != 1) {
         if (feof(file)) {
@@ -444,7 +451,7 @@ static uint8_t read_byte(FILE *file) {
     return value;
 }
 
-static double read_double(FILE *file) {
+static double read_double(FILE* file) {
     double value;
     if (fread(&value, sizeof(double), 1, file) != 1) {
         if (feof(file)) {
@@ -457,7 +464,7 @@ static double read_double(FILE *file) {
     return value;
 }
 
-static void read_array(FILE *file, void *dest, size_t size, size_t count) {
+static void read_array(FILE* file, void* dest, const size_t size, const size_t count) {
     if (fread(dest, size, count, file) != count) {
         if (feof(file)) {
             fprintf(stderr, "Unexpected end of file.\n");
@@ -468,7 +475,7 @@ static void read_array(FILE *file, void *dest, size_t size, size_t count) {
     }
 }
 
-static void checkSegment(FILE *file, SegmentSequence seg) {
+static void checkSegment(FILE* file, const SegmentSequence seg) {
     int read;
     if ((read = read_int(file)) != seg) {
         fprintf(stderr, "Invalid file format. Read: %08X; Expected: %08X", read, seg);
@@ -476,17 +483,17 @@ static void checkSegment(FILE *file, SegmentSequence seg) {
     }
 }
 
-static ObjString *read_string(FILE *file) {
-    int length = read_int(file);
-    char *chars = ALLOCATE(char, length + 1);
+static ObjString* read_string(FILE* file) {
+    const int length = read_int(file);
+    char* chars = ALLOCATE(char, length + 1);
     LOAD_ARRAY(char, file, chars, length);
     chars[length] = '\0';
     return takeString(chars, length);
 }
 
-static void loadFunctionHeader(FILE *file, ObjFunction *function) {
+static void loadFunctionHeader(FILE* file, ObjFunction* function) {
     checkSegment(file, SEG_FUNCTION_HEADER);
-    SegmentSequence seq = read_int(file);
+    const SegmentSequence seq = read_int(file);
     if (seq == SEG_FUNCTION_NAME) {
         function->name = read_string(file);
     } else if (seq == SEG_FUNCTION_SCRIPT) {
@@ -499,9 +506,9 @@ static void loadFunctionHeader(FILE *file, ObjFunction *function) {
     function->upvalueCount = read_int(file);
 }
 
-static void loadFunctionCode(FILE *file, ObjFunction *function) {
+static void loadFunctionCode(FILE* file, ObjFunction* function) {
     checkSegment(file, SEG_FUNCTION_CODE);
-    Chunk *chunk = &function->chunk;
+    Chunk* chunk = &function->chunk;
 
     chunk->count = read_int(file);
     chunk->capacity = read_int(file);
@@ -514,32 +521,35 @@ static void loadFunctionCode(FILE *file, ObjFunction *function) {
     LOAD_ARRAY(LineStart, file, chunk->lines, chunk->lineCount);
 }
 
-static void loadFunctionConstants(FILE *file, ObjFunction *function,
-                                  GenericArray *patchList) {
+static void loadFunctionConstants(
+    FILE* file, ObjFunction* function,
+    GenericArray* patchList
+) {
     static int nextFunctionId = 0;
-    int id = nextFunctionId++;
+    const int id = nextFunctionId++;
 
     checkSegment(file, SEG_FUNCTION_CONSTANTS);
-    ValueArray *constants = &function->chunk.constants;
+    ValueArray* constants = &function->chunk.constants;
     initValueArray(constants);
-    int count = read_int(file);
+    const int count = read_int(file);
     for (int i = 0; i < count; i++) {
-        ValueTag tag = read_byte(file);
+        const ValueTag tag = read_byte(file);
         switch (tag) {
         case OUT_TAG_NUMBER: {
-            double number = read_double(file);
+            const double number = read_double(file);
             writeValueArray(constants, NUMBER_VAL(number));
             break;
         }
         case OUT_TAG_STRING:
         case OUT_TAG_FUNCTION: {
-            int missingValue = read_int(file);
-            appendGenericArray(patchList, &(FunctionPatch) {
+            const int missingValue = read_int(file);
+            appendGenericArray(
+                patchList, &(FunctionPatch){
                     .position = i,
                     .toPatch = id,
                     .type = tag,
                     .patchWith = missingValue
-            });
+                });
             writeValueArray(constants, NIL_VAL);
             break;
         }
@@ -551,8 +561,8 @@ static void loadFunctionConstants(FILE *file, ObjFunction *function,
     }
 }
 
-static ObjFunction *loadFunction(FILE *file, GenericArray *patchList) {
-    ObjFunction *function = newFunction();
+static ObjFunction* loadFunction(FILE* file, GenericArray* patchList) {
+    ObjFunction* function = newFunction();
     checkSegment(file, SEG_FUNCTION);
     loadFunctionHeader(file, function);
     loadFunctionCode(file, function);
@@ -561,46 +571,49 @@ static ObjFunction *loadFunction(FILE *file, GenericArray *patchList) {
     return function;
 }
 
-static GenericArray loadStrings(FILE *file) {
+static GenericArray loadStrings(FILE* file) {
     GenericArray strings;
     INIT_GENERIC(Value, &strings);
     checkSegment(file, SEG_STRINGS);
     while (!feof(file) && peek_int(file) != SEG_END_STRINGS) {
-        ObjString *string = read_string(file);
-        appendGenericArray(&strings, &(Value) {OBJ_VAL(string)});
+        ObjString* string = read_string(file);
+        appendGenericArray(&strings, &(Value){OBJ_VAL(string)});
     }
     checkSegment(file, SEG_END_STRINGS);
     return strings;
 }
 
-static void patchFunctionRefs(GenericArray *patchList, GenericArray *functions, GenericArray *strings) {
+static void patchFunctionRefs(
+    GenericArray* patchList, GenericArray* functions, GenericArray* strings
+) {
     for (int i = 0; i < patchList->count; i++) {
-        FunctionPatch *patch = GET_ELEMENT(FunctionPatch, patchList, i);
+        const FunctionPatch* patch = GET_ELEMENT(FunctionPatch, patchList, i);
 
-        if (patch->type == OUT_TAG_FUNCTION) {
-            if (patch->patchWith > functions->count || patch->toPatch > functions->count) {
-                fprintf(stderr, "Invalid function id to patch.");
-                exit(LOAD_FAILURE);
-            }
-            Value *toPatch = GET_ELEMENT(Value, functions, patch->toPatch);
-            ObjFunction *toPatchFn = AS_FUNCTION(*toPatch);
-            Value patchWith = *GET_ELEMENT(Value, functions, patch->patchWith);
-            toPatchFn->chunk.constants.values[patch->position] = patchWith;
-        } else if (patch->type == OUT_TAG_STRING) {
-            if (patch->patchWith > strings->count || patch->toPatch > strings->count) {
-                fprintf(stderr, "Invalid string id to patch.");
-                exit(LOAD_FAILURE);
-            }
-            Value *toPatch = GET_ELEMENT(Value, functions, patch->toPatch);
-            ObjFunction *toPatchFn = AS_FUNCTION(*toPatch);
-            Value patchWith = *GET_ELEMENT(Value, strings, patch->patchWith);
-            toPatchFn->chunk.constants.values[patch->position] = patchWith;
+        GenericArray* patchSource;
+        switch (patch->type) {
+        case OUT_TAG_STRING: patchSource = strings;
+            break;
+        case OUT_TAG_FUNCTION: patchSource = functions;
+            break;
+        default:
+            fprintf(stderr, "Invalid patch type.");
+            exit(LOAD_FAILURE);
         }
+
+        if (patch->patchWith > patchSource->count || patch->toPatch > patchSource->count) {
+            fprintf(stderr, "Invalid function id to patch.");
+            exit(LOAD_FAILURE);
+        }
+
+        const Value* toPatch = GET_ELEMENT(Value, functions, patch->toPatch);
+        const ObjFunction* toPatchFn = AS_FUNCTION(*toPatch);
+        const Value* patchWith = GET_ELEMENT(Value, patchSource, patch->patchWith);
+        toPatchFn->chunk.constants.values[patch->position] = *patchWith;
     }
 }
 
-ObjFunction *loadBinary(const char *path) {
-    FILE *file = fopen(path, "rb");
+ObjFunction* loadBinary(const char* path) {
+    FILE* file = fopen(path, "rb");
     if (file == NULL) {
         fprintf(stderr, "Could not open file \"%s\".\n", path);
         exit(74);
@@ -612,11 +625,11 @@ ObjFunction *loadBinary(const char *path) {
     INIT_GENERIC(FunctionPatch, &patchList);
 
     checkSegment(file, SEG_FUNCTIONS);
-    ObjFunction *script = loadFunction(file, &patchList);
-    appendGenericArray(&functions, &(Value) {OBJ_VAL(script)});
+    ObjFunction* script = loadFunction(file, &patchList);
+    appendGenericArray(&functions, &(Value){OBJ_VAL(script)});
     while (!feof(file) && peek_int(file) != SEG_END_FUNCTIONS) {
-        ObjFunction *function = loadFunction(file, &patchList);
-        appendGenericArray(&functions, &(Value) {OBJ_VAL(function)});
+        ObjFunction* function = loadFunction(file, &patchList);
+        appendGenericArray(&functions, &(Value){OBJ_VAL(function)});
     }
     checkSegment(file, SEG_END_FUNCTIONS);
 
@@ -624,12 +637,12 @@ ObjFunction *loadBinary(const char *path) {
 
     patchFunctionRefs(&patchList, &functions, &strings);
 
-//#ifdef DEBUG_PRINT_CODE
-//    disassembleChunk(&function->chunk,
-//                     function->name != NULL
-//                     ? function->name->chars
-//                     : "<script>");
-//#endif
+    //#ifdef DEBUG_PRINT_CODE
+    //    disassembleChunk(&function->chunk,
+    //                     function->name != NULL
+    //                     ? function->name->chars
+    //                     : "<script>");
+    //#endif
 
     freeGenericArray(&functions);
     freeGenericArray(&patchList);

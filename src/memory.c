@@ -18,7 +18,7 @@
 #endif
 #define GC_HEAP_GROW_FACTOR 2
 
-void *reallocate(void *previous, size_t oldSize, size_t newSize) {
+void* reallocate(void* previous, const size_t oldSize, const size_t newSize) {
     vm.bytesAllocated += newSize - oldSize;
     if (newSize > oldSize) {
 #ifdef DEBUG_STRESS_GC
@@ -35,12 +35,12 @@ void *reallocate(void *previous, size_t oldSize, size_t newSize) {
         free(previous);
         return NULL;
     }
-    void *result = realloc(previous, newSize);
+    void* result = realloc(previous, newSize);
     if (result == NULL) exit(1);
     return result;
 }
 
-void markObject(Obj *object) {
+void markObject(Obj* object) {
     if (object == NULL) return;
     if (object->isMarked) return;
 
@@ -53,7 +53,7 @@ void markObject(Obj *object) {
 
     if (vm.grayCapacity < vm.grayCount + 1) {
         vm.grayCapacity = GROW_CAPACITY(vm.grayCapacity);
-        Obj **newGrayStack = (Obj **) realloc(vm.grayStack, sizeof(Obj *) * vm.grayCapacity);
+        Obj** newGrayStack = (Obj**) realloc(vm.grayStack, sizeof(Obj*) * vm.grayCapacity);
 
         // Shut down if it can't allocate more space for gray stack
         if (newGrayStack == NULL) {
@@ -67,17 +67,17 @@ void markObject(Obj *object) {
     vm.grayStack[vm.grayCount++] = object;
 }
 
-void markValue(Value value) {
+void markValue(const Value value) {
     if (IS_OBJ(value)) markObject(AS_OBJ(value));
 }
 
-void markArray(ValueArray *array) {
+void markArray(ValueArray* array) {
     for (int i = 0; i < array->count; i++) {
         markValue(array->values[i]);
     }
 }
 
-static void blackenObject(Obj *object) {
+static void blackenObject(Obj* object) {
 #ifdef DEBUG_LOG_GC
     printf("%p blacken ", (void *) object);
     printValue(OBJ_VAL(object));
@@ -86,7 +86,7 @@ static void blackenObject(Obj *object) {
     object->vtp->blacken(object);
 }
 
-static void freeObject(Obj *object) {
+static void freeObject(Obj* object) {
 #ifdef DEBUG_LOG_GC
     printf("%p free type %d\n", (void *) object, object->type);
 #endif
@@ -94,9 +94,9 @@ static void freeObject(Obj *object) {
 }
 
 void freeObjects() {
-    Obj *object = vm.objects;
+    Obj* object = vm.objects;
     while (object != NULL) {
-        Obj *next = object->next;
+        Obj* next = object->next;
         freeObject(object);
         object = next;
     }
@@ -104,36 +104,36 @@ void freeObjects() {
 
 static void markRoots() {
     // Mark objects on the VM stack
-    for (Value *slot = vm.stack; slot <= vm.stackTop; slot++) {
+    for (const Value* slot = vm.stack; slot <= vm.stackTop; slot++) {
         markValue(*slot);
     }
 
     for (int i = 0; i < vm.frameCount; i++) {
-        markObject((Obj *) vm.frames[i].function);
+        markObject((Obj*) vm.frames[i].function);
     }
 
     markTable(&vm.globals);
 
-    for (ObjUpvalue *upvalue = vm.openUpvalues;
+    for (ObjUpvalue* upvalue = vm.openUpvalues;
          upvalue != NULL;
          upvalue = upvalue->next) {
-        markObject((Obj *) upvalue);
+        markObject((Obj*) upvalue);
     }
 
     markCompilerRoots();
-    markObject((Obj *) vm.initString);
+    markObject((Obj*) vm.initString);
 }
 
 static void traceReferences() {
     while (vm.grayCount > 0) {
-        Obj *object = vm.grayStack[--vm.grayCount];
+        Obj* object = vm.grayStack[--vm.grayCount];
         blackenObject(object);
     }
 }
 
 static void sweep() {
-    Obj *previous = NULL;
-    Obj *object = vm.objects;
+    Obj* previous = NULL;
+    Obj* object = vm.objects;
 
     while (object != NULL) {
         if (object->isMarked) {
@@ -143,7 +143,7 @@ static void sweep() {
             continue;
         }
 
-        Obj *unreached = object;
+        Obj* unreached = object;
         object = object->next;
         if (previous != NULL) {
             previous->next = object;

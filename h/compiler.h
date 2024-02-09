@@ -8,7 +8,7 @@
 #include "vm.h"
 #include "object.h"
 
-ObjFunction *compile(const char *source);
+ObjFunction* compile(const char* source);
 
 void markCompilerRoots();
 

@@ -22,13 +22,13 @@
 #define FREE_ARRAY(type, pointer, oldCount) \
     (type *)reallocate(pointer, sizeof(type) * (oldCount), 0)
 
-void *reallocate(void *previous, size_t oldSize, size_t newSize);
+void* reallocate(void* previous, size_t oldSize, size_t newSize);
 
-void markObject(Obj *object);
+void markObject(Obj* object);
 
 void markValue(Value value);
 
-void markArray(ValueArray *array);
+void markArray(ValueArray* array);
 
 void collectGarbage();
 

@@ -47,13 +47,13 @@ typedef enum {
     OBJ_UPVALUE,
 } ObjType;
 
-typedef bool (*CallableFn)(Obj *, int);
+typedef bool (*CallableFn)(Obj*, int);
 
-typedef void (*BlackenFn)(Obj *);
+typedef void (*BlackenFn)(Obj*);
 
-typedef void (*FreeFn)(Obj *);
+typedef void (*FreeFn)(Obj*);
 
-typedef void (*PrintFn)(Obj *, FILE *out);
+typedef void (*PrintFn)(Obj*, FILE* out);
 
 typedef struct {
     CallableFn call;
@@ -65,8 +65,8 @@ typedef struct {
 struct Obj {
     ObjType type;
     bool isMarked;
-    ObjVT *vtp;
-    struct Obj *next;
+    ObjVT* vtp;
+    struct Obj* next;
 };
 
 typedef struct {
@@ -79,24 +79,24 @@ typedef struct ObjFunction {
     int arity;
     int upvalueCount;
     Chunk chunk;
-    ObjString *name;
+    ObjString* name;
 } ObjFunction;
 
 typedef struct ObjUpvalue {
     Obj obj;
-    Value *location;
+    Value* location;
     Value closed;
-    struct ObjUpvalue *next;
+    struct ObjUpvalue* next;
 } ObjUpvalue;
 
 typedef struct {
     Obj obj;
-    ObjFunction *function;
-    ObjUpvalue **upvalues;
+    ObjFunction* function;
+    ObjUpvalue** upvalues;
     int upvalueCount;
 } ObjClosure;
 
-typedef bool (*NativeFn)(int argCount, Value *implicit, Value *args);
+typedef bool (*NativeFn)(int argCount, Value* implicit, Value* args);
 
 typedef struct {
     Obj obj;
@@ -108,12 +108,12 @@ struct ObjString {
     Obj obj;
     int length;
     uint32_t hash;
-    char *chars;
+    char* chars;
 };
 
 typedef struct {
     Obj obj;
-    ObjString *name;
+    ObjString* name;
     Value initializer;
     Table fields;
     Table methods;
@@ -123,43 +123,43 @@ typedef struct {
 typedef struct {
     Obj obj;
     Value this_;
-    ObjClass *klass;
+    ObjClass* klass;
     Table fields;
 } ObjInstance;
 
 typedef struct {
     Obj obj;
     Value receiver;
-    Obj *method;
+    Obj* method;
 } ObjBoundMethod;
 
-ObjArray *newArray();
+ObjArray* newArray();
 
-ObjBoundMethod *newBoundMethod(Value receiver, Obj *method);
+ObjBoundMethod* newBoundMethod(Value receiver, Obj* method);
 
-ObjClass *newClass(ObjString *name);
+ObjClass* newClass(ObjString* name);
 
-ObjClosure *newClosure(ObjFunction *function);
+ObjClosure* newClosure(ObjFunction* function);
 
-ObjFunction *newFunction();
+ObjFunction* newFunction();
 
-ObjInstance *newInstance(ObjClass *klass);
+ObjInstance* newInstance(ObjClass* klass);
 
-ObjInstance *newPrimitive(Value value, ObjClass *klass);
+ObjInstance* newPrimitive(Value value, ObjClass* klass);
 
-ObjNative *newNative(NativeFn function, int arity);
+ObjNative* newNative(NativeFn function, int arity);
 
-ObjString *takeString(char *chars, int length);
+ObjString* takeString(char* chars, int length);
 
-ObjString *copyString(const char *chars, int length);
+ObjString* copyString(const char* chars, int length);
 
-ObjUpvalue *newUpvalue(Value *slot);
+ObjUpvalue* newUpvalue(Value* slot);
 
-uint32_t hashString(const char *chars, int length);
+uint32_t hashString(const char* chars, int length);
 
-void printObject(FILE *out, Value value);
+void printObject(FILE* out, Value value);
 
-static inline bool isObjType(Value value, ObjType type) {
+static inline bool isObjType(const Value value, const ObjType type) {
     return IS_OBJ(value) && AS_OBJ(value)->type == type;
 }
 

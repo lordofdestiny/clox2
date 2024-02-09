@@ -23,9 +23,9 @@ typedef struct {
 } ExceptionHandler;
 
 typedef struct {
-    Obj *function;
-    uint8_t *ip;
-    Value *slots;
+    Obj* function;
+    uint8_t* ip;
+    Value* slots;
     uint8_t handlerCount;
     ExceptionHandler handlerStack[MAX_HANDLER_FRAMES];
 } CallFrame;
@@ -34,21 +34,21 @@ typedef struct {
     CallFrame frames[FRAMES_MAX];
     int frameCount;
 
-    Chunk *chunk;
+    Chunk* chunk;
     Value stack[STACK_MAX];
-    Value *stackTop;
+    Value* stackTop;
     Table globals;
     Table strings;
-    ObjString *initString;
-    ObjUpvalue *openUpvalues;
+    ObjString* initString;
+    ObjUpvalue* openUpvalues;
 
     size_t bytesAllocated;
     size_t nextGC;
-    Obj *objects;
+    Obj* objects;
 
     int grayCount;
     int grayCapacity;
-    Obj **grayStack;
+    Obj** grayStack;
     jmp_buf exit_state;
     int exit_code;
 } VM;
@@ -66,24 +66,24 @@ void initVM();
 
 void freeVM();
 
-InterpretResult interpret(const char *source);
+InterpretResult interpret(const char* source);
 
-InterpretResult interpretCompiled(ObjFunction *function);
+InterpretResult interpretCompiled(ObjFunction* function);
 
 void push(Value value);
 
 Value pop();
 
-void runtimeError(const char *format, ...);
+void runtimeError(const char* format, ...);
 
-bool callClass(Obj *callable, int argCount);
+bool callClass(Obj* callable, int argCount);
 
-bool callClosure(Obj *callable, int argCount);
+bool callClosure(Obj* callable, int argCount);
 
-bool callFunction(Obj *callable, int argCount);
+bool callFunction(Obj* callable, int argCount);
 
-bool callNative(Obj *callable, int argCount);
+bool callNative(Obj* callable, int argCount);
 
-bool callBoundMethod(Obj *callable, int argCount);
+bool callBoundMethod(Obj* callable, int argCount);
 
 #endif //CLOX2_VM_H
