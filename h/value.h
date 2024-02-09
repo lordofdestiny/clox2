@@ -43,13 +43,13 @@ typedef uint64_t Value;
     (Value) (SIGN_BIT | QNAN | (uint64_t)(uintptr_t)(obj))
 
 
-static inline double valueToNum(Value value) {
+static double valueToNum(const Value value) {
     double num;
     memcpy(&num, &value, sizeof(double));
     return num;
 }
 
-static inline Value numToValue(double num) {
+static Value numToValue(const double num) {
     Value value;
     memcpy(&value, &num, sizeof(double));
     return value;
@@ -94,21 +94,21 @@ typedef struct {
 typedef struct {
     int capacity;
     int count;
-    Value *values;
+    Value* values;
 } ValueArray;
 
 bool valuesEqual(Value a, Value b);
 
-void initValueArray(ValueArray *array);
+void initValueArray(ValueArray* array);
 
-void writeValueArray(ValueArray *array, Value value);
+void writeValueArray(ValueArray* array, Value value);
 
-void copyValueArray(ValueArray *src, ValueArray *dest);
+void copyValueArray(ValueArray* src, ValueArray* dest);
 
-void valueInitValueArray(ValueArray *array, Value initial, int count);
+void valueInitValueArray(ValueArray* array, Value initial, int count);
 
-void freeValueArray(ValueArray *array);
+void freeValueArray(ValueArray* array);
 
-void printValue(FILE *out, Value value);
+void printValue(FILE* out, Value value);
 
 #endif //CLOX2_VALUE_H

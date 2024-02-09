@@ -7,7 +7,7 @@
 #include "../h/value.h"
 #include "../h/vm.h"
 
-void initChunk(Chunk *chunk) {
+void initChunk(Chunk* chunk) {
     chunk->count = 0;
     chunk->capacity = 0;
     chunk->code = NULL;
@@ -19,16 +19,16 @@ void initChunk(Chunk *chunk) {
     initValueArray(&chunk->constants);
 }
 
-void freeChunk(Chunk *chunk) {
+void freeChunk(Chunk* chunk) {
     FREE_ARRAY(uint8_t, chunk->code, chunk->capacity);
     FREE_ARRAY(LineStart, chunk->lines, chunk->lineCapacity);
     freeValueArray(&chunk->constants);
     initChunk(chunk);
 }
 
-void writeChunk(Chunk *chunk, uint8_t byte, int line) {
+void writeChunk(Chunk* chunk, const uint8_t byte, const int line) {
     if (chunk->capacity < chunk->count + 1) {
-        int oldCapacity = chunk->capacity;
+        const int oldCapacity = chunk->capacity;
         chunk->capacity = GROW_CAPACITY(oldCapacity);
         chunk->code = GROW_ARRAY(uint8_t, chunk->code, oldCapacity, chunk->capacity);
     }
@@ -42,22 +42,22 @@ void writeChunk(Chunk *chunk, uint8_t byte, int line) {
     }
 
     if (chunk->lineCapacity < chunk->lineCount + 1) {
-        int oldCapacity = chunk->lineCapacity;
+        const int oldCapacity = chunk->lineCapacity;
         chunk->lineCapacity = GROW_CAPACITY(oldCapacity);
         chunk->lines = GROW_ARRAY(LineStart, chunk->lines, oldCapacity, chunk->lineCapacity);
     }
 
-    LineStart *lineStart = &chunk->lines[chunk->lineCount++];
+    LineStart* lineStart = &chunk->lines[chunk->lineCount++];
     lineStart->offset = chunk->count - 1;
     lineStart->line = line;
 }
 
-int getLine(Chunk *chunk, int instruction) {
+int getLine(Chunk* chunk, const int instruction) {
     int start = 0;
     int end = chunk->lineCount - 1;
     while (true) {
-        int mid = (start + end) / 2;
-        LineStart *line = &chunk->lines[mid];
+        const int mid = (start + end) / 2;
+        const LineStart* line = &chunk->lines[mid];
 
         if (instruction < line->offset) {
             end = mid - 1;
@@ -70,7 +70,7 @@ int getLine(Chunk *chunk, int instruction) {
     }
 }
 
-int addConstant(Chunk *chunk, Value value) {
+int addConstant(Chunk* chunk, const Value value) {
     push(value);
     writeValueArray(&chunk->constants, value);
     pop();

@@ -32,15 +32,15 @@ bool valuesEqual(Value a, Value b) {
 #endif
 }
 
-void initValueArray(ValueArray *array) {
+void initValueArray(ValueArray* array) {
     array->values = NULL;
     array->capacity = 0;
     array->count = 0;
 }
 
-void writeValueArray(ValueArray *array, Value value) {
+void writeValueArray(ValueArray* array, const Value value) {
     if (array->capacity < array->count + 1) {
-        int oldCapacity = array->capacity;
+        const int oldCapacity = array->capacity;
         array->capacity = GROW_CAPACITY(oldCapacity);
         array->values = GROW_ARRAY(Value, array->values, oldCapacity, array->capacity);
     }
@@ -57,22 +57,22 @@ static int nextPowerOfTwo(int n) {
     return 1 << i;
 }
 
-void valueInitValueArray(ValueArray *array, Value initial, int count) {
+void valueInitValueArray(ValueArray* array, const Value initial, const int count) {
     if (array->capacity < count) {
-        int oldCapacity = array->capacity;
+        const int oldCapacity = array->capacity;
         array->capacity = nextPowerOfTwo(count);
         array->values = GROW_ARRAY(Value, array->values, oldCapacity, array->capacity);
     }
-    for(int i = 0; i < count; i++) {
+    for (int i = 0; i < count; i++) {
         array->values[i] = initial;
     }
     array->count = count;
 }
 
-void copyValueArray(ValueArray *src, ValueArray *dest) {
+void copyValueArray(ValueArray* src, ValueArray* dest) {
     if (src->capacity > dest->capacity) {
         // Grow dest to size of capacity
-        int oldCapacity = dest->capacity;
+        const int oldCapacity = dest->capacity;
         dest->capacity = src->capacity;
         dest->values = GROW_ARRAY(Value, dest->values, oldCapacity, dest->capacity);
     }
@@ -83,14 +83,14 @@ void copyValueArray(ValueArray *src, ValueArray *dest) {
     dest->count = src->count;
 }
 
-void freeValueArray(ValueArray *array) {
+void freeValueArray(ValueArray* array) {
     FREE_ARRAY(Value, array->values, array->capacity);
     initValueArray(array);
 }
 
 #ifdef NAN_BOXING
 
-void printValue(FILE *out, Value value) {
+void printValue(FILE* out, const Value value) {
     if (IS_BOOL(value)) {
         fprintf(out, AS_BOOL(value) ? "true" : "false");
     } else if (IS_NIL(value)) {
