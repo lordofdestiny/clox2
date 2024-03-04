@@ -43,7 +43,7 @@ typedef struct {
 } ValueQueue;
 
 static void initValueQueue(ValueQueue* queue) {
-    queue->values = 0;
+    queue->values = NULL;
     queue->bufferCount = 0;
     queue->bufferCapacity = 0;
     queue->ringCount = 0;
@@ -133,10 +133,10 @@ typedef struct {
 } GenericArray;
 
 static void initGenericArray(GenericArray* array, const size_t size) {
+    array->elements = NULL;
     array->count = 0;
     array->capacity = 0;
     array->elementSize = size;
-    array->elements = NULL;
 }
 
 static void freeGenericArray(GenericArray* array) {
@@ -395,6 +395,7 @@ void writeBinary(ObjFunction* compiled, const char* path) {
     patchFileRefs(file, &patchList, &valueIds);
     write_int(file, SEG_FILE_END);
 
+    freeValueQueue(&stringQueue);
     freeValueQueue(&functionQueue);
     freeGenericArray(&valueIds);
     freeGenericArray(&patchList);

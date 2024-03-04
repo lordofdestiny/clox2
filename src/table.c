@@ -31,7 +31,8 @@ static Entry* findEntry(Entry* entries, const int capacity, const ObjString* key
         if (entry->key == NULL) {
             if (IS_NIL(entry->value)) {
                 return tombstone != NULL ? tombstone : entry;
-            } else if (tombstone == NULL) {
+            }
+            if (tombstone == NULL) {
                 tombstone = entry;
             }
         } else if (entry->key == key) {
@@ -46,9 +47,12 @@ static Entry* findEntry(Entry* entries, const int capacity, const ObjString* key
 
 static void adjustCapacity(Table* table, const int capacity) {
     Entry* entries = ALLOCATE(Entry, capacity);
+    if (entries == NULL) {
+        fprintf(stderr, "Memory allocation failed: File: %s; Line: %d\n", __FILE__, __LINE__);
+        exit(1);
+    }
     for (int i = 0; i < capacity; i++) {
-        entries[i].key = NULL;
-        entries[i].value = NIL_VAL;
+        entries[i] = (Entry){NULL, NIL_VAL};
     }
 
     table->count = 0;
