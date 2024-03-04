@@ -173,7 +173,7 @@ static void unpackPrimitive(const int distance) {
 
 static bool promote(const int distance, ObjClass* klass) {
     const Value value = peek(distance);
-    push(OBJ_VAL(newPrimitive(value, klass))); // This
+    push(OBJ_VAL((Obj*) newPrimitive(value, klass))); // This
     push(value); // Value being promoted passed as an argument to the ctor
     if (CALL_OBJ(klass->initializer, 1)) { // call the class ctor
         const Value promoted = pop(); // Pop result of ctor call - promoted value
@@ -215,7 +215,7 @@ static Value getStackTrace(void) {
             function->name == NULL ? "script" : function->name->chars);
     }
     stackTrace = GROW_ARRAY(char, stackTrace, maxStackTraceLength, index + 1);
-    return OBJ_VAL(takeString(stackTrace, index));
+    return OBJ_VAL((Obj*) takeString(stackTrace, index));
 #undef MAX_LINE_LENGTH
 }
 
@@ -588,12 +588,12 @@ static InterpretResult run() {
             ObjArray* array = newArray();
             size_t size = READ_SHORT();
             Value* elements = vm.stackTop - size;
-            push(OBJ_VAL(array));
+            push(OBJ_VAL((Obj*)array));
             for (size_t i = 0; i < size; i++) {
                 writeValueArray(&array->array, elements[i]);
             }
             vm.stackTop = elements;
-            push(OBJ_VAL(array));
+            push(OBJ_VAL((Obj*)array));
             break;
         }
         case OP_CONSTANT: push(READ_CONSTANT());

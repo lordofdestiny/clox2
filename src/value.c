@@ -103,15 +103,15 @@ void printValue(FILE* out, const Value value) {
 }
 
 #else
-void printValue(Value value) {
+void printValue(FILE* out, const Value value) {
     switch (value.type) {
-    case VAL_BOOL:printf(AS_BOOL(value) ? "true" : "false");
+    case VAL_BOOL: fprintf(out, AS_BOOL(value) ? "true" : "false");
         break;
-    case VAL_NIL: printf("nil");
+    case VAL_NIL: fprintf(out, "nil");
         break;
-    case VAL_NUMBER: printf("%g", AS_NUMBER(value));
+    case VAL_NUMBER: fprintf(out, "%g", AS_NUMBER(value));
         break;
-    case VAL_OBJ: printObject(value);
+    case VAL_OBJ: printObject(out, value);
         break;
     }
 }
