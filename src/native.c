@@ -123,13 +123,13 @@ bool initExceptionNative(int argCount, Value* implicit, Value* args) {
         *implicit = NATIVE_ERROR("Exit takes either 0 arguments or one a string.");
         return false;
     }
-    ObjInstance* exception = AS_INSTANCE(*implicit);
+    ObjInstance* exception = AS_INSTANCE((*implicit));
     if (argCount == 1) {
         if (!IS_STRING(args[0])) {
             *implicit = NATIVE_ERROR("Expected a string as an argument");
             return false;
         }
-        tableSet(&exception->fields, copyString("message", 7), OBJ_VAL(args[0]));
+        tableSet(&exception->fields, copyString("message", 7), args[0]);
     } else {
         tableSet(&exception->fields, copyString("message", 7), NIL_VAL);
     }
@@ -137,11 +137,11 @@ bool initExceptionNative(int argCount, Value* implicit, Value* args) {
     return true;
 }
 
-void tryUnpack(Value* value) {
-    if (IS_INSTANCE(*value)) {
-        const Value unpacked = AS_INSTANCE(*value)->this_;
+void tryUnpack(Value* valuePtr) {
+    if (IS_INSTANCE(*valuePtr)) {
+        const Value unpacked = AS_INSTANCE((*valuePtr))->this_;
         if (!IS_INSTANCE(unpacked)) {
-            *value = unpacked;
+            *valuePtr = unpacked;
         }
     }
 }
@@ -153,7 +153,7 @@ bool initNumberNative(int argCount, Value* implicit, Value* args) {
     }
     Value value = args[0]; // Argument
     tryUnpack(&value);
-    ObjInstance* instance = AS_INSTANCE(*implicit); // This
+    ObjInstance* instance = AS_INSTANCE((*implicit)); // This
 
     if (!IS_NUMBER(value) &&
         !IS_STRING(value) &&
@@ -203,7 +203,7 @@ bool initNumberNative(int argCount, Value* implicit, Value* args) {
 }
 
 bool toPrecisionNative(int argCount, Value* implicit, Value* args) {
-    const ObjInstance* instance = AS_INSTANCE(*implicit); // This
+    const ObjInstance* instance = AS_INSTANCE((*implicit)); // This
     if (!IS_NUMBER(args[0])) {
         *implicit = NATIVE_ERROR("Number of digits must be a number!");
         return false;
@@ -213,7 +213,7 @@ bool toPrecisionNative(int argCount, Value* implicit, Value* args) {
     const int len = snprintf(NULL, 0, "%.*lf", decimals, value);
     char* buffer = ALLOCATE(char, len + 1);
     snprintf(buffer, len + 1, "%.*lf", decimals, value);
-    *implicit = OBJ_VAL(takeString(buffer, len));
+    *implicit = OBJ_VAL((Obj*) takeString(buffer, len));
     return true;
 }
 
@@ -224,7 +224,7 @@ bool initBooleanNative(int argCount, Value* implicit, Value* args) {
     }
     Value value = args[0]; // argument
     tryUnpack(&value);
-    ObjInstance* instance = AS_INSTANCE(*implicit); // This
+    ObjInstance* instance = AS_INSTANCE((*implicit)); // This
 
     if (!IS_NIL(value) && !IS_NUMBER(value) &&
         !IS_BOOL(value) && !IS_STRING(value) &&
@@ -244,7 +244,7 @@ bool initBooleanNative(int argCount, Value* implicit, Value* args) {
     if (IS_NUMBER(value) || IS_INSTANCE(value) && IS_NUMBER(AS_INSTANCE(value)->this_)) {
         const int b = (int) (IS_NUMBER(value)
                                  ? AS_NUMBER(value)
-                                 : AS_INSTANCE(value)->this_);
+                                 : AS_NUMBER(AS_INSTANCE(value)->this_));
 
         instance->this_ = b ? TRUE_VAL : FALSE_VAL;
         return true;
@@ -293,7 +293,7 @@ bool initStringNative(int argCount, Value* implicit, Value* args) {
     }
     Value value = args[0]; // argument
     tryUnpack(&value);
-    ObjInstance* instance = AS_INSTANCE(*implicit); // This
+    ObjInstance* instance = AS_INSTANCE((*implicit)); // This
 
     if (!IS_NUMBER(value) &&
         !IS_BOOL(value) && !IS_STRING(value) &&
@@ -306,16 +306,16 @@ bool initStringNative(int argCount, Value* implicit, Value* args) {
     }
 
     if (IS_NUMBER(value) || IS_INSTANCE(value) && IS_NUMBER(AS_INSTANCE(value)->this_)) {
-        const double x = (IS_NUMBER(value)
-                              ? AS_NUMBER(value)
-                              : AS_INSTANCE(value)->this_);
+        const double x = IS_NUMBER(value)
+                             ? AS_NUMBER(value)
+                             : AS_NUMBER(AS_INSTANCE(value)->this_);
 
         const int len = snprintf(NULL, 0, "%g", x);
 
         char* chars = ALLOCATE(char, len + 1);
         snprintf(chars, len + 1, "%g", x);
 
-        instance->this_ = OBJ_VAL(takeString(chars, len));
+        instance->this_ = OBJ_VAL((Obj*) takeString(chars, len));
         tableSet(&instance->fields, copyString("length", 6), NUMBER_VAL(len));
 
         return true;
@@ -329,7 +329,7 @@ bool initStringNative(int argCount, Value* implicit, Value* args) {
 
         const char* str = b ? "true" : "false";
         const int len = b ? 4 : 5;
-        instance->this_ = OBJ_VAL(copyString(str, len));
+        instance->this_ = OBJ_VAL((Obj*) copyString(str, len));
         tableSet(&instance->fields, copyString("length", 6), NUMBER_VAL(len));
         return true;
     }
@@ -342,10 +342,7 @@ bool initStringNative(int argCount, Value* implicit, Value* args) {
 
         // Possible place of leakage during long runtime
         // due to interning avoidance
-        instance->this_ = OBJ_VAL(
-            copyString(
-                str->chars, str->length
-            ));
+        instance->this_ = OBJ_VAL((Obj*) copyString(str->chars, str->length));
         tableSet(&instance->fields, copyString("length", 6), NUMBER_VAL(str->length));
         return true;
     }
@@ -360,13 +357,13 @@ bool initArrayNative(int argCount, Value* implicit, Value* args) {
     }
 
     if (argCount == 0) {
-        *implicit = OBJ_VAL(newArray());
+        *implicit = OBJ_VAL((Obj*) newArray());
         return true;
     }
 
     Value value = args[0]; // argument
     tryUnpack(&value);
-    ObjInstance* instance = AS_INSTANCE(*implicit); // This
+    ObjInstance* instance = AS_INSTANCE((*implicit)); // This
 
     if (!IS_ARRAY(value) &&
         !IS_NUMBER(value) &&
@@ -384,7 +381,7 @@ bool initArrayNative(int argCount, Value* implicit, Value* args) {
             : AS_INSTANCE(value)->this_);
         ObjArray* array_ = newArray();
         valueInitValueArray(&array_->array, NIL_VAL, len);
-        instance->this_ = OBJ_VAL(array_);
+        instance->this_ = OBJ_VAL((Obj*) array_);
         tableSet(&instance->fields, copyString("length", 6), NUMBER_VAL(len));
         return true;
     }
@@ -393,7 +390,7 @@ bool initArrayNative(int argCount, Value* implicit, Value* args) {
         ObjArray* original = AS_ARRAY(value);
         ObjArray* array_ = newArray();
         copyValueArray(&original->array, &array_->array);
-        instance->this_ = OBJ_VAL(array_);
+        instance->this_ = OBJ_VAL((Obj*) array_);
         tableSet(&instance->fields, copyString("length", 6), NUMBER_VAL(array_->array.count));
         return true;
     }
@@ -410,14 +407,14 @@ bool joinArrayNative(int argCount, Value* implicit, const Value* args) {
         *implicit = NATIVE_ERROR("Join token must be a string.");
         return false;
     }
-    ObjInstance* instance = AS_INSTANCE(*implicit); // This
+    ObjInstance* instance = AS_INSTANCE((*implicit)); // This
     ObjArray* array = AS_ARRAY(instance->this_);
     return false;
 }
 
 bool appendArrayNative(int argCount, Value* implicit, Value* args) {
     const Value value = args[0]; // Argument
-    const ObjInstance* instance = AS_INSTANCE(*implicit); // This
+    const ObjInstance* instance = AS_INSTANCE((*implicit)); // This
     ObjArray* array = AS_ARRAY(instance->this_);
 
     writeValueArray(&array->array, value);
@@ -427,7 +424,7 @@ bool appendArrayNative(int argCount, Value* implicit, Value* args) {
 }
 
 bool popArrayNative(int argCount, Value* implicit, Value* args) {
-    const ObjInstance* instance = AS_INSTANCE(*implicit); // This
+    const ObjInstance* instance = AS_INSTANCE((*implicit)); // This
     ObjArray* array = AS_ARRAY(instance->this_);
     ValueArray* va = &array->array;
 

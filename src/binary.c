@@ -64,7 +64,7 @@ static bool findInQueue(const ValueQueue* queue, const Value value) {
             AS_NUMBER(value) == AS_NUMBER(queue->values[i])) {
             return true;
         }
-        if (value == queue->values[i]) return true;
+        if (valuesEqual(value, queue->values[i])) return true;
     }
     return false;
 }
@@ -192,7 +192,7 @@ static ValueId* findValueId(GenericArray* valueIds, const Value value) {
             AS_NUMBER(value) == AS_NUMBER(id->value)) {
             return id;
         }
-        if (value == id->value) return id;
+        if (valuesEqual(value, id->value)) return id;
     }
     return false;
 }
@@ -329,7 +329,7 @@ static void writeFunction(
     GenericArray* valueIds, GenericArray* patchList,
     ValueQueue* functionQueue, ValueQueue* stringQueue
 ) {
-    const ValueId vid = newFunctionValueId(OBJ_VAL(function));
+    const ValueId vid = newFunctionValueId(OBJ_VAL((Obj*) function));
     appendGenericArray(valueIds, &vid);
 
     write_int(file, SEG_FUNCTION);
@@ -578,7 +578,8 @@ static GenericArray loadStrings(FILE* file) {
     checkSegment(file, SEG_STRINGS);
     while (!feof(file) && peek_int(file) != SEG_END_STRINGS) {
         ObjString* string = read_string(file);
-        appendGenericArray(&strings, &(Value){OBJ_VAL(string)});
+        Value value = OBJ_VAL((Obj*)string);
+        appendGenericArray(&strings, &value);
     }
     checkSegment(file, SEG_END_STRINGS);
     return strings;
@@ -606,10 +607,10 @@ static void patchFunctionRefs(
             exit(LOAD_FAILURE);
         }
 
-        const Value* toPatch = GET_ELEMENT(Value, functions, patch->toPatch);
-        const ObjFunction* toPatchFn = AS_FUNCTION(*toPatch);
-        const Value* patchWith = GET_ELEMENT(Value, patchSource, patch->patchWith);
-        toPatchFn->chunk.constants.values[patch->position] = *patchWith;
+        const Value toPatch = *GET_ELEMENT(Value, functions, patch->toPatch);
+        const ObjFunction* toPatchFn = AS_FUNCTION(toPatch);
+        const Value patchWith = *GET_ELEMENT(Value, patchSource, patch->patchWith);
+        toPatchFn->chunk.constants.values[patch->position] = patchWith;
     }
 }
 
@@ -627,10 +628,12 @@ ObjFunction* loadBinary(const char* path) {
 
     checkSegment(file, SEG_FUNCTIONS);
     ObjFunction* script = loadFunction(file, &patchList);
-    appendGenericArray(&functions, &(Value){OBJ_VAL(script)});
+    Value scriptValue = OBJ_VAL((Obj*) script);
+    appendGenericArray(&functions, &scriptValue);
     while (!feof(file) && peek_int(file) != SEG_END_FUNCTIONS) {
         ObjFunction* function = loadFunction(file, &patchList);
-        appendGenericArray(&functions, &(Value){OBJ_VAL(function)});
+        Value functionValue = OBJ_VAL((Obj*) function);
+        appendGenericArray(&functions, &functionValue);
     }
     checkSegment(file, SEG_END_FUNCTIONS);
 

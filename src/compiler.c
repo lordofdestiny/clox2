@@ -1250,7 +1250,6 @@ static void binary(bool canAssign) {
     }
 }
 
-
 #pragma clang diagnostic push
 #pragma ide diagnostic ignored "UnusedParameter"
 
@@ -1580,7 +1579,7 @@ static void parsePrecedence(const Precedence precedence) {
     }
 
     if (canAssign) {
-        if (match(match(TOKEN_EQUAL)) || match(TOKEN_PLUS_EQUAL)
+        if (match(TOKEN_EQUAL) || match(TOKEN_PLUS_EQUAL)
             || match(TOKEN_MINUS_EQUAL) || match(TOKEN_STAR_EQUAL)
             || match(TOKEN_SLASH_EQUAL) || match(TOKEN_PERCENT_EQUAL)) {
             error("Invalid assignment target");
