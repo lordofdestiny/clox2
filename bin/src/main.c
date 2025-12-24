@@ -9,6 +9,8 @@
 #include "compiler.h"
 #include "binary.h"
 
+#include "clox/args.h"
+
 // char ** file_lines;
 // int lines = 1;
 
@@ -96,29 +98,64 @@ static int compileFile(const char* src_path, const char* dest_path) {
     return 0;
 }
 
+void executeCommand(const Command* cmd) {
+    switch (cmd->type) {
+    case CMD_REPL:
+        repl();
+        break;
+    case CMD_EXECUTE:
+        if(cmd->input_file == NULL) {
+            fprintf(stderr, "No input file specified for execution.\n");
+            exit(65);
+        }
+        if(cmd->input_type == CMD_EXEC_UNSET) {
+            fprintf(stderr, "Input type not specified for execution.\n");
+            exit(65);
+        }
+        if (cmd->input_type == CMD_EXEC_SOURCE) {
+            runFile(cmd->input_file);
+        } else if (cmd->input_type == CMD_EXEC_BINARY) {
+            runBinaryFile(cmd->input_file);
+        } else {
+            fprintf(stderr, "Unknown input type for execution.\n");
+            exit(65);
+        }
+        break;
+    case CMD_COMPILE:
+        if (cmd->input_file == NULL || cmd->output_file == NULL) {
+            fprintf(stderr, "Input and output files must be specified for compilation.\n");
+            exit(65);
+        }
+        if (cmd->input_type != CMD_EXEC_SOURCE) {
+            fprintf(stderr, "Compilation only supported for source input.\n");
+            exit(65);
+        }
+        if (cmd->output_type == CMD_COMPILE_UNSET) {
+            fprintf(stderr, "Output type not specified for compilation.\n");
+            exit(65);
+        }
+        compileFile(cmd->input_file, cmd->output_file);
+        break;
+    case CMD_DISASSEMBLE:
+        fprintf(stderr, "Disassembly not implemented yet.\n");
+        exit(65);
+    default:
+        fprintf(stderr, "Unsupported command type.\n");
+        exit(65);
+    }
+}
+
 int main(const int argc, char* argv[]) {
     int exitCode = 0;
     const clock_t start = clock();
 
-    initVM();
+    Command cmd = parseArgs(argc, argv);
 
-    if (argc == 1) {
-        repl();
-    } else if (argc == 2) {
-        exitCode = runFile(argv[1]);
-    } else if (argc == 3 && !strcmp(argv[2], "--bin")) {
-        exitCode = runBinaryFile(argv[1]);
-    } else if (argc == 4 && !strcmp(argv[2], "--save")) {
-        exitCode = compileFile(argv[1], argv[3]);
-    } else {
-        exitCode = 65;
-        fprintf(stderr, "Usage: clox [path] | [src_path --save dest_path] | [--bin bin_path]\n");
-    }
+    initVM();
+    executeCommand(&cmd);
 
     const clock_t end = clock();
     printf("Execution time: %.6f seconds\n", ((float) (end - start)) / CLOCKS_PER_SEC);
 
     freeVM();
-
-    exit(exitCode);
 }
