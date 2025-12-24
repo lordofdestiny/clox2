@@ -10,6 +10,7 @@
 #include "binary.h"
 
 #include "clox/args.h"
+#include "clox/commands.h"
 
 // char ** file_lines;
 // int lines = 1;
@@ -34,37 +35,10 @@ static void repl() {
     }
 }
 
-static char* readFile(const char* path) {
-    FILE* file = fopen(path, "rb");
-    if (file == NULL) {
-        fprintf(stderr, "Could not open file \"%s\".\n", path);
-        exit(74);
-    }
-
-    fseek(file, 0L, SEEK_END);
-    const size_t fileSize = ftell(file);
-    rewind(file);
-
-    char* buffer = (char*) malloc(fileSize + 1);
-    if (buffer == NULL) {
-        fprintf(stderr, "Not enough memory to read \"%s\".\n", path);
-        exit(74);
-    }
-    const size_t bytesRead = fread(buffer, sizeof(char), fileSize, file);
-    if (bytesRead < fileSize) {
-        fprintf(stderr, "Could not read file \"%s\".\n", path);
-        exit(74);
-    }
-    buffer[bytesRead] = '\0';
-
-    fclose(file);
-    return buffer;
-}
-
 static int runFile(const char* path) {
-    char* source = readFile(path);
-    const InterpretResult result = interpret(source, false);
-    free(source);
+    TextFile file = readTextFile(path, false);
+    const InterpretResult result = interpret(file.content, false);
+    freeTextFile(&file);
 
     switch (result) {
     case INTERPRET_OK: return 0;
@@ -88,9 +62,9 @@ static int runBinaryFile(const char* path) {
 }
 
 static int compileFile(const char* src_path, const char* dest_path) {
-    char* source = readFile(src_path);
-    ObjFunction* code = compile(source);
-    free(source);
+    TextFile source = readTextFile(src_path, false);
+    ObjFunction* code = compile(source.content);
+    freeTextFile(&source);
 
     if (code == NULL) return INTERPRET_COMPILE_ERROR;
     writeBinary(code, dest_path);
