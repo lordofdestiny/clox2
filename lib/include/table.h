@@ -1,5 +1,5 @@
-#ifndef CLOX2_TABLE_H
-#define CLOX2_TABLE_H
+#ifndef __CLOX2_TABLE_H__
+#define __CLOX2_TABLE_H__
 
 #include "value.h"
 
@@ -42,4 +42,4 @@ void tableRemoveWhite(Table* table);
 
 void markTable(Table* table);
 
-#endif //CLOX2_TABLE_H
+#endif //__CLOX2_TABLE_H__

@@ -1,5 +1,5 @@
-#ifndef CLOX2_VALUE_H
-#define CLOX2_VALUE_H
+#ifndef __CLOX2_VALUE_H__
+#define __CLOX2_VALUE_H__
 
 #include <stdio.h>
 #include <string.h>
@@ -108,4 +108,4 @@ void freeValueArray(ValueArray* array);
 
 void printValue(FILE* out, Value value);
 
-#endif //CLOX2_VALUE_H
+#endif //__CLOX2_VALUE_H__

@@ -1,5 +1,5 @@
-#ifndef CLOX2_SCANNER_H
-#define CLOX2_SCANNER_H
+#ifndef __CLOX2_SCANNER_H__
+#define __CLOX2_SCANNER_H__
 
 typedef enum {
     // Single-character tokens
@@ -46,4 +46,4 @@ void initScanner(const char* source);
 
 Token scanToken();
 
-#endif //CLOX2_SCANNER_H
+#endif //__CLOX2_SCANNER_H__

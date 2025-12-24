@@ -1,5 +1,5 @@
-#ifndef CLOX2_MEMORY_H
-#define CLOX2_MEMORY_H
+#ifndef __CLOX2_MEMORY_H__
+#define __CLOX2_MEMORY_H__
 
 #include "common.h"
 #include "value.h"
@@ -31,4 +31,4 @@ void collectGarbage();
 
 void freeObjects();
 
-#endif //CLOX2_MEMORY_H
+#endif //__CLOX2_MEMORY_H__

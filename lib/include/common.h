@@ -1,5 +1,5 @@
-#ifndef CLOX2_COMMON_H
-#define CLOX2_COMMON_H
+#ifndef __CLOX2_COMMON_H__
+#define __CLOX2_COMMON_H__
 
 #include <stdbool.h>
 #include <stddef.h>
@@ -14,4 +14,4 @@
 
 #define UINT8_COUNT (UINT8_MAX + 1)
 
-#endif //CLOX2_COMMON_H
+#endif //__CLOX2_COMMON_H__

@@ -1,5 +1,5 @@
-#ifndef CLOX2_CHUNK_H
-#define CLOX2_CHUNK_H
+#ifndef __CLOX2_CHUNK_H__
+#define __CLOX2_CHUNK_H__
 
 #include "common.h"
 #include "value.h"
@@ -87,4 +87,4 @@ int getLine(Chunk* chunk, int instruction);
 
 int addConstant(Chunk* chunk, Value value);
 
-#endif //CLOX2_CHUNK_H
+#endif //__CLOX2_CHUNK_H__

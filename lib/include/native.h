@@ -1,5 +1,5 @@
-#ifndef CLOX2_NATIVE_H
-#define CLOX2_NATIVE_H
+#ifndef __CLOX2_NATIVE_H__
+#define __CLOX2_NATIVE_H__
 
 #include "common.h"
 #include "value.h"
@@ -31,4 +31,4 @@ bool popArrayNative(int argCount, Value* implicit, Value* args);
 
 bool toPrecisionNative(int argCount, Value* implicit, Value* args);
 
-#endif //CLOX2_NATIVE_H
+#endif //__CLOX2_NATIVE_H__

@@ -1,5 +1,5 @@
-#ifndef CLOX2_ARGS_H
-#define CLOX2_ARGS_H
+#ifndef __CLOX2_ARGS_H__
+#define __CLOX2_ARGS_H__
 
 #include <argp.h>
 #include <stdio.h>
@@ -33,4 +33,4 @@ typedef struct {
 
 Command parseArgs(const int argc, char* argv[]);
 
-#endif // CLOX2_ARGS_H
+#endif // __CLOX2_ARGS_H__

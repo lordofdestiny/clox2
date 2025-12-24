@@ -1,5 +1,5 @@
-#ifndef CLOX2_VM_H
-#define CLOX2_VM_H
+#ifndef __CLOX2_VM_H__
+#define __CLOX2_VM_H__
 
 #include <setjmp.h>
 
@@ -82,4 +82,4 @@ bool callNative(Obj* callable, int argCount);
 
 bool callBoundMethod(Obj* callable, int argCount);
 
-#endif //CLOX2_VM_H
+#endif //__CLOX2_VM_H__

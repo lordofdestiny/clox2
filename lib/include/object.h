@@ -1,5 +1,5 @@
-#ifndef CLOX2_OBJECT_H
-#define CLOX2_OBJECT_H
+#ifndef __CLOX2_OBJECT_H__
+#define __CLOX2_OBJECT_H__
 
 #include <stdio.h>
 
@@ -159,4 +159,4 @@ static inline bool isObjType(const Value value, const ObjType type) {
     return IS_OBJ(value) && AS_OBJ(value)->type == type;
 }
 
-#endif //CLOX2_OBJECT_H
+#endif //__CLOX2_OBJECT_H__
