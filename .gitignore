@@ -2,3 +2,7 @@
 /*build*
 /out/
 compile_commands.json
+.vscode/
+.venv/
+.cache/
+valgrind-out.txt
