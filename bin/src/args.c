@@ -88,7 +88,7 @@ error_t parser (int key, char *arg, struct argp_state *state) {
                 options->input_type = IN_SOURCE;
             }
 
-            if(options->output_type == OUT_UNSET) {
+            if(options->output_type == OUT_UNSET && options->input_file != NULL) {
                 options->output_type = OUT_EXECUTE;
             }
             if((options->output_type == OUT_EXECUTE || options->output_type == OUT_BINARY )
@@ -193,6 +193,12 @@ Command parseArgs(const int argc, char *argv[]) {
                 .type = CMD_DISASSEMBLE,
                 .input_file = options.input_file,
                 .output_file = options.output_file,
+                .input_type = (options.input_type == IN_SOURCE) 
+                                ? CMD_EXEC_SOURCE
+                                : CMD_EXEC_BINARY,
+                .output_type = (options.output_type == OUT_BINARY) 
+                                ? CMD_COMPILE_BINARY
+                                : CMD_COMPILE_BYTECODE,
                 .inline_code = options.inline_code,
             };
         default:

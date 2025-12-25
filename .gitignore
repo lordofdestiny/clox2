@@ -1,4 +1,4 @@
 # Project exclude paths
 /*build*
-/out/
+_deps
 compile_commands.json

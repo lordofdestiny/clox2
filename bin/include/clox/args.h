@@ -15,8 +15,8 @@ typedef enum {
 } CommandType;
 
 typedef struct {
-    char* input_file;
-    char* output_file;
+    const char* input_file;
+    const char* output_file;
     enum {
         CMD_EXEC_UNSET,
         CMD_EXEC_SOURCE,
@@ -31,6 +31,15 @@ typedef struct {
     CommandType type;
 } Command;
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 Command parseArgs(const int argc, char* argv[]);
+
+#ifdef __cplusplus
+}
+#endif
+
 
 #endif // __CLOX2_ARGS_H__
