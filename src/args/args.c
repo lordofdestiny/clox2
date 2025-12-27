@@ -2,11 +2,11 @@
 #include <complex.h>
 #include <stddef.h>
 #include <stdio.h>
+#include <stdbool.h>
 
-#include "clox/args.h"
+#include "args.h"
 
-void printVersion(FILE *stream, struct argp_state *state) {
-    fprintf(stream, "Run froom hook!\n");
+static void printVersion(FILE *stream, struct argp_state *state) {
     fprintf(stream, "%s\n", argp_program_version);
 }
 
@@ -41,7 +41,7 @@ typedef struct{
     bool inline_code;
 } ParsingOptions;
 
-error_t parser (int key, char *arg, struct argp_state *state) {
+static error_t argpParser (int key, char *arg, struct argp_state *state) {
     ParsingOptions* options = state->input;
 
     switch(key) {
@@ -147,7 +147,7 @@ Command parseArgs(const int argc, char *argv[]) {
             },
             {}
         },
-        .parser = &parser,
+        .parser = &argpParser,
     };
     
     int parsedArgs = 0;
@@ -202,11 +202,6 @@ Command parseArgs(const int argc, char *argv[]) {
                 .inline_code = options.inline_code,
             };
         default:
-            break;
+            return (Command){};
     };
-
-    Command command;
-
-
-    return command;
 }

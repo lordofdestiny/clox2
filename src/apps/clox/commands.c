@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "clox/commands.h"
+#include "commands.h"
 
 static void buildLinesMap(TextFile* file) {
     return;

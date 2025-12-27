@@ -5,8 +5,6 @@
 #include <stdio.h>
 #include <stdbool.h>
 
-void printVersion(FILE *stream, struct argp_state *state);
-
 typedef enum {
     CMD_REPL,
     CMD_EXECUTE,

@@ -9,8 +9,8 @@
 #include "compiler.h"
 #include "binary.h"
 
-#include "clox/args.h"
-#include "clox/commands.h"
+#include "args.h"
+#include "commands.h"
 
 // char ** file_lines;
 // int lines = 1;

@@ -6,7 +6,7 @@
 #include <string>
 #include <cstring>
 
-#include "clox/args.h"
+#include "args.h"
 
 struct MainArgs{
     int argc;
