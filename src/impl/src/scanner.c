@@ -18,13 +18,13 @@ void initScanner(const char* source) {
     scanner.line = 1;
 }
 
-bool isAlpha(const char c) {
+static bool isAlpha(const char c) {
     return (c >= 'a' && c <= 'z') ||
            (c >= 'A' && c <= 'Z') ||
            c == '_';
 }
 
-bool isDigit(const char c) {
+static bool isDigit(const char c) {
     return c >= '0' && c <= '9';
 }
 

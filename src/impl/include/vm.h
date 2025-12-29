@@ -64,7 +64,7 @@ void freeVM();
 
 InterpretResult interpret(const char* source, bool repl);
 
-InterpretResult interpretCompiled(ObjFunction* function);
+InterpretResult interpretCompiled(ObjFunction* function, bool repl);
 
 void push(Value value);
 

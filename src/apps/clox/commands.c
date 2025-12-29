@@ -4,35 +4,9 @@
 
 #include "commands.h"
 
-static void buildLinesMap(TextFile* file) {
-    return;
-    if (file->content == NULL) {
-        return;
-    }
+void registerTextLine(TextFile* file, TextLine line);
 
-    size_t lineCount = 1;
-    TextFileLine* newLines = (TextFileLine*) calloc(lineCount, sizeof(TextFileLine));
-    size_t stackSize = 1;
-    size_t stackCapacity = 1;
-    char** stack = (char**) calloc(1, sizeof(char*));
-
-    if (newLines == NULL || stack == NULL) {
-        fprintf(stderr, "Not enough memory to build lines map.\n");
-        exit(ERROR_FAILED_TO_READ_FILE);
-    }
-
-    stack[0] = file->content;
-    while(stackSize > 0) {
-        // TODO
-    }
-}
-
-typedef struct {
-    char* content;
-    size_t size;
-} ReadFile;
-
-static ReadFile readFile(const char* path, bool linesMap) {
+char* readFile(const char* path) {
     FILE* file = fopen(path, "rb");
     if (file == NULL) {
         fprintf(stderr, "Could not open file \"%s\".\n", path);
@@ -58,10 +32,10 @@ static ReadFile readFile(const char* path, bool linesMap) {
 
     fclose(file);
 
-    return (ReadFile){.content = buffer, .size = bytesRead};
+    return buffer;
 }
 
-TextFile readTextFile(const char* path, bool linesMap) {
+TextFile readTextFile(const char* path) {
     TextFile file = {
         .path = NULL,
         .content = NULL,
@@ -74,13 +48,7 @@ TextFile readTextFile(const char* path, bool linesMap) {
         exit(ERROR_FAILED_TO_READ_FILE);
     }
 
-    ReadFile rfile = readFile(path, linesMap);
-    file.content = rfile.content;
-    file.size = rfile.size;
-
-    if (false || linesMap) {
-        buildLinesMap(&file);
-    }
+    file.content = readFile(path);
 
     return file;
 }

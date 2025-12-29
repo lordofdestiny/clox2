@@ -12,12 +12,10 @@
 #include "args.h"
 #include "commands.h"
 
-// char ** file_lines;
-// int lines = 1;
-
 jmp_buf exit_repl;
 
 static void repl() {
+    setRepl(true);
     while (1) {
         char line[1024];
         printf("> ");
@@ -36,7 +34,7 @@ static void repl() {
 }
 
 static int runFile(const char* path) {
-    TextFile file = readTextFile(path, false);
+    TextFile file = readTextFile(path);
     const InterpretResult result = interpret(file.content, false);
     freeTextFile(&file);
 
@@ -52,7 +50,7 @@ static int runFile(const char* path) {
 
 static int runBinaryFile(const char* path) {
     ObjFunction* compiled = loadBinary(path);
-    const InterpretResult result = interpretCompiled(compiled);
+    const InterpretResult result = interpretCompiled(compiled, false);
 
     switch (result) {
     case INTERPRET_EXIT: return vm.exit_code;
@@ -62,7 +60,7 @@ static int runBinaryFile(const char* path) {
 }
 
 static int compileFile(const char* src_path, const char* dest_path) {
-    TextFile source = readTextFile(src_path, false);
+    TextFile source = readTextFile(src_path);
     ObjFunction* code = compile(source.content);
     freeTextFile(&source);
 

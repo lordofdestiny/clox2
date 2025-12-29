@@ -1,8 +1,12 @@
 #ifndef __CLOX2_COMPILER_H__
 #define __CLOX2_COMPILER_H__
 
-#include "vm.h"
+#include <stdbool.h>
+
 #include "object.h"
+
+bool isRepl();
+void setRepl(bool isRepl);
 
 ObjFunction* compile(const char* source);
 

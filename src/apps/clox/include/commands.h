@@ -9,10 +9,10 @@
 typedef struct {
     char* start;
     char* end;
-} TextFileLine;
+} TextLine;
 
 typedef struct {
-    TextFileLine* lines;
+    TextLine* lines;
     unsigned count;
 } TextFileMap;
 
@@ -20,10 +20,10 @@ typedef struct  {
     char* path;
     char* content;
     TextFileMap lineMap;
-    size_t size;
 } TextFile;
 
-TextFile readTextFile(const char* path, bool linesMap);
+TextFile readTextFile(const char* path);
+void registerTextLine(TextFile* file, TextLine line);
 void freeTextFile(TextFile* file);
 
 #endif //__CLOX2_COMMANDS_H__

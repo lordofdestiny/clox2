@@ -84,6 +84,19 @@ typedef struct Compiler {
     Table stringConstants;
 } Compiler;
 
+static bool* compilerReplMode() {
+    static bool value;
+    return &value;
+}
+
+bool isRepl() {
+    return *compilerReplMode();
+}
+
+void setRepl(bool isRepl) {
+    *compilerReplMode() = isRepl;
+}
+
 typedef struct ClassCompiler {
     struct ClassCompiler* enclosing;
     bool hasSuperclass;
@@ -151,6 +164,16 @@ static void consume(const TokenType type, const char* message) {
         return;
     }
     errorAtCurrent(message);
+}
+
+static void consumeReplOptional(const TokenType type, const char* message) {
+    if (parser.current.type == type) {
+        advance();
+        return;
+    }
+    if(current->enclosing != NULL || !isRepl()) {
+        errorAtCurrent(message);
+    }
 }
 
 static bool check(const TokenType type) {
@@ -724,7 +747,7 @@ static void varDeclaration() {
     } else {
         emitByte(OP_NIL);
     }
-    consume(
+    consumeReplOptional(
         TOKEN_SEMICOLON,
         "Expect ';' after variable declaration.");
 
@@ -733,8 +756,12 @@ static void varDeclaration() {
 
 static void expressionStatement() {
     expression();
-    consume(TOKEN_SEMICOLON, "Expect ';' after expression.");
-    emitByte(OP_POP);
+    consumeReplOptional(TOKEN_SEMICOLON, "Expect ';' after expression.");
+    if(isRepl()) {
+        emitByte(OP_PRINT);
+    }else {
+        emitByte(OP_POP);
+    }
 }
 
 #define MAX_BREAK_LOCATIONS 255
@@ -935,7 +962,7 @@ static void ifStatement() {
 
 static void printStatement() {
     expression();
-    consume(TOKEN_SEMICOLON, "Expect ';' after value.");
+    consumeReplOptional(TOKEN_SEMICOLON, "Expeced ';' after value.");
     emitByte(OP_PRINT);
 }
 

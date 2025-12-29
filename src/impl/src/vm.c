@@ -4,13 +4,20 @@
 #include <string.h>
 #include <setjmp.h>
 #include <math.h>
+
+#include "vm.h"
 #include "common.h"
 #include "value.h"
 #include "compiler.h"
-#include "debug.h"
 #include "memory.h"
 #include "object.h"
 #include "native.h"
+
+#ifdef DEBUG_PRINT_CODE
+
+#include "debug.h"
+
+#endif
 
 VM vm;
 
@@ -1060,10 +1067,16 @@ InterpretResult interpret(const char* source, bool repl) {
     return INTERPRET_EXIT;
 }
 
-InterpretResult interpretCompiled(ObjFunction* function) {
+InterpretResult interpretCompiled(ObjFunction* function, bool repl) {
     if (function == NULL) return INTERPRET_RUNTIME_ERROR;
     push(OBJ_VAL((Obj *) function));
     callFunction((Obj*) function, 0);
 
-    return run();
+    if (setjmp(vm.exit_state) == 0) {
+        return run();
+    }else if(repl) {
+        longjmp(exit_repl, vm.exit_code);
+    }
+
+    return INTERPRET_EXIT;
 }
