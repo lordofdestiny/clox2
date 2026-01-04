@@ -1,7 +1,7 @@
 FROM mcr.microsoft.com/devcontainers/cpp:ubuntu-24.04
 
-RUN apt update && \
-    apt install -y \
+RUN apt-get update && \
+    apt-get install -y \
         git \
         clang-format clang-tidy clang-tools clang clangd \
         libc++-dev libc++1 libc++abi-dev libc++abi1 libclang-dev libclang1 liblldb-dev libllvm-ocaml-dev libomp-dev libomp5 \

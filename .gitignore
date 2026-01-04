@@ -1,4 +1,6 @@
 # Project exclude paths
 /*build*
 _deps
+/out/
 compile_commands.json
+.vscode/
