@@ -1,0 +1,76 @@
+[settings]
+tokenPrefix = "TOKEN"
+identTokenName = "IDENTIFIER"
+tokenType = "Token"
+tokenEnumType = "TokenType"
+makeTokenFunctionName = "makeToken"
+errorTokenFunctionName = "errorToken"
+checkKeywordFunctionName = "checkKeyword"
+identFunctionName = "identifierType"
+symbolFunctionName = "charToken"
+privateFunctionDeclarations = true
+
+[includes]
+header_file = ['"token.h"', '"scanner_generated_decls.h"']
+source_file = ["<stddef.h>", "", '"scanner_priv.h"']
+
+[tokens]
+keywords = [
+  "and", "as",
+  "break",
+  "case", "catch", "class", "continue",
+  "default",
+  "else",
+  "false", "for", "fun", "finally",
+  "if",
+  "nil",
+  "or",
+  "print",
+  "return",
+  "static", "super", "switch",
+  "this", "throw", "true", "try",
+  "var",
+  "while"
+]
+literals = [
+  'IDENTIFIER',
+  'STRING',
+  'NUMBER'
+]
+specials = [
+  'ERROR',
+  'EOF'
+]
+
+[tokens.symbols]
+LEFT_PAREN = "("
+RIGHT_PAREN = ")"
+LEFT_BRACKET = "["
+RIGHT_BRACKET = "]"
+LEFT_BRACE = "{"
+RIGHT_BRACE = "}"
+COMMA = ","
+COLON = ":"
+DOT = "."
+VERTICAL_LINE = "|"
+MINUS = "-"
+PERCENT = "%"
+PLUS = "+"
+SEMICOLON = ";"
+SLASH = "/"
+STAR = "*"
+QUESTION = "?"
+BANG = "!"
+EQUAL = "="
+GREATER = ">"
+LESS = "<"
+BANG_EQUAL = "!="
+EQUAL_EQUAL = "=="
+GREATER_EQUAL = ">="
+LESS_EQUAL = "<="
+PLUS_EQUAL = "+="
+MINUS_EQUAL = "-="
+STAR_EQUAL = "*="
+SLASH_EQUAL = "/="
+PERCENT_EQUAL = "%="
+STAR_STAR = "**"

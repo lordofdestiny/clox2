@@ -1,0 +1,61 @@
+set(GENERATED_SCANNER_INCLUDE_PATH ${CMAKE_CURRENT_BINARY_DIR}/include)
+set(GENERATED_SCANNER_HEADER_DECLS_FILE ${GENERATED_SCANNER_INCLUDE_PATH}/scanner_generated_decls.h)
+set(GENERATED_SCANNER_HEADER_FILE ${GENERATED_SCANNER_INCLUDE_PATH}/scanner_generated.h)
+set(GENERATED_SCANNER_SOURCE_FILE ${CMAKE_CURRENT_BINARY_DIR}/scanner_generated.c)
+set(SCANNER_SCRIPT misc/generateScanner.py)
+set(SCANER_SPEC_FILE misc/scanner_spec.toml)
+
+add_custom_command(
+  OUTPUT ${GENERATED_SCANNER_HEADER_DECLS_FILE} ${GENERATED_SCANNER_SOURCE_FILE}
+  COMMAND
+    python3 ${SCANNER_SCRIPT} ${SCANER_SPEC_FILE}
+      -D ${GENERATED_SCANNER_HEADER_DECLS_FILE}
+      -H ${GENERATED_SCANNER_HEADER_FILE}
+      -S ${GENERATED_SCANNER_SOURCE_FILE}
+  DEPENDS
+    ${SCANNER_SCRIPT}
+    ${SCANER_SPEC_FILE}
+  WORKING_DIRECTORY
+    ${CMAKE_CURRENT_SOURCE_DIR}
+  VERBATIM
+)
+
+add_library(cloxscanner STATIC)
+
+file(GLOB_RECURSE TARGET_SOURCES "src/*.c")
+file(GLOB_RECURSE TARGET_HEADERS "include/*.h")
+
+target_sources(
+  cloxscanner
+  PRIVATE
+    ${TARGET_SOURCES}
+    ${GENERATED_SCANNER_SOURCE_FILE}
+
+  PRIVATE
+    FILE_SET private_headers TYPE HEADERS
+    BASE_DIRS src
+    FILES
+      src/scanner_priv.h
+      ${GENERATED_RESOURCE_SPEC_FILE}
+
+  PUBLIC
+    FILE_SET public_headers TYPE HEADERS
+    BASE_DIRS include
+    FILES
+      ${TARGET_HEADERS}           
+)
+
+set_target_properties(
+  cloxscanner
+  PROPERTIES
+    POSITION_INDEPENDENT_CODE TRUE
+)
+
+target_include_directories(
+  cloxscanner
+  PUBLIC
+    include
+    ${GENERATED_SCANNER_INCLUDE_PATH}
+  PRIVATE
+    src
+)

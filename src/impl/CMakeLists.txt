@@ -14,4 +14,6 @@ target_sources(cloximpl
 )
 
 target_include_directories(cloximpl PUBLIC include)
-target_link_libraries(cloximpl PUBLIC m)
+
+add_subdirectory(scanner)
+target_link_libraries(cloximpl PUBLIC m PRIVATE cloxscanner)
