@@ -52,12 +52,12 @@ static void printArray(Obj* object, FILE* out) {
     const ValueArray* array = &objArray->array;
     fprintf(out, "[");
     for (int i = 0; i < array->count; i++) {
-        if (IS_STRING(array->values[i])) {
+        if(IS_STRING(array->values[i])) {
             printf("\"");
-        }
-        printValue(out, array->values[i]);
-        if (IS_STRING(array->values[i])) {
+            printValue(out, array->values[i]);
             printf("\"");
+        }else {
+            printValue(out, array->values[i]);
         }
         if (i + 1 != array->count) {
             printf(", ");

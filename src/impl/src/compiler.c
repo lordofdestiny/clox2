@@ -340,9 +340,9 @@ static ObjFunction* endCompiler() {
     ObjFunction* function = current->function;
 #ifdef DEBUG_PRINT_CODE
     if (!parser.hadError) {
-        disassembleChunk(currentChunk(), function->name != NULL
+        disassembleChunk(stdout ,currentChunk(), function->name != NULL
                                          ? function->name->chars
-                                         : "<script>", stdout);
+                                         : "<script>");
     }
 #endif
 
@@ -1097,7 +1097,6 @@ static void whileStatement() {
     current->innermostLoopStart = surroundingLoopStart;
     current->innermostLoopScopeDepth = surroundingLoopScopeDepth;
 }
-
 
 static void tryCatchStatement() {
     emitByte(OP_PUSH_EXCEPTION_HANDLER);

@@ -6,14 +6,13 @@
 #include <math.h>
 
 #include "vm.h"
-#include "common.h"
 #include "value.h"
 #include "compiler.h"
 #include "memory.h"
 #include "object.h"
 #include "native.h"
 
-#ifdef DEBUG_PRINT_CODE
+#if defined(DEBUG_PRINT_CODE) || defined(DEBUG_TRACE_EXECUTION)
 
 #include "debug.h"
 
@@ -583,6 +582,7 @@ static InterpretResult run() {
         }
         printf("\n");
         disassembleInstruction(
+            stdout,
                 &getFrameFunction(frame)->chunk,
                 (int) (ip - getFrameFunction(frame)->chunk.code));
 #endif

@@ -2,7 +2,6 @@
 #define __CLOX2_ARGS_H__
 
 #include <argp.h>
-#include <stdio.h>
 #include <stdbool.h>
 
 typedef enum {
