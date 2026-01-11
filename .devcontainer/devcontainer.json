@@ -8,13 +8,23 @@
   "--security-opt",
   "seccomp=unconfined"
  ],
+ "postCreateCommand": "python3 -m venv .venv && . .venv/bin/activate && pip install -r requirements.txt",
  "customizations": {
   "vscode": {
    "extensions": [
     "llvm-vs-code-extensions.vscode-clangd",
+    "ms-python.black-formatter",
+    "ms-python.python",
+    "tamasfe.even-better-toml",
     "GitHub.copilot",
-    "GitHub.copilot-chat"
-   ]
+    "GitHub.copilot-chat",
+    "jlevere.elfpreview"
+   ],
+   "settings": {
+      "python.terminal.activateEnvironment": true,
+      "python.defaultInterpreterPath": ".venv/bin/python",
+      "python-envs.terminal.autoActivationType": "shellStartup"
+   }
   }
  },
  "workspaceMount": "source=${localWorkspaceFolder},target=/mnt/clox2,type=bind",

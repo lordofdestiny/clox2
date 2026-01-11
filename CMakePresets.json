@@ -1,5 +1,5 @@
 {
-  "version": 4,
+  "version": 6,
   "configurePresets": [
     {
       "name": "dev",
@@ -7,12 +7,43 @@
       "description": "Preset to use when developing the language",
       "binaryDir": "${sourceDir}/build",
       "cacheVariables": {
-        "CMAKE_C_COMPILER": "clang",
-        "CMAKE_CXX_COMPILER": "clang++",
-        "CMAKE_C_EXTENSIONS": "ON",
-        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
-        "CMAKE_BUILD_TYPE": "Debug"
+        "BUILD_TESTS" : "TRUE",
+        "CMAKE_C_COMPILER": "gcc",
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "YES"
       }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "default-build",
+      "configurePreset": "dev"
+    }
+  ],
+  "testPresets": [
+    {
+      "name": "default-test",
+      "configurePreset": "dev"
+    }
+  ],
+  "workflowPresets": [
+    {
+      "name": "build-and-test",
+      "displayName": "Build and Test Workflow",
+      "steps": [
+        {
+          "type": "configure",
+          "name": "dev"
+        },
+        {
+          "type": "build",
+          "name": "default-build"
+        },
+        {
+          "type": "test",
+          "name": "default-test"
+        }
+      ]
     }
   ]
 }

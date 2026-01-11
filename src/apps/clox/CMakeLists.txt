@@ -21,5 +21,5 @@ target_include_directories(clox
 target_link_libraries(clox
   PRIVATE
     cloximpl
-    args
+    cloxargs
 )

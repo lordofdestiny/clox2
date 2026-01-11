@@ -1,11 +1,18 @@
 FROM mcr.microsoft.com/devcontainers/cpp:ubuntu-24.04
 
+COPY .bash_aliases /root
+
 RUN apt-get update && \
     apt-get install -y \
-        git \
-        clang-format clang-tidy clang-tools clang clangd \
-        libc++-dev libc++1 libc++abi-dev libc++abi1 libclang-dev libclang1 liblldb-dev libllvm-ocaml-dev libomp-dev libomp5 \
+        git coreutils \
+        clang clang-format clang-tidy clang-tools clangd \
+        libclang-dev libclang1 \
         lld lldb llvm-dev llvm-runtime llvm \
-        python3-clang
+        python3-clang \
+        valgrind \
+        flex bison
+
+RUN apt-get install -y \
+    python3-venv python3-pip
 
 RUN git config --global --add safe.directory /mnt/clox2

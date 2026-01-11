@@ -1,21 +1,18 @@
 add_executable(MiscTests)
 
-file(GLOB_RECURSE MiscTests_SRC "*.cpp")
+file(GLOB_RECURSE TARGET_SOURCES "*.c")
 
-target_sources(MiscTests
+target_sources(
+  MiscTests
   PRIVATE
-    ${MiscTests_SRC}
+    ${TARGET_SOURCES}
 )
 
-target_include_directories(MiscTests
-  PRIVATE
-    gtest
-)
-
-target_link_libraries(MiscTests
+target_link_libraries(
+  MiscTests
   PRIVATE
     cloxargs
-	  GTest::gtest_main
+	  cmocka
 )
 
-gtest_discover_tests(MiscTests)
+add_test(NAME MiscTests COMMAND MiscTests)
