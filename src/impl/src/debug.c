@@ -107,7 +107,6 @@ int disassembleInstruction(FILE* file, Chunk* chunk, const int offset) {
     switch (instruction) {
     case OP_ARRAY: return longOperandInstruction(file, "OP_ARRAY", chunk, offset);
     case OP_CONSTANT: return constantInstruction(file, "OP_CONSTANT", chunk, offset);
-    case OP_CONSTANT_MINUS_ONE: return simpleInstruction(file, "OP_CONSTANT_MINUS_ONE", offset);
     case OP_CONSTANT_ZERO: return simpleInstruction(file, "OP_CONSTANT_ZERO", offset);
     case OP_CONSTANT_ONE: return simpleInstruction(file, "OP_CONSTANT_ONE", offset);
     case OP_CONSTANT_TWO: return simpleInstruction(file, "OP_CONSTANT_TWO", offset);

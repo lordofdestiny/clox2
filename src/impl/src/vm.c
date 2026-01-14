@@ -607,8 +607,6 @@ static InterpretResult run() {
         }
         case OP_CONSTANT: push(READ_CONSTANT());
             break;
-        case OP_CONSTANT_MINUS_ONE: push(NUMBER_VAL(-1));
-            break;
         case OP_CONSTANT_ZERO: push(NUMBER_VAL(0));
             break;
         case OP_CONSTANT_ONE: push(NUMBER_VAL(1));
