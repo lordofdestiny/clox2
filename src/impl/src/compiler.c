@@ -234,17 +234,16 @@ static uint8_t makeConstant(const Value value) {
 }
 
 const OpCode constantInstructions[] = {
-    [0] = OP_CONSTANT_MINUS_ONE,
-    [1] = OP_CONSTANT_ZERO,
-    [2] = OP_CONSTANT_ONE,
-    [3] = OP_CONSTANT_TWO
+    [0] = OP_CONSTANT_ZERO,
+    [1] = OP_CONSTANT_ONE,
+    [2] = OP_CONSTANT_TWO
 };
 
 static void emitConstant(const Value value) {
     if (IS_NUMBER(value)) {
         long val = (long) round(AS_NUMBER(value));
         if (val >= -1 && val <= 2) {
-            emitByte(constantInstructions[val + 1]);
+            emitByte(constantInstructions[val]);
             return;
         }
     }

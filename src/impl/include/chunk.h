@@ -7,7 +7,6 @@
 typedef enum {
     OP_ARRAY,
     OP_CONSTANT,
-    OP_CONSTANT_MINUS_ONE,
     OP_CONSTANT_ZERO,
     OP_CONSTANT_ONE,
     OP_CONSTANT_TWO,
