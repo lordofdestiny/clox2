@@ -22,7 +22,7 @@ int repl() {
 
         InputFile source = {.content = line, .size = strlen(line)};
         InterpretResult code = interpret(source);
-        if(code == INTERPRET_EXIT) {
+        if (code == INTERPRET_EXIT) {
             return vm.exit_code;
         }
     }
@@ -91,12 +91,12 @@ static int runBinaryFile(const char* path) {
 }
 
 int runFile(const Command* cmd) {
-    if(cmd->input_file == NULL) {
+    if (cmd->input_file == NULL) {
         fprintf(stderr, "No input file specified for execution.\n");
         return EXIT_CODE_BAD_ARGS;
     }
     
-    if(cmd->input_type == CMD_EXEC_UNSET) {
+    if (cmd->input_type == CMD_EXEC_UNSET) {
         fprintf(stderr, "Input type not specified for execution.\n");
         return EXIT_CODE_BAD_ARGS;
     }

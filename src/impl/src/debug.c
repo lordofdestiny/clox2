@@ -5,18 +5,10 @@
 #include "object.h"
 #include "debug.h"
 
-// extern int lines;
-// extern const char** file_lines;
-
 void disassembleChunk(FILE* file, Chunk* chunk, const char* name) {
     fprintf(file, "== %s ==\n", name);
 
     for (int offset = 0; offset < chunk->count;) {
-        // int line = getLine(chunk, offset);
-        // if(offset == 0 || offset > 0 && line != getLine(chunk, offset - 1) && line < lines) {
-        //     fprintf(file, "%4d.\t%3s\n",line, file_lines[line - 1]);
-        // }
-
         offset = disassembleInstruction(file, chunk, offset);
     }
 }

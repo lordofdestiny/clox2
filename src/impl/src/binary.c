@@ -407,12 +407,6 @@ void writeBinary(ObjFunction* compiled, const char* path) {
 
 #define LOAD_FAILURE 33
 
-#ifdef DEBUG_PRINT_CODE
-
-#include "debug.h"
-
-#endif
-
 typedef struct {
     int toPatch; // Function to patch
     int patchWith; // Value to patch with
@@ -651,13 +645,6 @@ ObjFunction* loadBinary(const char* path) {
     GenericArray strings = loadStrings(file);
 
     patchFunctionRefs(&patchList, &functions, &strings);
-
-    //#ifdef DEBUG_PRINT_CODE
-    //    disassembleChunk(&function->chunk,
-    //                     function->name != NULL
-    //                     ? function->name->chars
-    //                     : "<script>", stdout);
-    //#endif
 
     freeGenericArray(&functions);
     freeGenericArray(&patchList);

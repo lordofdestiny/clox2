@@ -73,7 +73,7 @@ number          [[:digit:]]+(\.[[:digit:]]+)?
     \"              {
                         BEGIN(INITIAL);
                         *buffer_ptr = 0;
-                        if(stringError != NULL) {
+                        if (stringError != NULL) {
                             char* tmp = stringError;
                             stringError = NULL;
                             return errorToken(yyscanner, tmp);
@@ -156,7 +156,7 @@ number          [[:digit:]]+(\.[[:digit:]]+)?
                         prevLength = yyleng;
                     }
 
-    /* must be here to supper flex -s flag */
+    /* must be here to suppress flex -s flag */
     .               {
                         prevLength = yyleng;
                         yymore();

@@ -75,23 +75,23 @@ static error_t argpParser (int key, char *arg, struct argp_state *state) {
         case ARGP_KEY_ARGS:{
             [[maybe_unused]] char** remaining_args = state->argv + state->next;
             int num_remaining_args = state->argc - state->next;
-            if(num_remaining_args > 0) {
+            if (num_remaining_args > 0) {
                 argp_error(state, "Excessive positional arguments. Only one argument allowed");
             }
             break;
         }
         case ARGP_KEY_END:
-            if(options->inline_code && options->output_type != OUT_BYTECODE) {
+            if (options->inline_code && options->output_type != OUT_BYTECODE) {
                 argp_error (state, "Inline code can only be used with bytecode output.");
             }
-            if(options->input_type == IN_UNSET) {
+            if (options->input_type == IN_UNSET) {
                 options->input_type = IN_SOURCE;
             }
 
-            if(options->output_type == OUT_UNSET && options->input_file != NULL) {
+            if (options->output_type == OUT_UNSET && options->input_file != NULL) {
                 options->output_type = OUT_EXECUTE;
             }
-            if((options->output_type == OUT_EXECUTE || options->output_type == OUT_BINARY )
+            if ((options->output_type == OUT_EXECUTE || options->output_type == OUT_BINARY )
                 && options->input_file == NULL) {
                 argp_error (state, "No input file specified.");
             }

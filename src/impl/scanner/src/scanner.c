@@ -155,7 +155,7 @@ skip:
     while (peek() != '"' && !isAtEnd()) advance();
     // The closing quote
     advance();    
-    if(errorMsg != NULL) {
+    if (errorMsg != NULL) {
         return errorToken(errorMsg);
     }
     return makeToken(TOKEN_STRING);

@@ -5,12 +5,12 @@
 #include "vm.h"
 #include "compiler.h"
 
-#ifdef DEBUG_LOG_GC
+#if defined(DEBUG_STRESS_GC) || defined(DEBUG_LOG_GC)
 
 #include <stdio.h>
-#include "debug.h"
 
 #endif
+
 #define GC_HEAP_GROW_FACTOR 2
 
 void* reallocate(void* previous, const size_t oldSize, const size_t newSize) {
@@ -41,7 +41,7 @@ void markObject(Obj* object) {
 
 #ifdef DEBUG_LOG_GC
     printf("%p mark ", (void *) object);
-    printValue(OBJ_VAL(object));
+    printValue(stdout, OBJ_VAL(object));
     printf("\n");
 #endif
     object->isMarked = true;
@@ -75,7 +75,7 @@ void markArray(ValueArray* array) {
 static void blackenObject(Obj* object) {
 #ifdef DEBUG_LOG_GC
     printf("%p blacken ", (void *) object);
-    printValue(OBJ_VAL(object));
+    printValue(stdout, OBJ_VAL(object));
     printf("\n");
 #endif
     object->vtp->blacken(object);

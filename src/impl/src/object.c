@@ -145,7 +145,7 @@ static void printArray(Obj* object, FILE* out) {
     const ValueArray* array = &objArray->array;
     fprintf(out, "[");
     for (int i = 0; i < array->count; i++) {
-        if(IS_STRING(array->values[i])) {
+         if (IS_STRING(array->values[i])) {
             printf("\"");
             printValue(out, array->values[i]);
             printf("\"");
@@ -366,7 +366,7 @@ ObjString* escapedString(const char* chars, int length) {
             continue;
         }
 
-        if(isalpha(c = chars[read]) || c == '\'' || c == '\"' || c == '\\') {
+        if (isalpha(c = chars[read]) || c == '\'' || c == '\"' || c == '\\') {
             switch (chars[read++]) {
             case 'a': buffer[write++] = '\a'; continue;
             case 'b': buffer[write++] = '\b'; continue;

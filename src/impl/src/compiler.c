@@ -9,7 +9,7 @@
 
 #include <string.h>
 
-#ifdef DEBUG_PRINT_CODE
+#if defined(DEBUG_PRINT_CODE) || defined(DEBUG_TRACE_EXECUTION)
 
 #include "debug.h"
 
@@ -174,7 +174,7 @@ static void consumeReplOptional(const TokenType type, const char* message) {
         advance();
         return;
     }
-    if(current->enclosing != NULL || !isRepl()) {
+    if (current->enclosing != NULL || !isRepl()) {
         errorAtCurrent(message);
     }
 }
@@ -241,7 +241,7 @@ const OpCode constantInstructions[] = {
 };
 
 static void emitConstant(const Value value) {
-    if(IS_NUMBER(value)) {
+    if (IS_NUMBER(value)) {
         long val = (long) round(AS_NUMBER(value));
         if (val >= -1 && val <= 2) {
             emitByte(constantInstructions[val + 1]);
@@ -303,7 +303,7 @@ static void initCompiler(Compiler* compiler, const FunctionType type) {
                 : "script",
             line);
         char* buffer = ALLOCATE(char, nameLength + 1);
-        if(buffer == NULL) {
+        if (buffer == NULL) {
             error("Could not allocate memory for lambda name");
         }
         memset(buffer, 0, nameLength + 1);
@@ -757,7 +757,7 @@ static void varDeclaration() {
 static void expressionStatement() {
     expression();
     consumeReplOptional(TOKEN_SEMICOLON, "Expect ';' after expression.");
-    if(isRepl()) {
+    if (isRepl()) {
         emitByte(OP_PRINT);
     }else {
         emitByte(OP_POP);

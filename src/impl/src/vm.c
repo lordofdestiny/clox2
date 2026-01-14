@@ -563,7 +563,7 @@ static InterpretResult run() {
     do {                         \
         unpackPrimitive(0); \
         unpackPrimitive(1); \
-        if(!IS_NUMBER(peek(0)) || !IS_NUMBER(peek(1))){ \
+        if (!IS_NUMBER(peek(0)) || !IS_NUMBER(peek(1))){ \
             frame->ip = ip;                     \
             runtimeError("Operands must be numbers");   \
             return INTERPRET_RUNTIME_ERROR; \
@@ -1062,7 +1062,7 @@ InterpretResult interpretCompiled(ObjFunction* function) {
     if (setjmp(vm.exit_state) == 0) {
         return run();
     }
-    
+
     return INTERPRET_EXIT;
 }
 
