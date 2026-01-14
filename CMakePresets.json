@@ -7,7 +7,6 @@
       "description": "Preset to use when developing the language",
       "binaryDir": "${sourceDir}/build",
       "cacheVariables": {
-        "BUILD_TESTS" : "TRUE",
         "CMAKE_C_COMPILER": "gcc",
         "CMAKE_BUILD_TYPE": "Debug",
         "CMAKE_EXPORT_COMPILE_COMMANDS": "YES"
