@@ -6,13 +6,9 @@
 #include "token.h"
 #include "visibility.h"
 
-typedef struct {
-    const char* start;
-    const char* current;
-    int line;
-} Scanner;
+#include "scanner.h"
 
-PRIVATE extern Scanner scanner;
+PRIVATE extern Scanner* scanner;
 
 PRIVATE bool isAtEnd();
 PRIVATE char advance();

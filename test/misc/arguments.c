@@ -59,7 +59,7 @@ void deleteTestState(TestState* state) {
 }
 
 int setupTest(void **state) {
-    TestState* test_state = *(TestState**) state;
+    [[maybe_unused]] TestState* test_state = *(TestState**) state;
     return 0;
 }
 

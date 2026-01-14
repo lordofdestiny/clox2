@@ -3,7 +3,6 @@
 
 #include <stdio.h>
 
-#include "common.h"
 #include "value.h"
 #include "chunk.h"
 #include "table.h"
@@ -146,6 +145,8 @@ ObjInstance* newPrimitive(Value value, ObjClass* klass);
 ObjNative* newNative(NativeFn function, int arity);
 
 ObjString* takeString(char* chars, int length);
+
+ObjString* escapedString(const char* chars, int length);
 
 ObjString* copyString(const char* chars, int length);
 

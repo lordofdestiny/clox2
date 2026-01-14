@@ -1,25 +1,28 @@
 add_executable(clox)
 
-file(GLOB_RECURSE clox_SRC "*.c") 
-file(GLOB_RECURSE clox_INC "include/*.h")
+file(GLOB_RECURSE TARGET_SOURCES "*.c") 
+file(GLOB_RECURSE TARGET_HEADERS "include/*.h")
 
 target_sources(clox
   PRIVATE
-    ${clox_SRC}
+    ${TARGET_SOURCES}
 
   PRIVATE
   FILE_SET HEADERS
-    FILES  
-    ${clox_INC}
+  BASE_DIRS include
+  FILES  
+    ${TARGET_HEADERS}
 )
 
-target_include_directories(clox
-  PRIVATE
-    include
+set_target_properties(
+  clox
+  PROPERTIES
+    COMPILE_WARNING_AS_ERROR TRUE
 )
 
 target_link_libraries(clox
   PRIVATE
     cloximpl
     cloxargs
+    cloxcommon
 )

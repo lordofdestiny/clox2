@@ -242,7 +242,7 @@ class GenerateIdentifierCode(IndexCodeGenerator):
         print("}")
 
     def handle_index(self, index: Index, depth: int):
-        print(f"switch (scanner.start[{depth}]) {{")
+        print(f"switch (scanner->start[{depth}]) {{")
         for elem in index.elems:
             print(f"case '{elem.char}':", end="")
             with self.tabs.indent():
@@ -253,7 +253,7 @@ class GenerateIdentifierCode(IndexCodeGenerator):
     def handle_node(self, node: IndexNode, depth: int):
         if len(node.index.elems) >= 1 and not node.index.extract():
             print()
-            print(f"if (scanner.current - scanner.start > {depth + 1}) {{")
+            print(f"if (scanner->current - scanner->start > {depth + 1}) {{")
             with self.tabs.indent():
                 self.handle_index(node.index, depth + 1)
             print("}")

@@ -11,32 +11,27 @@ typedef enum {
     CMD_DISASSEMBLE,
 } CommandType;
 
+typedef enum {
+    CMD_EXEC_UNSET,
+    CMD_EXEC_SOURCE,
+    CMD_EXEC_BINARY,
+} CommandInputType;
+
+typedef enum {
+    CMD_COMPILE_UNSET,
+    CMD_COMPILE_BINARY,
+    CMD_COMPILE_BYTECODE,
+} CommandOutputType;
+
 typedef struct {
     const char* input_file;
     const char* output_file;
-    enum {
-        CMD_EXEC_UNSET,
-        CMD_EXEC_SOURCE,
-        CMD_EXEC_BINARY,
-    } input_type;
-    enum {
-        CMD_COMPILE_UNSET,
-        CMD_COMPILE_BINARY,
-        CMD_COMPILE_BYTECODE,
-    } output_type;
-    bool inline_code;
+    CommandInputType input_type;
+    CommandOutputType output_type;
     CommandType type;
+    bool inline_code;
 } Command;
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 Command parseArgs(const int argc, char* argv[]);
-
-#ifdef __cplusplus
-}
-#endif
-
 
 #endif // __CLOX2_ARGS_H__

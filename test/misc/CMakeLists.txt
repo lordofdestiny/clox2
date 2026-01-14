@@ -15,4 +15,11 @@ target_link_libraries(
 	  cmocka
 )
 
+set_target_properties(
+  MiscTests
+  PROPERTIES
+    COMPILE_WARNING_AS_ERROR TRUE
+)
+
+
 add_test(NAME MiscTests COMMAND MiscTests)

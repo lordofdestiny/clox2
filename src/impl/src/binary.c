@@ -189,7 +189,7 @@ static ValueId* findValueId(GenericArray* valueIds, const Value value) {
         }
         if (valuesEqual(value, id->value)) return id;
     }
-    return false;
+    return NULL;
 }
 
 typedef struct {
@@ -480,7 +480,7 @@ static void read_array(FILE* file, void* dest, const size_t size, const size_t c
 
 static void checkSegment(FILE* file, const SegmentSequence seg) {
     int read;
-    if ((read = read_int(file)) != seg) {
+    if ((read = read_int(file)) != (int) seg) {
         fprintf(stderr, "Invalid file format. Read: %08X; Expected: %08X\n", read, seg);
         exit(LOAD_FAILURE);
     }

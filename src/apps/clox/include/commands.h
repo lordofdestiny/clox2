@@ -1,18 +1,12 @@
 #ifndef __CLOX2_COMMANDS_H__
 #define __CLOX2_COMMANDS_H__
 
-#include <stdbool.h>
-#include <stdio.h>
+#include "args.h"
 
-#define ERROR_FAILED_TO_READ_FILE 74
+int repl();
 
-typedef struct  {
-    char* path;
-    char* content;
-    size_t size;
-} TextFile;
+int runFile(const Command* cmd);
 
-TextFile readTextFile(const char* path);
-void freeTextFile(TextFile* file);
+int compileFile(const Command* cmd);
 
-#endif //__CLOX2_COMMANDS_H__
+#endif // __CLOX2_COMMANDS_H__

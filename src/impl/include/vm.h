@@ -7,6 +7,7 @@
 #include "value.h"
 #include "table.h"
 #include "object.h"
+#include "inputfile.h"
 
 #define FRAMES_MAX 64
 #define STACK_MAX (FRAMES_MAX * UINT8_COUNT)
@@ -62,9 +63,9 @@ void initVM();
 
 void freeVM();
 
-InterpretResult interpret(const char* source, bool repl);
+InterpretResult interpret(InputFile source);
 
-InterpretResult interpretCompiled(ObjFunction* function, bool repl);
+InterpretResult interpretCompiled(ObjFunction* function);
 
 void push(Value value);
 

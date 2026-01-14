@@ -60,7 +60,7 @@ void runtimeError(const char* format, ...) {
     resetStack();
 }
 
-ObjClass* getGlobalClass(const char* name) {
+static ObjClass* getGlobalClass(const char* name) {
     Value value;
     if (tableGet(&vm.globals, copyString(name, (int) strlen(name)), &value)) {
         if (!IS_CLASS(value)) return NULL;
@@ -98,25 +98,7 @@ static void addNativeMethod(
     pop();
 }
 
-void initVM() {
-    resetStack();
-    vm.objects = NULL;
-    vm.exit_code = 0;
-
-    vm.grayCount = 0;
-    vm.grayCapacity = 0;
-    vm.grayStack = NULL;
-    vm.bytesAllocated = 0;
-    vm.nextGC = 1024 * 1024;
-
-    initTable(&vm.globals);
-    initTable(&vm.strings);
-
-    // Make sure initString is not null
-    // because of GC
-    vm.initString = NULL;
-    vm.initString = copyString("init", 4);
-
+static void initNative() {
     // Define native methods
     for (int i = 0; nativeMethods[i].name != NULL; i++) {
         const NativeMethodDef* def = &nativeMethods[i];
@@ -140,6 +122,28 @@ void initVM() {
     addNativeMethod(array, "init", initArrayNative, -1);
     addNativeMethod(array, "append", appendArrayNative, 1);
     addNativeMethod(array, "pop", popArrayNative, 0);
+}
+
+void initVM() {
+    resetStack();
+    vm.objects = NULL;
+    vm.exit_code = 0;
+
+    vm.grayCount = 0;
+    vm.grayCapacity = 0;
+    vm.grayStack = NULL;
+    vm.bytesAllocated = 0;
+    vm.nextGC = 1024 * 1024;
+
+    initTable(&vm.globals);
+    initTable(&vm.strings);
+
+    // Make sure initString is not null
+    // because of GC
+    vm.initString = NULL;
+    vm.initString = copyString("init", 4);
+
+    initNative();
 }
 
 void freeVM() {
@@ -1050,33 +1054,19 @@ static InterpretResult run() {
 #undef BINARY_OP
 }
 
-extern jmp_buf exit_repl;
-
-InterpretResult interpret(const char* source, bool repl) {
-    ObjFunction* function = compile(source);
+InterpretResult interpretCompiled(ObjFunction* function) {
     if (function == NULL) return INTERPRET_COMPILE_ERROR;
     push(OBJ_VAL((Obj *) function));
     callFunction((Obj*) function, 0);
 
     if (setjmp(vm.exit_state) == 0) {
         return run();
-    }else if(repl) {
-        longjmp(exit_repl, vm.exit_code);
     }
-
+    
     return INTERPRET_EXIT;
 }
 
-InterpretResult interpretCompiled(ObjFunction* function, bool repl) {
-    if (function == NULL) return INTERPRET_RUNTIME_ERROR;
-    push(OBJ_VAL((Obj *) function));
-    callFunction((Obj*) function, 0);
-
-    if (setjmp(vm.exit_state) == 0) {
-        return run();
-    }else if(repl) {
-        longjmp(exit_repl, vm.exit_code);
-    }
-
-    return INTERPRET_EXIT;
+InterpretResult interpret(InputFile source) {
+    ObjFunction* function = compile(source);
+    return interpretCompiled(function);
 }

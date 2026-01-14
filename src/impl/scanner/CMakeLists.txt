@@ -20,7 +20,7 @@ add_custom_command(
   VERBATIM
 )
 
-add_library(cloxscanner STATIC)
+add_library(cloxscanner OBJECT)
 
 file(GLOB_RECURSE TARGET_SOURCES "src/*.c")
 file(GLOB_RECURSE TARGET_HEADERS "include/*.h")
@@ -49,6 +49,8 @@ set_target_properties(
   cloxscanner
   PROPERTIES
     POSITION_INDEPENDENT_CODE TRUE
+    C_VISIBILITY_PRESET hidden
+    COMPILE_WARNING_AS_ERROR TRUE
 )
 
 target_include_directories(
@@ -59,3 +61,5 @@ target_include_directories(
   PRIVATE
     src
 )
+
+target_link_libraries(cloxscanner PUBLIC cloxcommon)

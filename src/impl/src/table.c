@@ -73,10 +73,7 @@ bool tableGet(Table* table, ObjString* key, Value* value) {
     const Entry* entry = findEntry(table->entries, table->capacity, key);
     if (entry->key == NULL) return false;
 
-#pragma clang diagnostic push
-#pragma ide diagnostic ignored "UnusedValue"
     *value = entry->value;
-#pragma clang diagnostic pop
 
     return true;
 }

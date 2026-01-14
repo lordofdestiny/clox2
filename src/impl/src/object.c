@@ -1,5 +1,7 @@
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
+#include <ctype.h>
 
 #include "memory.h"
 #include "object.h"
@@ -10,7 +12,100 @@
 #define ALLOCATE_OBJ(type, objectType) \
     (type*) allocateObject(sizeof(type), objectType)
 
-static ObjVT vtList[];
+static bool callNonCallable(Obj*, int);
+static void blackenNoOp(Obj*);
+static void printFunctionImpl(const ObjFunction* function, FILE* out);
+
+static void blackenArray(Obj* object);
+static void freeArray(Obj* object);
+static void printArray(Obj* object, FILE* out);
+
+static void blackenBoundMethod(Obj* object);
+static void freeBoundMethod(Obj* object);
+static void printBoundMethod(Obj* obj, FILE* out);
+
+static void blackenClass(Obj* object);
+static void freeClass(Obj* object);
+static void printClass(Obj* obj, FILE* out);
+
+static void blackenClosure(Obj* object);
+static void freeClosure(Obj* object);
+static void printClosure(Obj* obj, FILE* out);
+
+static void blackenFunction(Obj* object);
+static void freeFunction(Obj* object);
+static void printFunction(Obj* obj, FILE* out);
+
+static void blackenInstance(Obj* object);
+static void freeInstance(Obj* object);
+static void printInstance(Obj* obj, FILE* out);
+
+static void freeNative(Obj* object);
+static void printNative(Obj* obj, FILE* out);
+
+static void freeString(Obj* object);
+static void printString(Obj* obj, FILE* out);
+
+static void blackenUpvalue(Obj* object);
+static void freeUpvalue(Obj* object);
+static void printUpvalue(Obj* obj, FILE* out);
+
+static ObjVT vtList[] = {
+    [OBJ_ARRAY] = {
+        .call = callNonCallable,
+        .blacken = blackenArray,
+        .free = freeArray,
+        .print = printArray
+    },
+    [OBJ_BOUND_METHOD] = {
+        .call = callBoundMethod,
+        .blacken = blackenBoundMethod,
+        .free = freeBoundMethod,
+        .print = printBoundMethod
+    },
+    [OBJ_CLASS] = {
+        .call = callClass,
+        .blacken = blackenClass,
+        .free = freeClass,
+        .print = printClass
+    },
+    [OBJ_CLOSURE] = {
+        .call = callClosure,
+        .blacken = blackenClosure,
+        .free = freeClosure,
+        .print = printClosure
+    },
+    [OBJ_FUNCTION] = {
+        .call = callFunction,
+        .blacken = blackenFunction,
+        .free = freeFunction,
+        .print = printFunction
+    },
+    [OBJ_INSTANCE] = {
+        .call = callNonCallable,
+        .blacken = blackenInstance,
+        .free = freeInstance,
+        .print = printInstance
+    },
+    [OBJ_NATIVE] = {
+        .call = callNative,
+        .blacken = blackenNoOp,
+        .free = freeNative,
+        .print = printNative
+    },
+    [OBJ_STRING] = {
+        .call = callNonCallable,
+        .blacken = blackenNoOp,
+        .free = freeString,
+        .print = printString
+    },
+    [OBJ_UPVALUE] = {
+        .call = callNonCallable,
+        .blacken = blackenUpvalue,
+        .free = freeUpvalue,
+        .print = printUpvalue
+    },
+};
 
 static Obj* allocateObject(const size_t size, const ObjType type) {
     Obj* object = (Obj*) reallocate(NULL, 0, size);
@@ -25,8 +120,6 @@ static Obj* allocateObject(const size_t size, const ObjType type) {
 void printObject(FILE* out, const Value value) {
     AS_OBJ(value)->vtp->print(AS_OBJ(value), out);
 }
-
-static void printFunctionImpl(const ObjFunction* function, FILE* out);
 
 ObjArray* newArray() {
     ObjArray* array = ALLOCATE_OBJ(ObjArray, OBJ_ARRAY);
@@ -217,7 +310,7 @@ static void freeNative(Obj* object) {
     FREE(ObjNative, object);
 }
 
-static void printNative(Obj* obj, FILE* out) {
+static void printNative([[maybe_unused]] Obj* obj, FILE* out) {
     fprintf(out, "<native fn>");
 }
 
@@ -249,7 +342,6 @@ uint32_t hashString(const char* chars, const int length) {
     return hash;
 }
 
-
 ObjString* takeString(char* chars, const int length) {
     const uint32_t hash = hashString(chars, length);
     ObjString* interned = tableFindString(
@@ -261,6 +353,59 @@ ObjString* takeString(char* chars, const int length) {
     }
 
     return allocateString(chars, length, hash);
+}
+
+ObjString* escapedString(const char* chars, int length) {
+    char* buffer = calloc(length + 1, 1);
+    int write = 0;
+    int read = 0;
+    while(read < length) {
+        char c = chars[read++];
+        if (c != '\\') {
+            buffer[write++] = c;
+            continue;
+        }
+
+        if(isalpha(c = chars[read]) || c == '\'' || c == '\"' || c == '\\') {
+            switch (chars[read++]) {
+            case 'a': buffer[write++] = '\a'; continue;
+            case 'b': buffer[write++] = '\b'; continue;
+            case 'f': buffer[write++] = '\f'; continue;
+            case 'r': buffer[write++] = '\r'; continue;
+            case 'n': buffer[write++] = '\n'; continue;
+            case 't': buffer[write++] = '\t'; continue;
+            case 'v': buffer[write++] = '\v'; continue;
+            case '?': buffer[write++] = '?'; continue;
+            case '\\': buffer[write++] = '\\'; continue;
+            case '\'': buffer[write++] = '\''; continue;
+            case '\"': buffer[write++] = '\"'; continue;
+            case 'x': {
+                char total = 0;
+                int i = 0;
+                while(isdigit(c = chars[read]) && i < 2) {
+                    total = 16 * total + (c-'0');
+                    read++;
+                    i++;
+                }
+                buffer[write++] = total;
+                continue;
+            }
+            default:
+            continue;
+            }
+        }else {
+            char total = 0;
+            int i = 0;
+            while(isdigit(c = chars[read]) && i < 3) {
+                total = 8 * total + (c-'0');
+                read++;
+                i++;
+            }
+            buffer[write++] = total;
+        }  
+    }
+    
+    return takeString(buffer, write);
 }
 
 ObjString* copyString(const char* chars, const int length) {
@@ -317,67 +462,9 @@ static void printFunctionImpl(const ObjFunction* function, FILE* out) {
     fprintf(out, "<fn %s>", function->name->chars);
 }
 
-static bool callNonCallable(Obj* obj, int argCount) {
+static bool callNonCallable([[maybe_unused]] Obj* obj, [[maybe_unused]] int argCount) {
     runtimeError("Can only call functions and classes.");
     return false;
 }
 
-static void blackenNoOp(Obj* obj) { }
-
-static ObjVT vtList[] = {
-    [OBJ_ARRAY] = {
-        .call = callNonCallable,
-        .blacken = blackenArray,
-        .free = freeArray,
-        .print = printArray
-    },
-    [OBJ_BOUND_METHOD] = {
-        .call = callBoundMethod,
-        .blacken = blackenBoundMethod,
-        .free = freeBoundMethod,
-        .print = printBoundMethod
-    },
-    [OBJ_CLASS] = {
-        .call = callClass,
-        .blacken = blackenClass,
-        .free = freeClass,
-        .print = printClass
-    },
-    [OBJ_CLOSURE] = {
-        .call = callClosure,
-        .blacken = blackenClosure,
-        .free = freeClosure,
-        .print = printClosure
-    },
-    [OBJ_FUNCTION] = {
-        .call = callFunction,
-        .blacken = blackenFunction,
-        .free = freeFunction,
-        .print = printFunction
-    },
-    [OBJ_INSTANCE] = {
-        .call = callNonCallable,
-        .blacken = blackenInstance,
-        .free = freeInstance,
-        .print = printInstance
-    },
-    [OBJ_NATIVE] = {
-        .call = callNative,
-        .blacken = blackenNoOp,
-        .free = freeNative,
-        .print = printNative
-    },
-    [OBJ_STRING] = {
-        .call = callNonCallable,
-        .blacken = blackenNoOp,
-        .free = freeString,
-        .print = printString
-    },
-    [OBJ_UPVALUE] = {
-        .call = callNonCallable,
-        .blacken = blackenUpvalue,
-        .free = freeUpvalue,
-        .print = printUpvalue
-    },
-};
-
+static void blackenNoOp([[maybe_unused]] Obj* obj) { }

@@ -6,7 +6,7 @@
 
 #include "args.h"
 
-static void printVersion(FILE *stream, struct argp_state *state) {
+static void printVersion(FILE *stream, [[maybe_unused]] struct argp_state *state) {
     fprintf(stream, "%s\n", argp_program_version);
 }
 
@@ -73,7 +73,7 @@ static error_t argpParser (int key, char *arg, struct argp_state *state) {
                 return ARGP_ERR_UNKNOWN;
             break;
         case ARGP_KEY_ARGS:{
-            char** remaining_args = state->argv + state->next;
+            [[maybe_unused]] char** remaining_args = state->argv + state->next;
             int num_remaining_args = state->argc - state->next;
             if(num_remaining_args > 0) {
                 argp_error(state, "Excessive positional arguments. Only one argument allowed");

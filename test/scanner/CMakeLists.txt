@@ -1,24 +1,38 @@
-add_executable(ScannerTests)
+add_executable(TestScannerDefault)
+add_executable(TestScannerFlex)
 
 file(GLOB_RECURSE TARGET_SOURCES "*.c")
 
-target_sources(
-  ScannerTests
+target_sources(TestScannerDefault
   PRIVATE
     ${TARGET_SOURCES}
 )
 
-if(NOT USE_FLEX_SCANNER)
-  set(scanner_lib cloxscanner)
-else()
-  set(scanner_lib cloxscanner_flex)
-endif()
-
-target_link_libraries(
-  ScannerTests
+target_sources(TestScannerFlex
   PRIVATE
-    ${scanner_lib}
-    cmocka
+    ${TARGET_SOURCES}
 )
 
-add_test(NAME ScannerTests COMMAND ScannerTests)
+set_target_properties(TestScannerDefault TestScannerFlex
+  PROPERTIES
+    COMPILE_WARNING_AS_ERROR TRUE
+)
+
+target_link_libraries(
+  TestScannerDefault
+  PUBLIC
+    cmocka
+    cloxcommon
+    cloxscanner
+)
+
+target_link_libraries(
+  TestScannerFlex
+  PUBLIC
+    cmocka
+    cloxcommon
+    cloxscanner_flex
+)
+
+add_test(NAME TestScannerDefault COMMAND TestScannerDefault)
+add_test(NAME TestScannerFlex COMMAND TestScannerFlex)

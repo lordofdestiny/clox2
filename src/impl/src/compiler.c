@@ -84,6 +84,9 @@ typedef struct Compiler {
     Table stringConstants;
 } Compiler;
 
+// TODO move out of the global scope
+Scanner scanner_obj;
+
 static bool* compilerReplMode() {
     static bool value;
     return &value;
@@ -126,7 +129,7 @@ static Chunk* currentChunk() {
 static void errorAt(const Token* token, const char* message) {
     if (parser.panicMode) return;
     parser.panicMode = true;
-    fprintf(stderr, "[line %d] Error", token->line);
+    fprintf(stderr, "[line %d] Error", token->loc.line);
     if (token->type == TOKEN_EOF) {
         fprintf(stderr, " at end");
     } else if (token->type == TOKEN_ERROR) {
@@ -151,7 +154,7 @@ static void advance() {
     parser.previous = parser.current;
 
     while (true) {
-        parser.current = scanToken();
+        parser.current = scanToken(&scanner_obj);
         if (parser.current.type != TOKEN_ERROR) break;
 
         errorAtCurrent(parser.current.start);
@@ -187,7 +190,7 @@ static bool match(const TokenType type) {
 }
 
 static void emitByte(const uint8_t byte) {
-    writeChunk(currentChunk(), byte, parser.previous.line);
+    writeChunk(currentChunk(), byte, parser.previous.loc.line);
 }
 
 static void emitBytes(const uint8_t byte1, const uint8_t byte2) {
@@ -230,24 +233,23 @@ static uint8_t makeConstant(const Value value) {
     return constant;
 }
 
+const OpCode constantInstructions[] = {
+    [0] = OP_CONSTANT_MINUS_ONE,
+    [1] = OP_CONSTANT_ZERO,
+    [2] = OP_CONSTANT_ONE,
+    [3] = OP_CONSTANT_TWO
+};
+
 static void emitConstant(const Value value) {
     if(IS_NUMBER(value)) {
         long val = (long) round(AS_NUMBER(value));
-        switch(val){
-            case -1:
-                return emitByte(OP_CONSTANT_MINUS_ONE);
-            case 0:
-                return emitByte(OP_CONSTANT_ZERO);
-            case 1:
-                return emitByte(OP_CONSTANT_ONE);
-            case 2:
-                return emitByte(OP_CONSTANT_TWO);
-            default:
-                emitBytes(OP_CONSTANT, makeConstant(value));
+        if (val >= -1 && val <= 2) {
+            emitByte(constantInstructions[val + 1]);
+            return;
         }
-    }else {
-        emitBytes(OP_CONSTANT, makeConstant(value));
     }
+    
+    emitBytes(OP_CONSTANT, makeConstant(value));
 }
 
 static void emitFunction(const Compiler* compiler, ObjFunction* function) {
@@ -290,15 +292,16 @@ static void initCompiler(Compiler* compiler, const FunctionType type) {
 
     // Has to be called here because GC will try to mark its entries
     initTable(&compiler->stringConstants);
-
+ 
+    int line = parser.previous.loc.line;
     if (type == TYPE_LAMBDA) {
-        const char* template = "%s/[line %d] lambda";
+        const char* template = "lambda %s[%d]";
         const int nameLength = snprintf(
             NULL, 0, template,
             compiler->enclosing->function->name != NULL
                 ? compiler->enclosing->function->name->chars
                 : "script",
-            parser.previous.line);
+            line);
         char* buffer = ALLOCATE(char, nameLength + 1);
         if(buffer == NULL) {
             error("Could not allocate memory for lambda name");
@@ -309,7 +312,7 @@ static void initCompiler(Compiler* compiler, const FunctionType type) {
             compiler->enclosing->function->name != NULL
                 ? compiler->enclosing->function->name->chars
                 : "script",
-            parser.previous.line);
+            line);
 
         current->function->name = takeString(buffer, nameLength);
     } else if (type != TYPE_SCRIPT) {
@@ -521,13 +524,14 @@ static void variable(const bool canAssign) {
 static Token syntheticToken(const char* text) {
     Token token;
     token.start = text;
-    token.length = (int) strlen(text);
-    token.line = -1;
+    token.length = text != NULL ? strlen(text) : 0;
+    token.loc = (TokenLocation) { 0, 0};
+
     token.type = TOKEN_IDENTIFIER;
     return token;
 }
 
-static void super_(bool canAssign) {
+static void super_([[maybe_unused]] bool canAssign) {
     if (currentClass == NULL) {
         error("Can't use 'super' outside of a class.");
     } else if (!currentClass->hasSuperclass) {
@@ -551,11 +555,7 @@ static void super_(bool canAssign) {
     emitBytes(OP_GET_SUPER, name);
 }
 
-#pragma clang diagnostic push
-#pragma ide diagnostic ignored "UnusedParameter"
-
-static void and_(bool canAssign) {
-#pragma clang diagnostic pop
+static void and_([[maybe_unused]] bool canAssign) {
 
     const int endJump = emitJump(OP_JUMP_IF_FALSE);
     emitByte(OP_POP);
@@ -826,12 +826,7 @@ static void forStatement() {
 
     // 1: Grab the name and slot of the loop variable,so that we can refer to it later.
     int loopVariable = -1;
-    Token loopVariableName = {
-        .start = NULL,
-        .length = 0,
-        .line = -1,
-        .type = TOKEN_IDENTIFIER
-    };
+    Token loopVariableName = syntheticToken(NULL);
     // end
 
     consume(TOKEN_LEFT_PAREN, "Expect '(' after for.");
@@ -1235,7 +1230,7 @@ static void statement() {
     }
 }
 
-static void conditional(bool canAssign) {
+static void conditional([[maybe_unused]] bool canAssign) {
     const uint8_t condition = emitJump(OP_JUMP_IF_FALSE);
     emitByte(OP_POP);
     parsePrecedence(PREC_ASSIGNMENT);
@@ -1248,11 +1243,7 @@ static void conditional(bool canAssign) {
     patchJump(was_true);
 }
 
-#pragma clang diagnostic push
-#pragma ide diagnostic ignored "UnusedParameter"
-
-static void binary(bool canAssign) {
-#pragma clang diagnostic pop
+static void binary([[maybe_unused]] bool canAssign) {
     const TokenType operatorType = parser.previous.type;
     const ParseRule* rule = getRule(operatorType);
     if (operatorType == TOKEN_STAR_STAR) {
@@ -1290,11 +1281,7 @@ static void binary(bool canAssign) {
     }
 }
 
-#pragma clang diagnostic push
-#pragma ide diagnostic ignored "UnusedParameter"
-
-static void call(bool canAssign) {
-#pragma clang diagnostic pop
+static void call([[maybe_unused]] bool canAssign) {
     const uint8_t argCount = argumentList();
     emitBytes(OP_CALL, argCount);
 }
@@ -1375,12 +1362,7 @@ static void element(const bool canAssign) {
     }
 }
 
-#pragma clang diagnostic push
-#pragma ide diagnostic ignored "UnusedParameter"
-
-static void literal(bool canAssign) {
-#pragma clang diagnostic pop
-
+static void literal([[maybe_unused]] bool canAssign) {
     switch (parser.previous.type) {
     case TOKEN_FALSE: emitByte(OP_FALSE);
         break;
@@ -1392,32 +1374,17 @@ static void literal(bool canAssign) {
     }
 }
 
-#pragma clang diagnostic push
-#pragma ide diagnostic ignored "UnusedParameter"
-
-static void grouping(bool canAssign) {
-#pragma clang diagnostic pop
-
+static void grouping([[maybe_unused]] bool canAssign) {
     expression();
     consume(TOKEN_RIGHT_PAREN, "Expect ')' after expression");
 }
 
-#pragma clang diagnostic push
-#pragma ide diagnostic ignored "UnusedParameter"
-
-static void number(bool canAssign) {
-#pragma clang diagnostic pop
-
+static void number([[maybe_unused]] bool canAssign) {
     const double value = strtod(parser.previous.start, NULL);
     emitConstant(NUMBER_VAL(value));
 }
 
-#pragma clang diagnostic push
-#pragma ide diagnostic ignored "UnusedParameter"
-
-static void or_(bool canAssign) {
-#pragma clang diagnostic pop
-
+static void or_([[maybe_unused]] bool canAssign) {
     const int elseJump = emitJump(OP_JUMP_IF_FALSE);
     const int endJump = emitJump(OP_JUMP);
     patchJump(elseJump);
@@ -1427,20 +1394,12 @@ static void or_(bool canAssign) {
     patchJump(endJump);
 }
 
-#pragma clang diagnostic push
-#pragma ide diagnostic ignored "UnusedParameter"
-
-static void string(bool canAssign) {
-#pragma clang diagnostic pop
-
+static void string([[maybe_unused]] bool canAssign) {
     emitConstant(
         OBJ_VAL(
-            (Obj*) copyString(parser.previous.start + 1,
+            (Obj*) escapedString(parser.previous.start + 1,
                 parser.previous.length - 2)));
 }
-
-#pragma clang diagnostic push
-#pragma ide diagnostic ignored "ConstantParameter"
 
 static void namedVariable(Token name, const bool canAssign) {
     uint8_t getOp, setOp;
@@ -1491,9 +1450,8 @@ static void namedVariable(Token name, const bool canAssign) {
     }
 }
 
-#pragma clang diagnostic pop
 
-static void this_(bool canAssign) {
+static void this_([[maybe_unused]] bool canAssign) {
     if (currentClass == NULL) {
         error("Can't use 'this' outside of a class.");
         return;
@@ -1505,12 +1463,7 @@ static void this_(bool canAssign) {
     variable(false);
 }
 
-#pragma clang diagnostic push
-#pragma ide diagnostic ignored "UnusedParameter"
-
-static void unary(bool canAssign) {
-#pragma clang diagnostic pop
-
+static void unary([[maybe_unused]] bool canAssign) {
     const TokenType operatorType = parser.previous.type;
 
     // Compile the operand.
@@ -1526,7 +1479,7 @@ static void unary(bool canAssign) {
     }
 }
 
-static void array(bool canAssign) {
+static void array([[maybe_unused]] bool canAssign) {
     int size = 0;
     do {
         size++;
@@ -1631,8 +1584,10 @@ static ParseRule* getRule(const TokenType type) {
     return &rules[type];
 }
 
-ObjFunction* compile(const char* source) {
-    initScanner(source);
+ObjFunction* compile(InputFile source)
+{
+    initScanner(&scanner_obj, source);
+
     Compiler compiler;
     initCompiler(&compiler, TYPE_SCRIPT);
 
@@ -1646,6 +1601,7 @@ ObjFunction* compile(const char* source) {
     }
 
     ObjFunction* function = endCompiler();
+    freeScanner(&scanner_obj);
     return parser.hadError ? NULL : function;
 }
 
@@ -1653,8 +1609,8 @@ void markCompilerRoots() {
     Compiler* compiler = current;
     while (compiler != NULL) {
         markObject((Obj*) compiler->function);
-
         markTable(&compiler->stringConstants);
+        
         compiler = compiler->enclosing;
     }
 }

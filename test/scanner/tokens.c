@@ -1,74 +1,53 @@
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
 
+#define UNIT_TESTING 1
 #include <cmocka.h>
 
 #include "scanner.h"
-
-#ifdef USE_FLEX_SCANNER
+#include "inputfile.h"
 
 typedef struct {
     Scanner scanner;
-    char* buffer;
-    size_t size;
-} ScannerWrapper;
+    InputFile file;
+} TestState;
 
-void initScannerWrapper(ScannerWrapper* wrapper, const char* input) {
-    size_t size = strlen(input) + 2;
-    char* buffer = malloc(size);
+void initTestState(TestState* wrapper, const char* input) {
+    size_t size = strlen(input) ;
+    char* buffer = calloc(size + 2 ,1);
     strcpy(buffer, input);
-    buffer[size-1] = 0;
-    buffer[size-2] = 0;
 
-    wrapper->buffer = buffer;
-    wrapper->size = size;
-    initScanner(&wrapper->scanner, buffer, size);
+    wrapper->file = (InputFile) {
+        .content = buffer,
+        .path = NULL,
+        .size = size
+    };
+    initScanner(&wrapper->scanner, wrapper->file);
 }
 
-void freeScannerWrapper(ScannerWrapper* wrapper) {
+void freeTestState(TestState* wrapper) {
     freeScanner(&wrapper->scanner);
-    free(wrapper->buffer);
-
-    wrapper->buffer = NULL;
-    wrapper->size = 0;
+    freeInputFile(&wrapper->file);
 }
-
-Token scan(ScannerWrapper* wrapper) {
-    return scanToken(&wrapper->scanner);
-}
-
-#endif
-
-
-#ifdef USE_FLEX_SCANNER
-
-#define NEXT_TOKEN() scan(&wrapper)
 
 #define PREPARE(text) \
-    ScannerWrapper wrapper; \
-    initScannerWrapper(&wrapper, text); \
-
-#else
-
-#define NEXT_TOKEN() scanToken()
-#define PREPARE(text) initScanner(text)
-
-#endif 
-
+    TestState wrapper; \
+    initTestState(&wrapper, text); \
 
 typedef struct {
     char * str;
     TokenType expected;
 } TestData;
 
-static void test_empty(void ** state) {
+static void test_empty(void **) {
     PREPARE("");
-    assert_int_equal(NEXT_TOKEN().type, TOKEN_EOF);
+    assert_int_equal(scanToken(&wrapper.scanner).type, TOKEN_EOF);
 }
  
-static void test_keywords(void **state) {
+static void test_keywords(void **) {
     PREPARE(
         "and as break case catch "
         "class continue default else false "
@@ -89,78 +68,101 @@ static void test_keywords(void **state) {
     int expected_tokens = sizeof(expected) / sizeof(TokenType);
     Token tok;
     for(int i = 0; i < expected_tokens; i++) {
-        tok = NEXT_TOKEN();
+        tok = scanToken(&wrapper.scanner);
         assert_int_equal(tok.type, expected[i]);
     }
-    tok = NEXT_TOKEN();
+    tok = scanToken(&wrapper.scanner);
     assert_int_equal(tok.type, TOKEN_EOF);
+    freeTestState(&wrapper);
 }
 
-static void test_symbols(void **state) {
+static void test_symbols(void **) {
     PREPARE("() [] {} + = += * *= **");
     const TokenType expected[] = {
         TOKEN_LEFT_PAREN, TOKEN_RIGHT_PAREN, TOKEN_LEFT_BRACKET, TOKEN_RIGHT_BRACKET, 
         TOKEN_LEFT_BRACE, TOKEN_RIGHT_BRACE, TOKEN_PLUS, TOKEN_EQUAL, TOKEN_PLUS_EQUAL,
         TOKEN_STAR, TOKEN_STAR_EQUAL, TOKEN_STAR_STAR
     };
-    int expected_tokens = sizeof(expected) / sizeof(TokenType);
+    int expected_tokens = sizeof(expected) / sizeof(expected[0]);
     Token tok;
     for(int i = 0; i < expected_tokens; i++) {
-        tok = NEXT_TOKEN();
+        tok = scanToken(&wrapper.scanner);
         assert_int_equal(tok.type, expected[i]);
     }
-    tok = NEXT_TOKEN();
+    tok = scanToken(&wrapper.scanner);
     assert_int_equal(tok.type, TOKEN_EOF);
+    freeTestState(&wrapper);
 }
 
-static void test_non_keywords(void **state) {
+static void test_non_keywords(void **) {
     PREPARE("classic thorws asm quiro");
     Token tok;
     while(true) {
-        tok = NEXT_TOKEN();
+        tok = scanToken(&wrapper.scanner);
         if (tok.type == TOKEN_EOF){
             break;
         }
         assert_int_equal(tok.type, TOKEN_IDENTIFIER);
     }
+    freeTestState(&wrapper);
 }
 
-static void test_number(void **state) {
+static void test_number(void **) {
     PREPARE("123 123.456");
     Token tok;
     while(true) {
-        tok = NEXT_TOKEN();
+        tok = scanToken(&wrapper.scanner);
         if (tok.type == TOKEN_EOF){
             break;
         }
         assert_int_equal(tok.type, TOKEN_NUMBER);
     }
+    freeTestState(&wrapper);
 }
 
-static void test_string(void **state) {
-    const char* str = "\"Hello world\"";
-    PREPARE(str);
-    Token tok;
-    while(true) {
-        tok = NEXT_TOKEN();
-        if (tok.type == TOKEN_EOF){
-            break;
+static void test_string(void **) {
+    struct STest {
+        char * input;
+        TokenType expectedType;
+    };
+
+    struct STest tests[] = {
+        { "\"Hello world\"", TOKEN_STRING },
+        { "\"\\a\\b\\t\\v\\f\\n\\r\"", TOKEN_STRING },
+        { "\"\\xab\"", TOKEN_STRING },
+        { "\"\\xfff\"", TOKEN_ERROR },
+        { "\"\\141\"", TOKEN_STRING },
+        { "\"\\191\"", TOKEN_STRING },
+        { "\"\\141ab\"", TOKEN_STRING },
+        { "\"\\766\"", TOKEN_ERROR },
+    };
+    int stestCount = sizeof(tests) / sizeof(tests[0]);
+    for (int i = 0; i < stestCount; i++) {
+        PREPARE(tests[i].input);
+        Token tok;
+        while(true) {
+            tok = scanToken(&wrapper.scanner);
+            if (tok.type == TOKEN_EOF){
+                break;
+            }
+            printf("%s -> %.*s\n", tests[i].input, tok.length, tok.start);
+            assert_int_equal(tok.type, tests[i].expectedType);
         }
-        assert_true(strncmp(str, tok.start, tok.length) == 0);
-        assert_int_equal(tok.type, TOKEN_STRING);
+        freeTestState(&wrapper);
     }
 }
 
-static void test_error(void **state) {
+static void test_error(void **) {
     PREPARE("\\ ^");
     Token tok;
     while(true) {
-        tok = NEXT_TOKEN();
+        tok = scanToken(&wrapper.scanner);
         if (tok.type == TOKEN_EOF){
             break;
         }
         assert_int_equal(tok.type, TOKEN_ERROR);
     }
+    freeTestState(&wrapper);
 }
 
 int main(void) {

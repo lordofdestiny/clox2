@@ -4,11 +4,12 @@
 #include <stdbool.h>
 
 #include "object.h"
+#include "inputfile.h"
 
 bool isRepl();
 void setRepl(bool isRepl);
 
-ObjFunction* compile(const char* source);
+ObjFunction* compile(InputFile source);
 
 void markCompilerRoots();
 

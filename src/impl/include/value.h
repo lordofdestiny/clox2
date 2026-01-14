@@ -39,13 +39,13 @@ typedef uint64_t Value;
     (Value) (SIGN_BIT | QNAN | (uint64_t)(uintptr_t)(obj))
 
 
-static double valueToNum(const Value value) {
+static inline double valueToNum(const Value value) {
     double num;
     memcpy(&num, &value, sizeof(double));
     return num;
 }
 
-static Value numToValue(const double num) {
+static inline Value numToValue(const double num) {
     Value value;
     memcpy(&value, &num, sizeof(double));
     return value;
