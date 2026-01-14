@@ -38,7 +38,7 @@ number          [[:digit:]]+(\.[[:digit:]]+)?
     char buffer[1024];
     char* buffer_ptr = buffer;
 
-    int comment_caller;
+    int comment_caller = 0;
     
 %{
     yycolumn += yyleng;
