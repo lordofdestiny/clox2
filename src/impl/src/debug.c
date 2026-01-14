@@ -146,6 +146,7 @@ int disassembleInstruction(FILE* file, Chunk* chunk, const int offset) {
     case OP_LOOP: return jumpInstruction(file,"OP_LOOP", -1, chunk, offset);
     case OP_CALL: return byteInstruction(file,"OP_CALL", chunk, offset);
     case OP_INVOKE: return invokeInstruction(file, "OP_INVOKE", chunk, offset);
+    case OP_SUPER_INVOKE: return invokeInstruction(file,"OP_SUPER_INVOKE", chunk, offset); 
     case OP_CLOSURE: return closureInstruction(file, "OP_CLOSURE", chunk, offset);
     case OP_CLOSE_UPVALUE: return simpleInstruction(file,"OP_CLOSE_UPVALUE", offset);
     case OP_RETURN: return simpleInstruction(file,"OP_RETURN", offset);

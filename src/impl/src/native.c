@@ -336,7 +336,7 @@ bool initStringNative(int argCount, Value* implicit, Value* args) {
             ? value
             : AS_INSTANCE(value)->this_);
 
-        instance->this_ = OBJ_VAL((Obj*) copyString(str->chars, str->length));
+        instance->this_ = OBJ_VAL((Obj*) str);
         tableSet(&instance->fields, copyString("length", 6), NUMBER_VAL(str->length));
         return true;
     }
@@ -381,9 +381,7 @@ bool initArrayNative(int argCount, Value* implicit, Value* args) {
     }
 
     if (IS_ARRAY(value)) {
-        ObjArray* original = AS_ARRAY(value);
-        ObjArray* array_ = newArray();
-        copyValueArray(&original->array, &array_->array);
+        ObjArray* array_ = AS_ARRAY(value);
         instance->this_ = OBJ_VAL((Obj*) array_);
         tableSet(&instance->fields, copyString("length", 6), NUMBER_VAL(array_->array.count));
         return true;

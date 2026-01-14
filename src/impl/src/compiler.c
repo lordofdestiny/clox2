@@ -552,7 +552,7 @@ static void super_([[maybe_unused]] bool canAssign) {
         namedVariable(syntheticToken("super"), false);
         emitBytes(OP_GET_SUPER, name);
     }
-    emitBytes(OP_GET_SUPER, name);
+    // emitBytes(OP_GET_SUPER, name);
 }
 
 static void and_([[maybe_unused]] bool canAssign) {
@@ -1481,14 +1481,17 @@ static void unary([[maybe_unused]] bool canAssign) {
 
 static void array([[maybe_unused]] bool canAssign) {
     int size = 0;
-    do {
+    if(!match(TOKEN_RIGHT_BRACKET)) {
+        do {
         size++;
         if (size > UINT16_MAX) {
             error("Array literal can have no more than 65536 elements");
         }
         expression();
-    } while (match(TOKEN_COMMA));
-    consume(TOKEN_RIGHT_BRACKET, "Expected ']' after array element list.");
+        } while (match(TOKEN_COMMA));
+        consume(TOKEN_RIGHT_BRACKET, "Expected ']' after array element list.");
+    }
+
     emitByte(OP_ARRAY);
     emitByte((size >> 8) & 0xFF);
     emitByte(size & 0xFF);
