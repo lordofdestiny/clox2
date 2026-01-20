@@ -18,7 +18,9 @@
     "tamasfe.even-better-toml",
     "GitHub.copilot",
     "GitHub.copilot-chat",
-    "jlevere.elfpreview"
+    "jlevere.elfpreview",
+    "omkov.vscode-ebnf",
+    "daohong-emilio.yash"
    ],
    "settings": {
       "python.terminal.activateEnvironment": true,
