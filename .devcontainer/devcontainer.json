@@ -19,7 +19,9 @@
     "GitHub.copilot-chat",
     "jlevere.elfpreview",
     "ms-vscode.live-server",
-    "ms-vscode.hexeditor"
+    "ms-vscode.hexeditor",
+    "omkov.vscode-ebnf",
+    "daohong-emilio.yash"
    ],
    "settings": {
       "python.terminal.activateEnvironment": true,

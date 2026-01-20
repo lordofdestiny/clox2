@@ -1,0 +1,17 @@
+// class A {
+//     init() {
+//         this.value = 5;
+//     }
+// }
+// 
+// fun a(x) {
+//     return x;
+// }
+// 
+// var x = A();
+// print x.value;
+// a(x).value = 6;
+// print x.value;
+
+var a = "HELLO";
+"HELLO";
