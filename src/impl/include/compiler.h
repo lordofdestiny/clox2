@@ -3,13 +3,15 @@
 
 #include <stdbool.h>
 
+#include <cloximpl_export.h>
+
 #include "object.h"
 #include "inputfile.h"
 
-bool isRepl();
-void setRepl(bool isRepl);
+CLOXIMPL_EXPORT bool isRepl();
+CLOXIMPL_EXPORT void setRepl(bool isRepl);
 
-ObjFunction* compile(InputFile source);
+CLOXIMPL_EXPORT ObjFunction* compile(InputFile source);
 
 void markCompilerRoots();
 

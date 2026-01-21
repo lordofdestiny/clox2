@@ -157,6 +157,10 @@ void freeVM() {
 #endif
 }
 
+int vmExitCode() {
+    return vm.exit_code;
+}
+
 void push(const Value value) {
     *vm.stackTop++ = value;
 }

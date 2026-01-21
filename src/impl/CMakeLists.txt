@@ -1,3 +1,5 @@
+include(GenerateExportHeader)
+
 add_library(cloximpl SHARED)
 
 option(USE_FLEX_SCANNER "Using Flex scanner implementation" NO)
@@ -16,11 +18,24 @@ target_sources(cloximpl
       ${TARGET_HEADERS}
 )
 
+target_include_directories(
+  cloximpl
+  PUBLIC
+    ${PROJECT_BINARY_DIR}/include
+)
+
 set_target_properties(
   cloximpl
   PROPERTIES
     POSITION_INDEPENDENT_CODE TRUE
+    C_VISIBILITY_PRESET hidden
+    VISIBILITY_INLINES_HIDDEN YES
     COMPILE_WARNING_AS_ERROR TRUE
+)
+
+generate_export_header(
+  cloximpl
+  EXPORT_FILE_NAME ${PROJECT_BINARY_DIR}/include/cloximpl_export.h
 )
 
 target_link_libraries(cloximpl PRIVATE m)

@@ -3,6 +3,8 @@
 
 #include <setjmp.h>
 
+#include <cloximpl_export.h>
+
 #include "chunk.h"
 #include "value.h"
 #include "table.h"
@@ -59,13 +61,15 @@ typedef enum {
 
 extern VM vm;
 
-void initVM();
+CLOXIMPL_EXPORT void initVM();
 
-void freeVM();
+CLOXIMPL_EXPORT void freeVM();
 
-InterpretResult interpret(InputFile source);
+CLOXIMPL_EXPORT int vmExitCode();
 
-InterpretResult interpretCompiled(ObjFunction* function);
+CLOXIMPL_EXPORT InterpretResult interpret(InputFile source);
+
+CLOXIMPL_EXPORT InterpretResult interpretCompiled(ObjFunction* function);
 
 void push(Value value);
 

@@ -42,9 +42,10 @@ if(FLEX_FOUND)
     cloxscanner_flex
     PROPERTIES
       POSITION_INDEPENDENT_CODE TRUE
-      C_VISIBILITY_PRESET hidden
       COMPILE_WARNING_AS_ERROR TRUE
   )
+
+  target_include_directories(cloxscanner_flex PUBLIC ${PROJECT_BINARY_DIR}/include)
 
   target_compile_options(cloxscanner_flex PRIVATE "-Wno-unused-function")
 

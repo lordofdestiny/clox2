@@ -66,7 +66,6 @@ class GeneratorConfig(TypedDict):
     checkKeywordFunctionName: str
     identFunctionName: str
     symbolFunctionName: str
-    privateFunctionDeclarations: NotRequired[bool]
 
 
 class IncludeLists(TypedDict):
@@ -355,7 +354,6 @@ class CodeGenerator:
                     "tokenPrefix": "TOKEN",
                     "tokenType": "Token",
                     "tokenEnumType": "TokenType",
-                    "privateFunctionDeclarations": True,
                 },
                 "includes": {
                     "header_file": [],
@@ -441,25 +439,13 @@ class CodeGenerator:
         with redirect_stdout(file):
             with TabIndentation() as ti:
                 settings = self.spec["settings"]
-                privateDecls = self.spec["settings"][
-                    "privateFunctionDeclarations"
-                ]
-                privatePrefix = "PRIVATE " if privateDecls else ""
-
                 print("#ifndef __CLOX2_SCANNER_GENERATED_H__")
                 print("#define __CLOX2_SCANNER_GENERATED_H__")
                 print()
                 self.generate_includes(self.spec["includes"]["header_file"])
                 print()
-                if privateDecls:
-                    print('#include "visibility.h"')
-                    print()
-                print(
-                    f"{privatePrefix}{settings['tokenEnumType']} identifierType();"
-                )
-                print(
-                    f"{privatePrefix}{settings['tokenType']} charToken(char c);"
-                )
+                print(f"{settings['tokenEnumType']} identifierType();")
+                print(f"{settings['tokenType']} charToken(char c);")
                 print()
                 print("#endif // __CLOX2_SCANNER_GENERATED_H__")
 

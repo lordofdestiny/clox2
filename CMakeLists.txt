@@ -19,8 +19,6 @@ set(CMAKE_C_FLAGS "-pedantic-errors -Wpedantic -pedantic -Wall -Wextra")
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 
-include_directories(include)
-
 add_subdirectory(src)
 
 if(BUILD_TESTS)
