@@ -8,7 +8,6 @@ errorTokenFunctionName = "errorToken"
 checkKeywordFunctionName = "checkKeyword"
 identFunctionName = "identifierType"
 symbolFunctionName = "charToken"
-privateFunctionDeclarations = true
 
 [includes]
 header_file = ['"token.h"', '"scanner_generated_decls.h"']
