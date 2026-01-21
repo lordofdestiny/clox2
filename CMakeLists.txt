@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.24)
 project(clox LANGUAGES C)
 
+include(CheckIPOSupported)
+
 option(BUILD_TESTS "Include testing targets during build" YES)
 option(ENABLE_COVERAGE "Enable code coverage generation" NO)
 
@@ -15,7 +17,12 @@ endif()
 
 set(CMAKE_C_STANDARD 23)
 set(CMAKE_C_EXTENSIONS ON)
-set(CMAKE_INTERPROCEDURAL_OPTIMIZATION TRUE)
+check_ipo_supported(RESULT result OUTPUT output)
+if(result)
+  set(INTERPROCEDURAL_OPTIMIZATION TRUE)
+else()
+  message(WARNING "IPO is not supported: ${output}")
+endif()
 set(CMAKE_C_FLAGS "-pedantic-errors -Wpedantic -pedantic -Wall -Wextra")
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
