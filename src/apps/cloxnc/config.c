@@ -48,7 +48,7 @@ const char* supported_arg_types[] = {
 static size_t arg_types_size = sizeof(supported_arg_types) / sizeof(supported_arg_types[0]);
 
 const char* nativeFunctionArgName(NativeFunctionArgType id) {
-    assertm(id < 0 || id > arg_types_size, "Invalid argument type id");
+    assertm(id >= 0 || id < arg_types_size, "Invalid argument type id");
     return supported_arg_types[id];
 }
 
