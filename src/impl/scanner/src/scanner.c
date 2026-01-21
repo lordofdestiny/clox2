@@ -17,7 +17,7 @@ void initScanner(Scanner* scanner_arg, InputFile source) {
     scanner->column = 1;
 }
 
-PUBLIC void freeScanner([[maybe_unused]] Scanner* scanner_arg) {
+void freeScanner([[maybe_unused]] Scanner* scanner_arg) {
     scanner = NULL;
 }
 

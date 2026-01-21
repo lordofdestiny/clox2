@@ -23,7 +23,7 @@ int repl() {
         InputFile source = {.content = line, .size = strlen(line)};
         InterpretResult code = interpret(source);
         if (code == INTERPRET_EXIT) {
-            return vm.exit_code;
+            return vmExitCode();
         }
     }
 
@@ -66,7 +66,7 @@ static int runSourceFile(const char* path) {
 
     switch (result) {
     case INTERPRET_OK: return EXIT_SUCCESS;
-    case INTERPRET_EXIT: return vm.exit_code;
+    case INTERPRET_EXIT: return vmExitCode();
     case INTERPRET_COMPILE_ERROR: return EXIT_CODE_COMPILE_ERROR;
     case INTERPRET_RUNTIME_ERROR: return EXIT_CODE_RUNTIME_ERROR;
     }
@@ -84,7 +84,7 @@ static int runBinaryFile(const char* path) {
     displayTime(start, end);
 
     switch (result) {
-    case INTERPRET_EXIT: return vm.exit_code;
+    case INTERPRET_EXIT: return vmExitCode();
     case INTERPRET_RUNTIME_ERROR: return EXIT_CODE_RUNTIME_ERROR;
     default: return 0;
     }

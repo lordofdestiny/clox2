@@ -5,14 +5,13 @@
 
 #include "inputfile.h"
 #include "token.h"
-#include "visibility.h"
 
 typedef struct {
     void* impl;
 } Scanner;
 
-PUBLIC void initScanner(Scanner* scanner, InputFile source);
-PUBLIC void freeScanner(Scanner* scanner);
-PUBLIC Token scanToken(Scanner* scanner);
+void initScanner(Scanner* scanner, InputFile source);
+void freeScanner(Scanner* scanner);
+Token scanToken(Scanner* scanner);
 
 #endif // __CLOX2_SCANNER_H__
