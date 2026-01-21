@@ -1,14 +1,14 @@
 include(FetchJannson)
 
-add_executable(cloxnative)
+add_executable(cloxn)
 
 set_target_properties(
-  cloxnative
+  cloxn
   PROPERTIES
     COMPILE_WARNING_AS_ERROR TRUE
 )
 
-target_sources(cloxnative
+target_sources(cloxn
   PRIVATE
     main.c
     config.c
@@ -20,7 +20,7 @@ target_sources(cloxnative
     include/config.h
 )
 
-target_link_libraries(cloxnative
+target_link_libraries(cloxn
   PUBLIC
     jansson::jansson
 )
