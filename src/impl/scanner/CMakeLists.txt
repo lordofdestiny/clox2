@@ -49,6 +49,7 @@ set_target_properties(
   cloxscanner
   PROPERTIES
     POSITION_INDEPENDENT_CODE TRUE
+    C_VISIBILITY_PRESET hidden
     COMPILE_WARNING_AS_ERROR TRUE
 )
 
