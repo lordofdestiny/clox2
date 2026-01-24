@@ -41,9 +41,6 @@ generate_export_header(
 target_link_libraries(cloximpl PRIVATE m)
 target_link_libraries(cloximpl PRIVATE cloxcommon)
 
-add_subdirectory(scanner)
-add_subdirectory(scanner-flex)
-
 if(NOT USE_FLEX_SCANNER)
   target_link_libraries(cloximpl PRIVATE cloxscanner)
 else()
