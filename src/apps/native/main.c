@@ -5,6 +5,7 @@
 #include <jansson.h>
 
 #include "config.h"
+#include "generate.h"
 
 #define INVALID_ARG_ERROR 97
 #define FAILED_TO_READ 15;
@@ -23,11 +24,16 @@ int main(int argc, char* argv[]) {
         printf("Module: %s\n", desc.name);
         printf("Function count: %zu\n", desc.functionCount);
         
-        for(size_t i = 0; i < desc.functionCount; i++) {
-            printFunctionSignature(stdout, &desc.functions[i]);
-            printf(";\n");
-        }
-        
+        // for(size_t i = 0; i < desc.functionCount; i++) {
+        //     printFunctionSignature(stdout, &desc.functions[i]);
+        //     printf(";\n");
+        // }
+
+        freopen("header.h", "w", stdout);
+        generateModuleWrapperHeader(stdout, &desc);
+        freopen("source.c", "w", stdout);
+        generateModuleWrapperSource(stdout,"header.h", &desc);
+
         freeNativeModuleDescriptor(&desc);
 
         return EXIT_SUCCESS;
