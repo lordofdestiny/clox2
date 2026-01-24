@@ -28,10 +28,10 @@ int main(int argc, char* argv[]) {
         //     printFunctionSignature(stdout, &desc.functions[i]);
         //     printf(";\n");
         // }
-
-        freopen("header.h", "w", stdout);
+        [[maybe_unused]] void* res; 
+        res =  freopen("header.h", "w", stdout);
         generateModuleWrapperHeader(stdout, &desc);
-        freopen("source.c", "w", stdout);
+        res = freopen("source.c", "w", stdout);
         generateModuleWrapperSource(stdout,"header.h", &desc);
 
         freeNativeModuleDescriptor(&desc);
