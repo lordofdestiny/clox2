@@ -12,6 +12,7 @@ target_sources(cloxn
   PRIVATE
     main.c
     config.c
+    generate.c
 
   PRIVATE
   FILE_SET HEADERS
