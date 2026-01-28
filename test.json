@@ -1,0 +1,22 @@
+{
+    "library": "meta",
+    "functions": [
+        {
+            "export": "getField",
+            "args": [
+                "Instance",
+                "String"
+            ],
+            "returns": "Value"
+        },
+        {
+            "export": "setField",
+            "args": [
+                "Instance",
+                "String",
+                "Value"
+            ],
+            "returns": "nil"
+        }
+    ]
+}
