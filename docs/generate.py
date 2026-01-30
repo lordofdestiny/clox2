@@ -119,7 +119,7 @@ class Generator:
 
         ## Syntax diagram
 
-        <img src="$image" alt="Syntax diagram should be visible here" />
+        ![Syntax diagram should be visible here]($image)
         """
         return template_str
 
@@ -129,9 +129,7 @@ class Generator:
 
         code = read_file(self.grammar_path, False)
         template = Template(textwrap.dedent(self.template_str))
-        code = template.substitute(
-            {"image": self.resolve_outdir(image), "code": code}
-        )
+        code = template.substitute({"image": image, "code": code})
 
         self.markdown_cache = code
 
