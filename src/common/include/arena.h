@@ -1,3 +1,6 @@
+#ifndef __CLOX2_ARENA_H__
+#define __CLOX2_ARENA_H__
+
 #include <stddef.h>
 #include <stdint.h>
 
@@ -6,7 +9,7 @@ typedef struct {
     size_t position;
 } arena_t;
 
-constexpr size_t ARENA_WORD_SIZE = sizeof(uintptr_t);
+#define ARENA_WORD_SIZE (sizeof(uintptr_t))
 
 #define ARENA_ALIGN_SIZE_IMPL(size, alignment) ((size + alignment - 1) & ~(alignment - 1))
 
@@ -43,3 +46,5 @@ void sbuff_reset(void);
 size_t sbuff_save(void);
 
 void sbuff_rewind(size_t checkpoint);
+
+#endif // __CLOX2_ARENA_H__
