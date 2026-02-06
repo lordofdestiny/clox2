@@ -10,6 +10,7 @@ set_target_properties(
 target_sources(cloxcommon
   PRIVATE
     inputfile.c
+    arena.c
 
   PUBLIC
     FILE_SET HEADERS
