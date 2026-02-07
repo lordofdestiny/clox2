@@ -21,8 +21,6 @@ set(CMAKE_C_FLAGS "-pedantic-errors -Wpedantic -pedantic -Wall -Wextra")
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 
 if(BUILD_TESTS)
-    include(FetchCMocka)
-
     if(ENABLE_COVERAGE)
         # Check for compatible compilers (GCC and Clang support --coverage flag)
         if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
