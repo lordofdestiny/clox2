@@ -1,7 +1,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "memory.h"
 #include "object.h"
 #include "value.h"
 #include "table.h"
@@ -150,7 +149,7 @@ ObjString* tableFindOrAddString(
 void tableRemoveWhite(Table* table) {
     for (int i = 0; i < table->capacity; i++) {
         const Entry* entry = &table->entries[i];
-        if (entry->key != NULL && !entry->key->obj.isMarked) {
+        if (entry->key != NULL && !entry->key->obj.gcNode.isMarked) {
             tableDelete(table, entry->key);
         }
     }
@@ -159,7 +158,7 @@ void tableRemoveWhite(Table* table) {
 void markTable(Table* table) {
     for (int i = 0; i < table->capacity; i++) {
         const Entry* entry = &table->entries[i];
-        markObject((Obj*) entry->key);
+        markObject(&entry->key->obj);
         markValue(entry->value);
     }
 }

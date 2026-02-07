@@ -1,9 +1,10 @@
+#include <assert.h>
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
 #include <string.h>
 #include <setjmp.h>
-#include <math.h>
 
 #include "vm.h"
 #include "value.h"
@@ -49,12 +50,9 @@ void runtimeError(const char* format, ...) {
         ObjFunction* function = getFrameFunction(frame);
         const size_t instruction = frame->ip - function->chunk.code - 1;
         const int line = getLine(&function->chunk, (int) instruction);
-        fprintf(stderr, "[line %d] in ", line);
-        if (function->name == NULL) {
-            fprintf(stderr, "script\n");
-        } else {
-            fprintf(stderr, "%s()\n", function->name->chars);
-        }
+
+        const char* name = function->name ? function->name->chars : "script";
+        fprintf(stderr, "[line %d] in %s\n", line, name);
     }
 
     resetStack();
@@ -124,19 +122,73 @@ static void initNative() {
     addNativeMethod(array, "pop", popArrayNative, 0);
 }
 
+static void markRoots() {
+    // Mark objects on the gcState stack
+    for (const Value* slot = vm.stack; slot < vm.stackTop; slot++) {
+        markValue(*slot);
+    }
+
+    // Mark active functions
+    for (int i = 0; i < vm.frameCount; i++) {
+        markObject(vm.frames[i].function);
+    }
+
+    markTable(&vm.globals);
+
+    for (ObjUpvalue* upvalue = vm.openUpvalues;
+         upvalue != NULL;
+         upvalue = upvalue->next) {
+        markObject(&upvalue->obj);
+    }
+
+    markObject(&vm.initString->obj);
+}
+
+static void preSweep() {
+    tableRemoveWhite(&vm.strings);
+}
+
+static void printGcNode(GcNode* node) {
+    Obj* object = container_of(node, Obj, gcNode);
+    printValue(stdout, OBJ_VAL(object));
+}
+
+static void blackenGcNode(GcNode* gcNode) {
+    Obj* object = container_of(gcNode, Obj, gcNode);
+#ifdef DEBUG_LOG_GC
+    fprintf(stdout, "%p blacken ", (void *) gcNode);
+    printValue(stdout, OBJ_VAL(object));
+    fprintf(stdout, "\n");
+#endif
+    object->vtp->blacken(object);
+}
+
+static void freeGcNode(GcNode* gcNode) {
+    Obj* object = container_of(gcNode, Obj, gcNode);
+#ifdef DEBUG_LOG_GC
+    ObjType type = object->type;
+    fprintf(stdout, "%p free type (%d) %-15s\n", (void *) gcNode, type, objTypeToString(type));
+#endif
+    object->vtp->free(object);
+}
+
 void initVM() {
     resetStack();
-    vm.objects = NULL;
     vm.exit_code = 0;
-
-    vm.grayCount = 0;
-    vm.grayCapacity = 0;
-    vm.grayStack = NULL;
-    vm.bytesAllocated = 0;
-    vm.nextGC = 1024 * 1024;
 
     initTable(&vm.globals);
     initTable(&vm.strings);
+
+    GcHooks* hooks = createHooks( 
+        printGcNode, 
+        blackenGcNode,
+        freeGcNode
+    );
+    assert(hooks != NULL && "Hooks allocation failed");
+
+    initGcState(hooks);
+    addMarkHook(markRoots);
+    addPreSweepHook(preSweep);
 
     // Make sure initString is not null
     // because of GC
@@ -151,10 +203,7 @@ void freeVM() {
     freeTable(&vm.strings);
     vm.initString = NULL;
     freeObjects();
-    free(vm.grayStack);
-#ifdef DEBUG_LOG_GC
-    printf("%td bytes still allocated by the VM.\n", vm.bytesAllocated);
-#endif
+    freeGcState();
 }
 
 int vmExitCode() {
@@ -733,6 +782,7 @@ static InterpretResult run() {
             Table* fields = IS_INSTANCE(receiver)
                                 ? &AS_INSTANCE(receiver)->fields
                                 : &AS_CLASS(receiver)->fields;
+            // Don't pop from stack so that GC does not collect them
             tableSet(fields, READ_STRING(), peek(0));
             Value value = pop();
             pop();

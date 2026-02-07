@@ -1,8 +1,8 @@
 # Project exclude paths
 /*build*
-/out/
-compile_commands.json
 .vscode/
 .venv/
 .cache/
 valgrind-out.txt
+compile_commands.json
+*.lox.bin

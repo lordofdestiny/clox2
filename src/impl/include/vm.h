@@ -41,13 +41,6 @@ typedef struct {
     ObjString* initString;
     ObjUpvalue* openUpvalues;
 
-    size_t bytesAllocated;
-    size_t nextGC;
-    Obj* objects;
-
-    int grayCount;
-    int grayCapacity;
-    Obj** grayStack;
     jmp_buf exit_state;
     int exit_code;
 } VM;

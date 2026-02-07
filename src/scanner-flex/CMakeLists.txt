@@ -47,7 +47,7 @@ if(FLEX_FOUND)
 
   target_include_directories(cloxscanner_flex PUBLIC ${PROJECT_BINARY_DIR}/include)
 
-  target_compile_options(cloxscanner_flex PRIVATE "-Wno-unused-function")
+  target_compile_options(cloxscanner_flex PRIVATE "-Wno-unused-function;-Wno-sign-compare")
 
   set(COMPILE_DEFS "")
   if(USE_FLEX_SCANNER)

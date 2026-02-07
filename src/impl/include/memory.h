@@ -1,9 +1,24 @@
 #ifndef __CLOX2_MEMORY_H__
 #define __CLOX2_MEMORY_H__
 
-#include "common.h"
-#include "value.h"
-#include "object.h"
+#include <stdio.h>
+
+#include "ilist.h"
+
+typedef struct GcObjNode GcNode;
+
+struct GcObjNode{
+    ilist_node_t node;
+    bool isMarked;
+};
+
+typedef void (*MarkRootsHookFnType)();
+typedef void (*PreSweepHookFnType)();
+typedef void (*PrintHookFnType)(GcNode*);
+typedef void (*BlackenHookFnType)(GcNode*);
+typedef void (*FreeHookFnType)(GcNode*);
+
+typedef struct GcHooks GcHooks;
 
 #define ALLOCATE(type, count) \
     (type*) reallocate(NULL, 0, sizeof(type)*(count))
@@ -21,14 +36,28 @@
 
 void* reallocate(void* previous, size_t oldSize, size_t newSize);
 
-void markObject(Obj* object);
+GcHooks* createHooks(
+    PrintHookFnType printHook,
+    BlackenHookFnType blackenHook,
+    FreeHookFnType freeHook
+);
 
-void markValue(Value value);
+int addMarkHook(MarkRootsHookFnType markRootHook);
 
-void markArray(ValueArray* array);
+int addPreSweepHook(PreSweepHookFnType preSweepHook);
 
-void collectGarbage();
+void initGcState(GcHooks* hooks);
+
+void freeGcState();
+
+void addToGcList(GcNode* gcNode);
+
+void markGcNode(GcNode* gcNode);
 
 void freeObjects();
+
+int gcVaultPush(GcNode* gcNode);
+
+void gcVaultPop(size_t count);
 
 #endif //__CLOX2_MEMORY_H__

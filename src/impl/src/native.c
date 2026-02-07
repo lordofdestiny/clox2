@@ -6,9 +6,9 @@
 #include <ctype.h>
 #include <setjmp.h>
 
-#include "native.h"
-#include "memory.h"
+#include "value.h"
 #include "object.h"
+#include "native.h"
 #include "vm.h"
 
 static bool hasFieldNative([[maybe_unused]] int argCount, Value* implicit, Value* args) {
@@ -374,9 +374,11 @@ bool initArrayNative(int argCount, Value* implicit, Value* args) {
             ? value
             : AS_INSTANCE(value)->this_);
         ObjArray* array_ = newArray();
+        push(OBJ_VAL((Obj*) array_));
         valueInitValueArray(&array_->array, NIL_VAL, len);
         instance->this_ = OBJ_VAL((Obj*) array_);
         tableSet(&instance->fields, copyString("length", 6), NUMBER_VAL(len));
+        pop();
         return true;
     }
 

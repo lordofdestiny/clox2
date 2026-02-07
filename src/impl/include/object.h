@@ -3,6 +3,7 @@
 
 #include <stdio.h>
 
+#include "memory.h"
 #include "value.h"
 #include "chunk.h"
 #include "table.h"
@@ -30,38 +31,51 @@
 
 #define CALL_OBJ(callee, argCount) AS_OBJ(callee)->vtp->call(AS_OBJ(callee), argCount)
 
+#define OBJECT_TYPE_ENUM_LIST \
+    ENUM_OBJTYPE_DEF(ARRAY) \
+    ENUM_OBJTYPE_DEF(BOUND_METHOD) \
+    ENUM_OBJTYPE_DEF(CLASS) \
+    ENUM_OBJTYPE_DEF(CLOSURE) \
+    ENUM_OBJTYPE_DEF(FUNCTION) \
+    ENUM_OBJTYPE_DEF(INSTANCE) \
+    ENUM_OBJTYPE_DEF(NATIVE) \
+    ENUM_OBJTYPE_DEF(STRING) \
+    ENUM_OBJTYPE_DEF(UPVALUE)
+
 typedef enum {
-    OBJ_ARRAY,
-    OBJ_BOUND_METHOD,
-    OBJ_CLASS,
-    OBJ_CLOSURE,
-    OBJ_FUNCTION,
-    OBJ_INSTANCE,
-    OBJ_NATIVE,
-    OBJ_STRING,
-    OBJ_UPVALUE,
+#define ENUM_OBJTYPE_DEF(name) OBJ_##name,
+OBJECT_TYPE_ENUM_LIST
+#undef ENUM_OBJTYPE_DEF
 } ObjType;
 
+static inline const char* objTypeToString(const ObjType type) {
+    switch (type) {
+#define ENUM_OBJTYPE_DEF(name) \
+        case OBJ_##name: return "OBJ_"#name;
+        OBJECT_TYPE_ENUM_LIST
+#undef ENUM_OBJTYPE_DEF
+        default: return "unknown object type";
+    }
+}
+
+#undef OBJECT_TYPE_ENUM_LIST
+
 typedef bool (*CallableFn)(Obj*, int);
-
-typedef void (*BlackenFn)(Obj*);
-
-typedef void (*FreeFn)(Obj*);
-
 typedef void (*PrintFn)(Obj*, FILE* out);
+typedef void (*BlackenFn)(Obj*);
+typedef void (*FreeFn)(Obj*);
 
 typedef struct {
     CallableFn call;
+    PrintFn print;
     BlackenFn blacken;
     FreeFn free;
-    PrintFn print;
 } ObjVT;
 
 struct Obj {
-    ObjType type;
-    bool isMarked;
+    GcNode gcNode;
     ObjVT* vtp;
-    struct Obj* next;
+    ObjType type;
 };
 
 typedef struct {
@@ -152,7 +166,7 @@ ObjString* copyString(const char* chars, int length);
 
 ObjUpvalue* newUpvalue(Value* slot);
 
-uint32_t hashString(const char* chars, int length);
+void markObject(Obj* object);
 
 void printObject(FILE* out, Value value);
 

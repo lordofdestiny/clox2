@@ -1,7 +1,6 @@
 #ifndef __CLOX2_NATIVE_H__
 #define __CLOX2_NATIVE_H__
 
-#include "common.h"
 #include "value.h"
 #include "object.h"
 

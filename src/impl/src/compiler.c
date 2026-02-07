@@ -84,9 +84,6 @@ typedef struct Compiler {
     Table stringConstants;
 } Compiler;
 
-// TODO move out of the global scope
-Scanner scanner_obj;
-
 static bool* compilerReplMode() {
     static bool value;
     return &value;
@@ -112,6 +109,7 @@ typedef struct ClassCompiler {
 } ClassCompiler;
 
 typedef struct {
+    Scanner scanner;
     Token current;
     Token previous;
     bool hadError;
@@ -154,7 +152,7 @@ static void advance() {
     parser.previous = parser.current;
 
     while (true) {
-        parser.current = scanToken(&scanner_obj);
+        parser.current = scanToken(&parser.scanner);
         if (parser.current.type != TOKEN_ERROR) break;
 
         errorAtCurrent(parser.current.start);
@@ -223,6 +221,26 @@ static void emitReturn() {
     emitByte(OP_RETURN);
 }
 
+static int push(Value value) {
+    if (IS_OBJ(value)) {
+        return gcVaultPush(&AS_OBJ(value)->gcNode);
+    }
+    
+    return 0;
+}
+
+static void pop() {
+    gcVaultPop(1);
+}
+
+static int addConstant(Chunk* chunk, const Value value) {
+    push(value);
+    writeValueArray(&chunk->constants, value);
+    pop();
+    return chunk->constants.count - 1;
+}
+
+
 static uint8_t makeConstant(const Value value) {
     const int constant = addConstant(currentChunk(), value);
     if (constant > UINT8_MAX) {
@@ -233,7 +251,7 @@ static uint8_t makeConstant(const Value value) {
     return constant;
 }
 
-const OpCode constantInstructions[] = {
+static const OpCode constantInstructions[] = {
     [0] = OP_CONSTANT_ZERO,
     [1] = OP_CONSTANT_ONE,
     [2] = OP_CONSTANT_TWO
@@ -1586,9 +1604,21 @@ static ParseRule* getRule(const TokenType type) {
     return &rules[type];
 }
 
+static void markCompilerRoots() {
+    Compiler* compiler = current;
+    while (compiler != NULL) {
+        markObject(&compiler->function->obj);
+        markTable(&compiler->stringConstants);
+        
+        compiler = compiler->enclosing;
+    }
+}
+
 ObjFunction* compile(InputFile source)
 {
-    initScanner(&scanner_obj, source);
+    addMarkHook(markCompilerRoots);
+
+    initScanner(&parser.scanner, source);
 
     Compiler compiler;
     initCompiler(&compiler, TYPE_SCRIPT);
@@ -1603,16 +1633,6 @@ ObjFunction* compile(InputFile source)
     }
 
     ObjFunction* function = endCompiler();
-    freeScanner(&scanner_obj);
+    freeScanner(&parser.scanner);
     return parser.hadError ? NULL : function;
-}
-
-void markCompilerRoots() {
-    Compiler* compiler = current;
-    while (compiler != NULL) {
-        markObject((Obj*) compiler->function);
-        markTable(&compiler->stringConstants);
-        
-        compiler = compiler->enclosing;
-    }
 }

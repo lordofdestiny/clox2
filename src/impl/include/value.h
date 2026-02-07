@@ -108,4 +108,8 @@ void freeValueArray(ValueArray* array);
 
 void printValue(FILE* out, Value value);
 
+void markValue(const Value value);
+
+void markArray(ValueArray* array);
+
 #endif //__CLOX2_VALUE_H__

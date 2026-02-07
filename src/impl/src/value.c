@@ -3,6 +3,7 @@
 
 #include "memory.h"
 #include "value.h"
+#include "object.h"
 
 bool valuesEqual(Value a, Value b) {
     if (IS_INSTANCE(a) && !IS_INSTANCE(AS_INSTANCE(a)->this_)) {
@@ -112,3 +113,13 @@ void printValue(FILE* out, const Value value) {
     }
 }
 #endif
+
+void markValue(const Value value) {
+    if (IS_OBJ(value)) markObject(AS_OBJ(value));
+}
+
+void markArray(ValueArray* array) {
+    for (int i = 0; i < array->count; i++) {
+        markValue(array->values[i]);
+    }
+}

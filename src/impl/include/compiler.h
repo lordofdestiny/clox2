@@ -13,6 +13,4 @@ CLOXIMPL_EXPORT void setRepl(bool isRepl);
 
 CLOXIMPL_EXPORT ObjFunction* compile(InputFile source);
 
-void markCompilerRoots();
-
 #endif //__CLOX2_COMPILER_H__
