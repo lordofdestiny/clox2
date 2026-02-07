@@ -1,1 +1,3 @@
 * text=auto
+*.sh eol=lf
+.devcontainer/.bash_aliases eol=lf

@@ -17,4 +17,5 @@ target_sources(cloxcommon
     BASE_DIRS include
     FILES
       include/inputfile.h
+      include/arena.h
 )

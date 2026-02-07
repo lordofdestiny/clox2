@@ -36,6 +36,10 @@ static bool arena_owns(arena_t * arena, void* ptr) {
     return (cptr >= carena) && (cptr < carena + arena->capacity);
 }
 
+static bool arena_last_alloc(arena_t* arena, void* base, size_t size) {
+    return ((uint8_t*)base) + size == ((uint8_t*)arena) + arena->position;
+}
+
 arena_t *arena_create(size_t capacity) {
     arena_t* arena = calloc(capacity, sizeof(char));
     return init_arena(arena, capacity);
@@ -73,15 +77,24 @@ void* arena_realloc(arena_t *arena, void *ptr, size_t req_size) {
     }
 
     size_t size = ARENA_ALIGN_SIZE(req_size + ARENA_WORD_SIZE);
-
-    size_t* size_ptr = (size_t*) (((uint8_t*)ptr) - ARENA_WORD_SIZE);
-    if (*size_ptr >= size) {
+    uint8_t* alloc_ptr =  ((uint8_t*) ptr) - ARENA_WORD_SIZE;
+    size_t* size_ptr = (void*) alloc_ptr;
+    
+    bool is_last = arena_last_alloc(arena, alloc_ptr, *size_ptr);
+    
+    if (size <= *size_ptr) {
+        size_t diff = *size_ptr - size;
+        if (is_last) {
+            arena->position -= diff;
+        }
         *size_ptr = size;
         return ptr;
     }
 
-    if ((uint8_t*) ptr - sizeof(size_t) + *size_ptr == ((uint8_t*) arena) + arena->position) {
-        *size_ptr *= size - *size_ptr;
+    if (is_last) {
+        size_t diff = size - *size_ptr;
+        *size_ptr += diff;
+        arena->position += diff;
         return ptr;
     }
 
@@ -91,8 +104,14 @@ void* arena_realloc(arena_t *arena, void *ptr, size_t req_size) {
 }
 
 void arena_free(arena_t *arena, void *ptr) {
-    size_t* size_ptr = (size_t*) (((uint8_t*)ptr) - ARENA_WORD_SIZE);
-    if ((uint8_t*) ptr + *size_ptr == ((uint8_t*) arena)) {
+    if (ptr == NULL || !arena_owns(arena, ptr)) {
+        return;
+    }
+    
+    uint8_t* alloc_ptr =  ((uint8_t*) ptr) - ARENA_WORD_SIZE;
+    size_t* size_ptr = (void*) alloc_ptr;
+
+    if (arena_last_alloc(arena, alloc_ptr, *size_ptr)) {
         arena->position -= *size_ptr;
     }
 }

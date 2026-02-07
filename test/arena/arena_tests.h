@@ -49,31 +49,44 @@ static void TEST_NAME(realloc_decrease)(void**) {
         ptr[i] = i + 1;
     }
 
+
+    // Try and reduce the last allocation
     void* new_ptr = REALLOC(ptr, 16);
     assert_non_null(ptr);
     assert_ptr_equal(ptr, new_ptr);
-    assert_uint_equal(SAVE(), ALLOCATION_END_POSITION(before, 20));
+    assert_uint_equal(SAVE(), ALLOCATION_END_POSITION(before, 16));
     assert_memory_equal(ptr, new_ptr, size);
+
+    // Make sure no size reduction if it's not a last allocation
+    void* other = ALLOC(24);
+    assert_non_null(ptr);
+    size_t after_other = SAVE();
+
+    void* new_new_ptr = REALLOC(new_ptr, 8);
+    assert_ptr_equal(new_ptr, new_new_ptr);
+    assert_uint_equal(SAVE(), after_other);
+    FREE(other);
+    assert_uint_equal(SAVE(), ALLOCATION_END_POSITION(before, 16));
 
 }
 
 static void TEST_NAME(realloc_increase_inplace)(void**) {
     size_t before = SAVE();
-    size_t size = 20;
+    size_t size1 = 20;
+    size_t size2 = 64;
 
-    char* ptr0 = ALLOC(size);
+    char* ptr0 = ALLOC(size1);
     assert_non_null(ptr0);
-    assert_uint_equal(SAVE(), ALLOCATION_END_POSITION(before, size));
-    for (size_t i = 0; i < size; i++) {
+    assert_uint_equal(SAVE(), ALLOCATION_END_POSITION(before, size1));
+    for (size_t i = 0; i < size1; i++) {
         ptr0[i] = i + 1;
     }
 
-    void* new_ptr = REALLOC(ptr0, 64);
+    void* new_ptr = REALLOC(ptr0, size2);
     assert_non_null(new_ptr);
     assert_ptr_equal(ptr0, new_ptr);
-    assert_uint_equal(SAVE(), ALLOCATION_END_POSITION(before, size));
-    assert_memory_equal(ptr0, new_ptr, size);
-    
+    assert_uint_equal(SAVE(), ALLOCATION_END_POSITION(before, size2));
+    assert_memory_equal(ptr0, new_ptr, size1);
 }
 
 static void TEST_NAME(realloc_increase)(void**) {
@@ -100,7 +113,6 @@ static void TEST_NAME(realloc_increase)(void**) {
     assert_ptr_not_equal(ptr0, new_ptr);
     assert_uint_equal(SAVE(), ALLOCATION_END_POSITION(before2, size2));
     assert_memory_equal(ptr0, new_ptr, size0);
-
 }
 
 static void TEST_NAME(reuse)(void**) {
@@ -121,6 +133,31 @@ static void TEST_NAME(reuse)(void**) {
     REWIND(before);
 
     assert_int_equal(SAVE(), ALLOCATION_END_POSITION(assert_post, size));
+}
+
+static void TEST_NAME(free)(void**) {
+    // Frist check that freeing the previous allocation decrements
+    size_t start = SAVE();
+    size_t size = 40;
+    void* ptr0 = ALLOC(size);
+    assert_non_null(ptr0);
+    assert_uint_equal(SAVE(), ALLOCATION_END_POSITION(start, size));
+    FREE(ptr0);
+    assert_uint_equal(SAVE(), start);
+    
+    // Then check that freeing the older one doesn't, and that immidiately does
+    void* ptr1 = ALLOC(2*size);
+    assert_non_null(ptr1);
+    size_t before2 = SAVE();
+    void* ptr2 = ALLOC(size);
+    size_t after = SAVE();
+    assert_non_null(ptr2);
+    
+    FREE(ptr1);
+    assert_uint_equal(SAVE(), after);
+    
+    FREE(ptr2);
+    assert_uint_equal(SAVE(), before2);
 }
 
 static int TEST_NAME(verify)(void**) {
@@ -167,6 +204,7 @@ int TEST_SUITE_FUNCTION()(void) {
         TEST_CASE(TEST_NAME(realloc_increase_inplace)),
         TEST_CASE(TEST_NAME(realloc_increase)),
         TEST_CASE(TEST_NAME(reuse)),
+        TEST_CASE(TEST_NAME(free)),
     };
 
     return cmocka_run_group_tests(sbuff_tests, TEST_NAME(init_suite), TEST_NAME(teardown_suite));
