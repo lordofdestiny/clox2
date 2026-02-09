@@ -18,5 +18,4 @@ target_sources(cloxcommon
     FILES
       include/inputfile.h
       include/arena.h
-      include/util.h
 )

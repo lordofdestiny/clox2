@@ -12,13 +12,13 @@
 #define ALIGNED_BLOCK_SIZE(req_size) \
     ARENA_ALIGN_SIZE(sizeof(block_header_t) + req_size)
 
+#define IS_ALIGNED(ptr) (((uintptr_t) ptr) % ARENA_ALIGNMENT == 0)
+
 #define BLOCK_BASE(ptr) ((void*) (((uint8_t*)ptr) - sizeof(block_header_t)))
 
 #define BLOCK_SIZE(ptr) (((block_header_t*)BLOCK_BASE(ptr))->size)
 
-#define IS_ALIGNED(ptr) (((uintptr_t) ptr) % ARENA_ALIGNMENT == 0)
-
-#define IS_FREE(ptr) ((block_header_t*)ptr)->free
+#define IS_FREE(ptr) ((block_header_t*) BLOCK_BASE(ptr))->free
 
 typedef struct {
     size_t free : 1;
@@ -84,7 +84,8 @@ static void* init_block(void* ptr, size_t size) {
 static bool arena_owns(arena_t * arena, void* ptr) {
     uint8_t* arena_b = (uint8_t*) arena;
     uint8_t* ptr_b = ptr;
-    return (ptr_b >= arena_b) && (ptr_b < arena_b + arena->capacity);
+    size_t size = BLOCK_SIZE(ptr);
+    return (ptr_b >= arena_b) && (arena_b + size < arena_b + arena->capacity);
 }
 
 static bool arena_last_alloc(arena_t* arena, block_header_t* block) {
@@ -115,7 +116,18 @@ void* arena_realloc(arena_t *arena, void *ptr, size_t req_size) {
         return arena_alloc(arena, req_size);
     }
 
-    if (!IS_ALIGNED(BLOCK_BASE(ptr)) || !arena_owns(arena, ptr)) {
+    if (!arena_owns(arena, ptr)) {
+        fprintf(stderr,"arena does not own the reallocated pointer: %p\n", ptr);
+        return NULL;
+    }
+
+    if (!IS_ALIGNED(ptr)) {
+        fprintf(stderr, "unialigned pointer reallocated in arena: %p", ptr);
+        return NULL;
+    }
+
+    if (IS_FREE(ptr)) {
+        fprintf(stderr, "reallocating a freeed pointer in arena: %p", ptr);
         return NULL;
     }
 
@@ -124,12 +136,19 @@ void* arena_realloc(arena_t *arena, void *ptr, size_t req_size) {
     
     bool is_last = arena_last_alloc(arena, base);
     
+    if (req_size == 0) {
+        if (is_last) {
+            arena->position -= base->size;
+        }
+        base->free = 0;
+        return NULL;
+    }
+
     if (new_size <= base->size) {
         size_t diff = base->size - new_size;
         if (is_last) {
             arena->position -= diff;
         }
-        base->size = new_size;
         return ptr;
     }
 
@@ -137,7 +156,6 @@ void* arena_realloc(arena_t *arena, void *ptr, size_t req_size) {
         size_t diff = new_size - base->size;
         uintptr_t new_end = ((uintptr_t) base) + new_size;
         uintptr_t arena_end = ((uintptr_t)arena) + arena->capacity;
-        // Use arena_owns here and make it also check block and
         if (new_end > arena_end){
             return NULL;
         }
@@ -154,19 +172,28 @@ void* arena_realloc(arena_t *arena, void *ptr, size_t req_size) {
 }
 
 void arena_free(arena_t *arena, void *ptr) {
-    if (ptr == NULL || !arena_owns(arena, ptr)) {
+    if (ptr == NULL) {
         return;
     }
 
-    block_header_t* base = BLOCK_BASE(ptr);
+    if (!arena_owns(arena, ptr)) {
+        fprintf(stderr, "arena does not own freed pointer: %p\n", ptr);
+        return;   
+    }
 
-    if (base->free) {
+    if (!IS_ALIGNED(ptr)) {
+        fprintf(stderr, "unaligned pointer in arena allocator: %p\n", ptr);
+        return;
+    }
+
+    
+    if (IS_FREE(ptr)) {
         fprintf(stderr, "double free corruption in arena allocator: %p\n", ptr);
         return;
     }
-    
-    if (arena_last_alloc(arena, base)) {
-        arena->position -= base->size;
+
+    if (arena_last_alloc(arena, BLOCK_BASE(ptr))) {
+        arena->position -= BLOCK_SIZE(ptr);
     }
 }
 
