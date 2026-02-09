@@ -81,7 +81,8 @@ static void* init_block(void* ptr, size_t size) {
     return ((uint8_t*)block) + sizeof(block_header_t);
 }
 
-static bool arena_owns(arena_t * arena, void* ptr) {
+// Make sure release build is not broken once macros are 
+[[maybe_unused]]static bool arena_owns(arena_t * arena, void* ptr) {
     uint8_t* arena_b = (uint8_t*) arena;
     uint8_t* ptr_b = ptr;
     size_t size = BLOCK_SIZE(ptr);
