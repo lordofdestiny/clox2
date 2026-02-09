@@ -4,16 +4,23 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#define ARENA_ALIGNMENT  (alignof(max_align_t))
+
 typedef struct {
-    size_t capacity;
+    alignas(max_align_t) size_t capacity;
     size_t position;
 } arena_t;
 
-#define ARENA_WORD_SIZE (sizeof(uintptr_t))
+static_assert(
+    alignof(arena_t) == ARENA_ALIGNMENT &&
+    sizeof(arena_t) == ARENA_ALIGNMENT &&
+    sizeof(arena_t) % ARENA_ALIGNMENT == 0,
+    "Arena object violates requirements"
+);
 
-#define ARENA_ALIGN_SIZE_IMPL(size, alignment) ((size + alignment - 1) & ~(alignment - 1))
+#define ARENA_ALIGN_SIZE_IMPL(size, alignment) (((size) + alignment - 1) & ~(alignment - 1))
 
-#define ARENA_ALIGN_SIZE(size) ARENA_ALIGN_SIZE_IMPL(size, ARENA_WORD_SIZE)
+#define ARENA_ALIGN_SIZE(size) ARENA_ALIGN_SIZE_IMPL(size, ARENA_ALIGNMENT)
 
 arena_t *arena_create(size_t capacity);
 

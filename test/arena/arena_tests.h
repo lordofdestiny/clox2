@@ -13,7 +13,7 @@ static arena_t* TEMP_ARENA_NAME = NULL;
 #endif // USE_ARENA
 
 #define ALLOCATION_END_POSITION(base, size) \
-    (base + sizeof(size_t) + ARENA_ALIGN_SIZE(size))
+    (base + ARENA_ALIGN_SIZE(size + alignof(max_align_t)))
 
 #define TEST_CASE(testfn) cmocka_unit_test_setup_teardown(testfn, TEST_NAME(verify), TEST_NAME(reset))
 
@@ -26,9 +26,12 @@ static void TEST_NAME(alloc)(void**) {
 
 static void TEST_NAME(calloc)(void**) {
     size_t before = SAVE();
-    void* ptr = CALLOC(4, 8);
+    char* ptr = CALLOC(4, 8);
     assert_non_null(ptr);
     assert_uint_equal(SAVE(), ALLOCATION_END_POSITION(before, 4 * 8));
+    for(size_t i = 0; i < 4 * 8; i++) {
+        assert_int_equal(ptr[i], 0);
+    }
 }
 
 static void TEST_NAME(realloc)(void**) {
@@ -42,18 +45,18 @@ static void TEST_NAME(realloc_decrease)(void**) {
     size_t before = SAVE();
     size_t size = 20;
     
-    char* ptr = ALLOC(size);
+    uint8_t* ptr = ALLOC(size);
     assert_non_null(ptr);
     assert_uint_equal(SAVE(), ALLOCATION_END_POSITION(before, size));
     for (size_t i = 0; i < size; i++) {
         ptr[i] = i + 1;
     }
 
-
     // Try and reduce the last allocation
     void* new_ptr = REALLOC(ptr, 16);
     assert_non_null(ptr);
     assert_ptr_equal(ptr, new_ptr);
+    // Improperly redues the size of the last allocation
     assert_uint_equal(SAVE(), ALLOCATION_END_POSITION(before, 16));
     assert_memory_equal(ptr, new_ptr, size);
 
@@ -67,7 +70,6 @@ static void TEST_NAME(realloc_decrease)(void**) {
     assert_uint_equal(SAVE(), after_other);
     FREE(other);
     assert_uint_equal(SAVE(), ALLOCATION_END_POSITION(before, 16));
-
 }
 
 static void TEST_NAME(realloc_increase_inplace)(void**) {
@@ -91,7 +93,6 @@ static void TEST_NAME(realloc_increase_inplace)(void**) {
 
 static void TEST_NAME(realloc_increase)(void**) {
     size_t before0 = SAVE();
-    
     size_t size0 = 20;
     char* ptr0 = ALLOC(size0);
     assert_non_null(ptr0);
@@ -100,14 +101,14 @@ static void TEST_NAME(realloc_increase)(void**) {
         ptr0[i] = i + 1;
     }
     
-    size_t size1 = 12;
     size_t before1 = SAVE();
+    size_t size1 = 12;
     void* ptr1 = ALLOC(size1);
     assert_non_null(ptr1);
     assert_uint_equal(SAVE(), ALLOCATION_END_POSITION(before1, size1));
 
-    size_t size2 = 64;
     size_t before2 = SAVE();
+    size_t size2 = 64;
     void* new_ptr = REALLOC(ptr0, size2);
     assert_non_null(new_ptr);
     assert_ptr_not_equal(ptr0, new_ptr);
