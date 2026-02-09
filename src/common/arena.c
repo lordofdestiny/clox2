@@ -1,11 +1,11 @@
+#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
 
-#include <stdio.h>
-
 #include "arena.h"
+#include "util.h"
 
 #define STATIC_BUFFER_BYTES 1024 * 1024 // 1MB
 
@@ -116,20 +116,9 @@ void* arena_realloc(arena_t *arena, void *ptr, size_t req_size) {
         return arena_alloc(arena, req_size);
     }
 
-    if (!arena_owns(arena, ptr)) {
-        fprintf(stderr,"arena does not own the reallocated pointer: %p\n", ptr);
-        return NULL;
-    }
-
-    if (!IS_ALIGNED(ptr)) {
-        fprintf(stderr, "unialigned pointer reallocated in arena: %p", ptr);
-        return NULL;
-    }
-
-    if (IS_FREE(ptr)) {
-        fprintf(stderr, "reallocating a freeed pointer in arena: %p", ptr);
-        return NULL;
-    }
+    massert(arena_owns(arena, ptr),  "arena does not own reallocated pointer");
+    massert(IS_ALIGNED(ptr), "unialigned pointer reallocated in arena");
+    massert(!IS_FREE(ptr), "reallocating a freed pointer in arena");
 
     size_t new_size = ALIGNED_BLOCK_SIZE(req_size);
     block_header_t* base = BLOCK_BASE(ptr);
@@ -176,21 +165,9 @@ void arena_free(arena_t *arena, void *ptr) {
         return;
     }
 
-    if (!arena_owns(arena, ptr)) {
-        fprintf(stderr, "arena does not own freed pointer: %p\n", ptr);
-        return;   
-    }
-
-    if (!IS_ALIGNED(ptr)) {
-        fprintf(stderr, "unaligned pointer in arena allocator: %p\n", ptr);
-        return;
-    }
-
-    
-    if (IS_FREE(ptr)) {
-        fprintf(stderr, "double free corruption in arena allocator: %p\n", ptr);
-        return;
-    }
+    massert(arena_owns(arena, ptr),  "arena does not own freed pointer");
+    massert(IS_ALIGNED(ptr), "unialigned pointer freed in arena");
+    massert(!IS_FREE(ptr), "double free corruption in arena allocator: %p");
 
     if (arena_last_alloc(arena, BLOCK_BASE(ptr))) {
         arena->position -= BLOCK_SIZE(ptr);
