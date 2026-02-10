@@ -5,6 +5,7 @@ include(CheckIPOSupported)
 
 option(BUILD_TESTS "Include testing targets during build" YES)
 option(ENABLE_COVERAGE "Enable code coverage generation" NO)
+option(CLOX_NAN_BOXING "Enable NAN BOXING for stack values" YES)
 
 find_package(Python3 3.12 REQUIRED COMPONENTS Interpreter)
 
@@ -27,6 +28,7 @@ set(CMAKE_C_FLAGS "-pedantic-errors -Wpedantic -pedantic -Wall -Wextra")
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 
+
 if(BUILD_TESTS)
     if(ENABLE_COVERAGE)
         # Check for compatible compilers (GCC and Clang support --coverage flag)
@@ -42,5 +44,6 @@ if(BUILD_TESTS)
     add_subdirectory(test)
 endif()
 
+add_subdirectory(public)
 add_subdirectory(src)
-
+add_subdirectory(lib)

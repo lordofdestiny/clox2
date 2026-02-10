@@ -3,12 +3,14 @@ FROM mcr.microsoft.com/devcontainers/cpp:ubuntu-24.04
 RUN apt-get update && \
     apt-get install -y \
         git coreutils \
-        clang clang-format clang-tidy clang-tools clangd \
+        clang-20 clangd-20 clang-format clang-tidy clang-tools \
         libclang-dev libclang1 \
         lld lldb llvm-dev llvm-runtime llvm \
         python3-clang \
         valgrind \
         flex bison
+
+RUN ln -s /usr/bin/clangd-20 /usr/bin/clangd
 
 RUN apt-get install -y \
     python3-venv python3-pip

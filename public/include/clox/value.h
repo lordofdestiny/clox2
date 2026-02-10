@@ -1,9 +1,8 @@
-#ifndef __CLOX2_VALUE_H__
-#define __CLOX2_VALUE_H__
+#ifndef __CLOX_LIB_VALUE_H__
+#define __CLOX_LIB_VALUE_H__
 
-#include <stdio.h>
+#include <stdint.h>
 #include <string.h>
-#include "common.h"
 
 typedef struct Obj Obj;
 typedef struct ObjString ObjString;
@@ -59,7 +58,9 @@ typedef enum {
     VAL_OBJ,
 } ValueType;
 
-typedef struct {
+typedef struct Value Value;
+
+struct Value{
     ValueType type;
 
     union {
@@ -67,7 +68,7 @@ typedef struct {
         double number;
         Obj* obj;
     } as;
-} Value;
+};
 
 #define IS_BOOL(value) ((value).type == VAL_BOOL)
 #define IS_NIL(value) ((value).type == VAL_NIL)
@@ -87,25 +88,4 @@ typedef struct {
 
 #endif
 
-
-typedef struct {
-    int capacity;
-    int count;
-    Value* values;
-} ValueArray;
-
-bool valuesEqual(Value a, Value b);
-
-void initValueArray(ValueArray* array);
-
-void writeValueArray(ValueArray* array, Value value);
-
-void copyValueArray(ValueArray* src, ValueArray* dest);
-
-void valueInitValueArray(ValueArray* array, Value initial, int count);
-
-void freeValueArray(ValueArray* array);
-
-void printValue(FILE* out, Value value);
-
-#endif //__CLOX2_VALUE_H__
+#endif // __CLOX_LIB_VALUE_H__

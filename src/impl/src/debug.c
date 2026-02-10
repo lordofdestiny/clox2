@@ -5,6 +5,18 @@
 #include "object.h"
 #include "debug.h"
 
+static const char* opcodeToString(OpCode opcode) {
+    static const char* text[] = {
+#define ENUM_OPCODE_DEF(name) #name,
+    OPCODE_ENUM_LIST
+#undef ENUM_OBJTYPE_DEF
+    };
+    if (opcode < 0 || opcode >= OP_LAST) {
+        return "unknown opcode";
+    }
+    return text[opcode];
+}
+
 void disassembleChunk(FILE* file, Chunk* chunk, const char* name) {
     fprintf(file, "== %s ==\n", name);
 
@@ -21,7 +33,7 @@ static uint16_t read_short(const Chunk* chunk, const int offset) {
     return (chunk->code[offset] << 8) | chunk->code[offset + 1];
 }
 
-static int constantInstruction(FILE* file, char* name, const Chunk* chunk, const int offset) {
+static int constantInstruction(FILE* file, const char* name, const Chunk* chunk, const int offset) {
     const uint8_t constant = read_byte(chunk, offset + 1);
     fprintf(file, "%-29s %4d '", name, constant);
     printValue(file, chunk->constants.values[constant]);
@@ -104,60 +116,61 @@ int disassembleInstruction(FILE* file, Chunk* chunk, const int offset) {
     }
 
     const uint8_t instruction = chunk->code[offset];
+    const char* desc = opcodeToString(instruction);
     switch (instruction) {
-    case OP_ARRAY: return longOperandInstruction(file, "OP_ARRAY", chunk, offset);
-    case OP_CONSTANT: return constantInstruction(file, "OP_CONSTANT", chunk, offset);
-    case OP_CONSTANT_ZERO: return simpleInstruction(file, "OP_CONSTANT_ZERO", offset);
-    case OP_CONSTANT_ONE: return simpleInstruction(file, "OP_CONSTANT_ONE", offset);
-    case OP_CONSTANT_TWO: return simpleInstruction(file, "OP_CONSTANT_TWO", offset);
-    case OP_NIL: return simpleInstruction(file,"OP_NIL", offset);
-    case OP_TRUE: return simpleInstruction(file,"OP_TRUE", offset);
-    case OP_FALSE: return simpleInstruction(file,"OP_FALSE", offset);
-    case OP_POP: return simpleInstruction(file,"OP_POP", offset);
-    case OP_DUP: return simpleInstruction(file,"OP_DUP", offset);
-    case OP_GET_LOCAL: return byteInstruction(file,"OP_GET_LOCAL", chunk, offset);
-    case OP_SET_LOCAL: return byteInstruction(file,"OP_SET_LOCAL", chunk, offset);
-    case OP_GET_GLOBAL: return constantInstruction(file,"OP_GET_GLOBAL", chunk, offset);
-    case OP_DEFINE_GLOBAL: return constantInstruction(file,"OP_DEFINE_GLOBAL", chunk, offset);
-    case OP_SET_GLOBAL: return constantInstruction(file,"OP_SET_GLOBAL", chunk, offset);
-    case OP_GET_UPVALUE: return byteInstruction(file,"OP_GET_UPVALUE", chunk, offset);
-    case OP_SET_UPVALUE: return byteInstruction(file,"OP_SET_UPVALUE", chunk, offset);
-    case OP_STATIC_FIELD: return constantInstruction(file,"OP_STATIC_FIELD", chunk, offset);
-    case OP_GET_PROPERTY: return constantInstruction(file,"OP_GET_PROPERTY", chunk, offset);
-    case OP_SET_PROPERTY: return constantInstruction(file,"OP_SET_PROPERTY", chunk, offset);
-    case OP_GET_INDEX: return simpleInstruction(file,"OP_GET_INDEX", offset);
-    case OP_SET_INDEX: return simpleInstruction(file,"OP_SET_INDEX", offset);
-    case OP_GET_SUPER: return constantInstruction(file,"OP_GET_SUPER", chunk, offset);
-    case OP_EQUAL: return simpleInstruction(file,"OP_EQUAL", offset);
-    case OP_GREATER: return simpleInstruction(file,"OP_GREATER", offset);
-    case OP_LESS: return simpleInstruction(file,"OP_LESS", offset);
-    case OP_ADD: return simpleInstruction(file,"OP_ADD", offset);
-    case OP_SUBTRACT: return simpleInstruction(file,"OP_SUBTRACT", offset);
-    case OP_MULTIPLY: return simpleInstruction(file,"OP_MULTIPLY", offset);
-    case OP_MODULUS: return simpleInstruction(file,"OP_MODULUS", offset);
-    case OP_EXPONENT: return simpleInstruction(file,"OP_EXPONENT", offset);
-    case OP_DIVIDE: return simpleInstruction(file,"OP_DIVIDE", offset);
-    case OP_NOT: return simpleInstruction(file,"OP_NOT", offset);
-    case OP_NEGATE: return simpleInstruction(file,"OP_NEGATE", offset);
-    case OP_PRINT: return simpleInstruction(file,"OP_PRINT", offset);
-    case OP_JUMP: return jumpInstruction(file,"OP_JUMP", 1, chunk, offset);
-    case OP_JUMP_IF_FALSE: return jumpInstruction(file,"OP_JUMP_IF_FALSE", 1, chunk, offset);
-    case OP_LOOP: return jumpInstruction(file,"OP_LOOP", -1, chunk, offset);
-    case OP_CALL: return byteInstruction(file,"OP_CALL", chunk, offset);
-    case OP_INVOKE: return invokeInstruction(file, "OP_INVOKE", chunk, offset);
-    case OP_SUPER_INVOKE: return invokeInstruction(file,"OP_SUPER_INVOKE", chunk, offset); 
-    case OP_CLOSURE: return closureInstruction(file, "OP_CLOSURE", chunk, offset);
-    case OP_CLOSE_UPVALUE: return simpleInstruction(file,"OP_CLOSE_UPVALUE", offset);
-    case OP_RETURN: return simpleInstruction(file,"OP_RETURN", offset);
-    case OP_CLASS: return constantInstruction(file,"OP_CLASS", chunk, offset);
-    case OP_INHERIT: return simpleInstruction(file,"OP_INHERIT", offset);
-    case OP_METHOD: return constantInstruction(file,"OP_METHOD", chunk, offset);
-    case OP_STATIC_METHOD: return constantInstruction(file,"OP_STATIC_METHOD", chunk, offset);
-    case OP_THROW: return simpleInstruction(file,"OP_THROW", offset);
+    case OP_ARRAY: return longOperandInstruction(file, desc, chunk, offset);
+    case OP_CONSTANT: return constantInstruction(file, desc, chunk, offset);
+    case OP_CONSTANT_ZERO: return simpleInstruction(file, desc, offset);
+    case OP_CONSTANT_ONE: return simpleInstruction(file, desc, offset);
+    case OP_CONSTANT_TWO: return simpleInstruction(file, desc, offset);
+    case OP_NIL: return simpleInstruction(file, desc, offset);
+    case OP_TRUE: return simpleInstruction(file, desc, offset);
+    case OP_FALSE: return simpleInstruction(file, desc, offset);
+    case OP_POP: return simpleInstruction(file, desc, offset);
+    case OP_DUP: return simpleInstruction(file, desc, offset);
+    case OP_GET_LOCAL: return byteInstruction(file, desc, chunk, offset);
+    case OP_SET_LOCAL: return byteInstruction(file, desc, chunk, offset);
+    case OP_GET_GLOBAL: return constantInstruction(file, desc, chunk, offset);
+    case OP_DEFINE_GLOBAL: return constantInstruction(file, desc, chunk, offset);
+    case OP_SET_GLOBAL: return constantInstruction(file, desc, chunk, offset);
+    case OP_GET_UPVALUE: return byteInstruction(file, desc, chunk, offset);
+    case OP_SET_UPVALUE: return byteInstruction(file, desc, chunk, offset);
+    case OP_STATIC_FIELD: return constantInstruction(file, desc, chunk, offset);
+    case OP_GET_PROPERTY: return constantInstruction(file, desc, chunk, offset);
+    case OP_SET_PROPERTY: return constantInstruction(file, desc, chunk, offset);
+    case OP_GET_INDEX: return simpleInstruction(file, desc, offset);
+    case OP_SET_INDEX: return simpleInstruction(file, desc, offset);
+    case OP_GET_SUPER: return constantInstruction(file, desc, chunk, offset);
+    case OP_EQUAL: return simpleInstruction(file, desc, offset);
+    case OP_GREATER: return simpleInstruction(file, desc, offset);
+    case OP_LESS: return simpleInstruction(file, desc, offset);
+    case OP_ADD: return simpleInstruction(file, desc, offset);
+    case OP_SUBTRACT: return simpleInstruction(file, desc, offset);
+    case OP_MULTIPLY: return simpleInstruction(file, desc, offset);
+    case OP_MODULUS: return simpleInstruction(file, desc, offset);
+    case OP_EXPONENT: return simpleInstruction(file, desc, offset);
+    case OP_DIVIDE: return simpleInstruction(file, desc, offset);
+    case OP_NOT: return simpleInstruction(file, desc, offset);
+    case OP_NEGATE: return simpleInstruction(file, desc, offset);
+    case OP_PRINT: return simpleInstruction(file, desc, offset);
+    case OP_JUMP: return jumpInstruction(file, desc, 1, chunk, offset);
+    case OP_JUMP_IF_FALSE: return jumpInstruction(file, desc, 1, chunk, offset);
+    case OP_LOOP: return jumpInstruction(file, desc, -1, chunk, offset);
+    case OP_CALL: return byteInstruction(file, desc, chunk, offset);
+    case OP_INVOKE: return invokeInstruction(file, desc, chunk, offset);
+    case OP_SUPER_INVOKE: return invokeInstruction(file, desc, chunk, offset); 
+    case OP_CLOSURE: return closureInstruction(file, desc, chunk, offset);
+    case OP_CLOSE_UPVALUE: return simpleInstruction(file, desc, offset);
+    case OP_RETURN: return simpleInstruction(file, desc, offset);
+    case OP_CLASS: return constantInstruction(file, desc, chunk, offset);
+    case OP_INHERIT: return simpleInstruction(file, desc, offset);
+    case OP_METHOD: return constantInstruction(file, desc, chunk, offset);
+    case OP_STATIC_METHOD: return constantInstruction(file, desc, chunk, offset);
+    case OP_THROW: return simpleInstruction(file, desc, offset);
     case OP_PUSH_EXCEPTION_HANDLER:
-        return exceptionHandlerInstruction(file, "OP_PUSH_EXCEPTION_HANDLER", chunk, offset);
-    case OP_POP_EXCEPTION_HANDLER: return simpleInstruction(file,"OP_POP_EXCEPTION_HANDLER", offset);
-    case OP_PROPAGATE_EXCEPTION: return simpleInstruction(file,"OP_PROPAGATE_EXCEPTION", offset);
+        return exceptionHandlerInstruction(file, desc, chunk, offset);
+    case OP_POP_EXCEPTION_HANDLER: return simpleInstruction(file, desc, offset);
+    case OP_PROPAGATE_EXCEPTION: return simpleInstruction(file, desc, offset);
     default: fprintf(file, "Unknown opcode %d\n", instruction);
         return offset + 1;
     }

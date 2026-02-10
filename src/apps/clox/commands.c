@@ -139,7 +139,7 @@ int compileFile(const Command* cmd) {
     if (bytecode == NULL) {
         code = INTERPRET_COMPILE_ERROR;
     } else {
-        writeBinary(bytecode, cmd->output_file);
+        writeBinary(cmd->input_file, bytecode, cmd->output_file);
     }
 
     clock_t end = clock();

@@ -1,0 +1,15 @@
+{
+    "library": "time",
+    "functions": [
+        {
+            "export" : "getTime",
+            "args": [],
+            "returns": "Number"
+        },
+        {
+            "export": "sleepFor",
+            "args" : ["Number"],
+            "returns": "Bool"
+        }
+    ]
+}

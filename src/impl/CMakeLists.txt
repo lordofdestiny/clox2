@@ -29,20 +29,20 @@ set_target_properties(
   PROPERTIES
     POSITION_INDEPENDENT_CODE TRUE
     C_VISIBILITY_PRESET hidden
-    VISIBILITY_INLINES_HIDDEN YES
+    VISIBILITY_INLINES_HIDDEN YES 
     COMPILE_WARNING_AS_ERROR TRUE
+    BUILD_RPATH "${PROJECT_BINARY_DIR}/lib"
 )
 
 generate_export_header(
   cloximpl
-  EXPORT_FILE_NAME ${PROJECT_BINARY_DIR}/include/cloximpl_export.h
+  BASE_NAME CLOX
+  EXPORT_FILE_NAME ${PROJECT_BINARY_DIR}/include/clox_export.h
 )
 
 target_link_libraries(cloximpl PRIVATE m)
 target_link_libraries(cloximpl PRIVATE cloxcommon)
-
-add_subdirectory(scanner)
-add_subdirectory(scanner-flex)
+target_link_libraries(cloximpl PUBLIC cloxpublic)
 
 if(NOT USE_FLEX_SCANNER)
   target_link_libraries(cloximpl PRIVATE cloxscanner)

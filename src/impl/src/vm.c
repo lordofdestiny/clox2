@@ -1,16 +1,18 @@
+#include <assert.h>
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
 #include <string.h>
 #include <setjmp.h>
-#include <math.h>
 
+#include "clox/value.h"
 #include "vm.h"
-#include "value.h"
 #include "compiler.h"
 #include "memory.h"
 #include "object.h"
 #include "native.h"
+
 
 #if defined(DEBUG_PRINT_CODE) || defined(DEBUG_TRACE_EXECUTION)
 
@@ -19,6 +21,8 @@
 #endif
 
 VM vm;
+CLOX_EXPORT const size_t* VM_MEMORY_USAGE = &vm.bytesAllocated;
+
 
 static void resetStack() {
     vm.stackTop = vm.stack;
@@ -50,11 +54,9 @@ void runtimeError(const char* format, ...) {
         const size_t instruction = frame->ip - function->chunk.code - 1;
         const int line = getLine(&function->chunk, (int) instruction);
         fprintf(stderr, "[line %d] in ", line);
-        if (function->name == NULL) {
-            fprintf(stderr, "script\n");
-        } else {
-            fprintf(stderr, "%s()\n", function->name->chars);
-        }
+        
+        const char* name = function->name ? function->name->chars : "script";
+        fprintf(stderr, "[line %d] in %s\n", line, name);
     }
 
     resetStack();
@@ -69,9 +71,18 @@ static ObjClass* getGlobalClass(const char* name) {
     return NULL;
 }
 
+#define FAILED_LIB_LOAD 69
+
+
 static void defineNative(const char* name, const int arity, const NativeFn function) {
     push(OBJ_VAL((Obj *) copyString(name, (int) strlen(name))));
     push(OBJ_VAL((Obj *) newNative(function, arity)));
+    if (tableGet(&vm.globals, AS_STRING(vm.stack[0]), NULL)) {
+        pop();
+        pop(); 
+        runtimeError("Function '%s' already registered!", name);
+        exit(FAILED_LIB_LOAD);
+    }
     tableSet(&vm.globals, AS_STRING(vm.stack[0]), vm.stack[1]);
     pop();
     pop();
@@ -98,7 +109,73 @@ static void addNativeMethod(
     pop();
 }
 
+#include <dlfcn.h>
+
+typedef size_t (*GetCountFn)(void); 
+
+typedef void (*EventFn)(void); 
+
+typedef void (*GetFunctionFn)(size_t i, size_t* arity, char** name, NativeFn* fn);
+
+static int loadNativeLib(const char* lib) {
+    void* handle = dlopen(lib, RTLD_NOW);
+    if (handle == NULL) {
+        fprintf(stderr, "dlib error: %s\n", dlerror());
+        exit(FAILED_LIB_LOAD);
+    }
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wpedantic"
+    GetCountFn fnCountFn = (GetCountFn) dlsym(handle, "moduleFunctionCount");
+    if (fnCountFn == NULL) {
+        dlclose(handle);
+        fprintf(stderr, "dlib error: %s\n", dlerror());
+        exit(FAILED_LIB_LOAD);
+    }
+
+    EventFn onLoadFn = (EventFn) dlsym(handle, "onLoad");
+    if (fnCountFn == NULL) {
+        dlclose(handle);
+        fprintf(stderr, "dlib error: %s\n", dlerror());
+        exit(FAILED_LIB_LOAD);
+    }
+    
+    GetFunctionFn getFnFn = (GetFunctionFn) dlsym(handle, "registerFunction");
+    if (fnCountFn == NULL) {
+        dlclose(handle);
+        fprintf(stderr, "dlib error: %s\n", dlerror());
+        exit(FAILED_LIB_LOAD);
+    }
+#pragma GCC diagnostic pop
+
+    size_t fnCount = fnCountFn();
+    for (size_t i = 0; i < fnCount; i++) {
+        size_t arity;
+        char* name;
+        NativeFn fn;
+        getFnFn(i, &arity, &name, &fn);
+        printf("%s: loading function %s...\n", lib, name);
+        defineNative(name, arity, fn);
+    }
+    
+    void** handleArr = realloc(vm.nativeLibHandles, (vm.nativeLibCount + 1) * sizeof(void*));
+    if (handleArr == NULL) {
+        dlclose(handle);
+        printf("Failed to load '%s' lib: out of memory x\n", lib);
+        exit(FAILED_LIB_LOAD);
+    }
+    vm.nativeLibHandles = handleArr;
+    handleArr[vm.nativeLibCount++] = handle;
+
+    onLoadFn();
+
+    return 0;
+}
+
 static void initNative() {
+    loadNativeLib("libcloxreflect.so");
+    loadNativeLib("libcloxtime.so");
+
     // Define native methods
     for (int i = 0; nativeMethods[i].name != NULL; i++) {
         const NativeMethodDef* def = &nativeMethods[i];
@@ -143,10 +220,15 @@ void initVM() {
     vm.initString = NULL;
     vm.initString = copyString("init", 4);
 
+    vm.nativeLibCount = 0;
+    vm.nativeLibHandles = NULL;
     initNative();
 }
 
 void freeVM() {
+    for (size_t i = 0; i < vm.nativeLibCount; i++) {
+        dlclose(vm.nativeLibHandles[i]);
+    }
     freeTable(&vm.globals);
     freeTable(&vm.strings);
     vm.initString = NULL;
@@ -166,6 +248,7 @@ void push(const Value value) {
 }
 
 Value pop() {
+    assert(vm.stackTop > vm.stack);
     return *--vm.stackTop;
 }
 

@@ -1,9 +1,9 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "clox/value.h"
 #include "memory.h"
 #include "object.h"
-#include "value.h"
 #include "table.h"
 
 void initTable(Table* table) {
@@ -73,7 +73,9 @@ bool tableGet(Table* table, ObjString* key, Value* value) {
     const Entry* entry = findEntry(table->entries, table->capacity, key);
     if (entry->key == NULL) return false;
 
-    *value = entry->value;
+    if (value != NULL) {
+        *value = entry->value;
+    }
 
     return true;
 }

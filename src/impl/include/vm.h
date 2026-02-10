@@ -3,10 +3,10 @@
 
 #include <setjmp.h>
 
-#include <cloximpl_export.h>
+#include <clox_export.h>
 
+#include "clox/value.h"
 #include "chunk.h"
-#include "value.h"
 #include "table.h"
 #include "object.h"
 #include "inputfile.h"
@@ -50,6 +50,9 @@ typedef struct {
     Obj** grayStack;
     jmp_buf exit_state;
     int exit_code;
+
+    size_t nativeLibCount;
+    void** nativeLibHandles;
 } VM;
 
 typedef enum {
@@ -61,19 +64,17 @@ typedef enum {
 
 extern VM vm;
 
-CLOXIMPL_EXPORT void initVM();
+CLOX_EXPORT void initVM();
 
-CLOXIMPL_EXPORT void freeVM();
+CLOX_EXPORT void freeVM();
 
-CLOXIMPL_EXPORT int vmExitCode();
+CLOX_EXPORT int vmExitCode();
 
-CLOXIMPL_EXPORT InterpretResult interpret(InputFile source);
+CLOX_EXPORT InterpretResult interpret(InputFile source);
 
-CLOXIMPL_EXPORT InterpretResult interpretCompiled(ObjFunction* function);
+CLOX_EXPORT InterpretResult interpretCompiled(ObjFunction* function);
 
-void push(Value value);
-
-Value pop();
+#include "clox/vm.h"
 
 void runtimeError(const char* format, ...);
 

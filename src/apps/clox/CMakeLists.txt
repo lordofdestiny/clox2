@@ -18,6 +18,7 @@ set_target_properties(
   clox
   PROPERTIES
     COMPILE_WARNING_AS_ERROR TRUE
+    BUILD_RPATH "${PROJECT_BINARY_DIR}/src"
 )
 
 target_link_libraries(clox

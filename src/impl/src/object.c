@@ -3,9 +3,10 @@
 #include <stdlib.h>
 #include <ctype.h>
 
+#include "clox/value.h"
+#include "chunk.h"
 #include "memory.h"
 #include "object.h"
-#include "value.h"
 #include "vm.h"
 #include "table.h"
 
@@ -123,7 +124,9 @@ void printObject(FILE* out, const Value value) {
 
 ObjArray* newArray() {
     ObjArray* array = ALLOCATE_OBJ(ObjArray, OBJ_ARRAY);
+    push(OBJ_VAL((Obj*) array));
     initValueArray(&array->array);
+    pop();
     return array;
 }
 
@@ -322,7 +325,7 @@ ObjInstance* newPrimitive(const Value value, ObjClass* klass) {
     return primitive;
 }
 
-ObjString* allocateString(char* chars, const int length, const uint32_t hash) {
+static ObjString* allocateString(char* chars, const int length, const uint32_t hash) {
     ObjString* string = ALLOCATE_OBJ(ObjString, OBJ_STRING);
     string->length = length;
     string->chars = chars;
@@ -356,7 +359,7 @@ ObjString* takeString(char* chars, const int length) {
 }
 
 ObjString* escapedString(const char* chars, int length) {
-    char* buffer = calloc(length + 1, 1);
+    char* buffer = ALLOCATE(char, (size_t) length + 1);
     int write = 0;
     int read = 0;
     while(read < length) {
@@ -404,6 +407,7 @@ ObjString* escapedString(const char* chars, int length) {
             buffer[write++] = total;
         }  
     }
+    buffer[write] = 0;
     
     return takeString(buffer, write);
 }
@@ -456,7 +460,7 @@ static void printUpvalue(Obj* obj, FILE* out) {
 
 static void printFunctionImpl(const ObjFunction* function, FILE* out) {
     if (function->name == NULL) {
-        printf("<script>");
+        fprintf(out, "<script>");
         return;
     }
     fprintf(out, "<fn %s>", function->name->chars);

@@ -18,9 +18,9 @@ class Fibo {
 }
 
 fun benchmark(target) {
-    var start = clock();
+    var start = getTime();
     var result = target();
-    var end = clock();
+    var end = getTime();
 
     print "Result: " + String(result);
     print "Time: " + String(end - start);

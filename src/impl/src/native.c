@@ -1,5 +1,4 @@
 #include <stdlib.h>
-#include <time.h>
 #include <errno.h>
 #include <float.h>
 #include <math.h>
@@ -10,81 +9,6 @@
 #include "memory.h"
 #include "object.h"
 #include "vm.h"
-
-static bool hasFieldNative([[maybe_unused]] int argCount, Value* implicit, Value* args) {
-    if (!IS_INSTANCE(args[0])) {
-        *implicit = NATIVE_ERROR("Function 'hasField' expects an instance as the first argument.");
-        return false;
-    }
-    if (!IS_STRING(args[1])) {
-        *implicit = NATIVE_ERROR("Function 'hasField' expects a string as the second argument.");
-        return false;
-    }
-    ObjInstance* instance = AS_INSTANCE(args[0]);
-    ObjString* key = AS_STRING(args[1]);
-    Value dummy;
-
-    *implicit = BOOL_VAL(tableGet(&instance->fields, key, &dummy));
-    return true;
-}
-
-static bool getFieldNative([[maybe_unused]] int argCount, Value* implicit, Value* args) {
-    if (!IS_INSTANCE(args[0])) {
-        *implicit = NATIVE_ERROR("Function 'getField' expects an instance as the first argument.");
-        return false;
-    }
-    if (!IS_STRING(args[1])) {
-        *implicit = NATIVE_ERROR("Function 'getField' expects a string as the second argument.");
-        return false;
-    }
-    ObjInstance* instance = AS_INSTANCE(args[0]);
-    ObjString* key = AS_STRING(args[1]);
-    Value value;
-
-    if (!tableGet(&instance->fields, key, &value)) {
-        *implicit = NATIVE_ERROR("Instance doesn't have the requested field.");
-        return false;
-    }
-
-    *implicit = value;
-    return true;
-}
-
-static bool setFieldNative([[maybe_unused]] int argCount, Value* implicit, Value* args) {
-    if (!IS_INSTANCE(args[0])) {
-        *implicit = NATIVE_ERROR("Function 'setField' expects an instance as the first argument.");
-        return false;
-    }
-    if (!IS_STRING(args[1])) {
-        *implicit = NATIVE_ERROR("Function 'setField' expects a string as the second argument.");
-        return false;
-    }
-    ObjInstance* instance = AS_INSTANCE(args[0]);
-    tableSet(&instance->fields, AS_STRING(args[1]), args[2]);
-    *implicit = args[2];
-    return true;
-}
-
-static bool deleteFieldNative([[maybe_unused]] int argCount, Value* implicit, Value* args) {
-    if (!IS_INSTANCE(args[0])) {
-        *implicit = NATIVE_ERROR(
-            "Function 'deleteField' expects an instance as the first argument.");
-        return false;
-    }
-    if (!IS_STRING(args[1])) {
-        *implicit = NATIVE_ERROR("Function 'deleteField' expects a string as the second argument.");
-        return false;
-    }
-    ObjInstance* instance = AS_INSTANCE(args[0]);
-    tableDelete(&instance->fields, AS_STRING(args[1]));
-    *implicit = NIL_VAL;
-    return true;
-}
-
-static bool clockNative([[maybe_unused]] int argCount, Value* implicit,[[maybe_unused]]  Value* args) {
-    *implicit = NUMBER_VAL((double) clock() / CLOCKS_PER_SEC);
-    return true;
-}
 
 static bool exitNative(int argCount, Value* implicit, Value* args) {
     if (argCount > 1) {
@@ -105,11 +29,6 @@ static bool exitNative(int argCount, Value* implicit, Value* args) {
 }
 
 NativeMethodDef nativeMethods[] = {
-    {"hasField", 2, hasFieldNative},
-    {"getField", 2, getFieldNative},
-    {"setField", 3, setFieldNative},
-    {"deleteField", 2, deleteFieldNative},
-    {"clock", 0, clockNative},
     {"exit", -1, exitNative},
     {NULL, 0, NULL}
 };
@@ -374,9 +293,11 @@ bool initArrayNative(int argCount, Value* implicit, Value* args) {
             ? value
             : AS_INSTANCE(value)->this_);
         ObjArray* array_ = newArray();
+        push(OBJ_VAL((Obj*) array_));
         valueInitValueArray(&array_->array, NIL_VAL, len);
         instance->this_ = OBJ_VAL((Obj*) array_);
         tableSet(&instance->fields, copyString("length", 6), NUMBER_VAL(len));
+        pop();
         return true;
     }
 

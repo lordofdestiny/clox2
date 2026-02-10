@@ -1,8 +1,9 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "object.h"
+#include "clox/value.h"
 #include "memory.h"
-#include "value.h"
 
 bool valuesEqual(Value a, Value b) {
     if (IS_INSTANCE(a) && !IS_INSTANCE(AS_INSTANCE(a)->this_)) {

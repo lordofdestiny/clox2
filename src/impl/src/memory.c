@@ -83,7 +83,11 @@ static void blackenObject(Obj* object) {
 
 static void freeObject(Obj* object) {
 #ifdef DEBUG_LOG_GC
-    printf("%p free type %d\n", (void *) object, object->type);
+    const char* objTypeStr = objTypeToString(object->type);
+    fprintf(
+        stdout, "%p free type (%d) %-15s\n",
+        (void*) object, object->type, objTypeStr
+    );
 #endif
     object->vtp->free(object);
 }
@@ -99,7 +103,7 @@ void freeObjects() {
 
 static void markRoots() {
     // Mark objects on the VM stack
-    for (const Value* slot = vm.stack; slot <= vm.stackTop; slot++) {
+    for (const Value* slot = vm.stack; slot < vm.stackTop; slot++) {
         markValue(*slot);
     }
 

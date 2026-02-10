@@ -2,8 +2,8 @@
 #include <stdlib.h>
 #include <math.h>
 
+#include "clox/value.h"
 #include "common.h"
-#include "value.h"
 #include "compiler.h"
 #include "scanner.h"
 
@@ -84,9 +84,6 @@ typedef struct Compiler {
     Table stringConstants;
 } Compiler;
 
-// TODO move out of the global scope
-Scanner scanner_obj;
-
 static bool* compilerReplMode() {
     static bool value;
     return &value;
@@ -112,6 +109,7 @@ typedef struct ClassCompiler {
 } ClassCompiler;
 
 typedef struct {
+    Scanner scanner;
     Token current;
     Token previous;
     bool hadError;
@@ -154,7 +152,7 @@ static void advance() {
     parser.previous = parser.current;
 
     while (true) {
-        parser.current = scanToken(&scanner_obj);
+        parser.current = scanToken(&parser.scanner);
         if (parser.current.type != TOKEN_ERROR) break;
 
         errorAtCurrent(parser.current.start);
@@ -233,7 +231,7 @@ static uint8_t makeConstant(const Value value) {
     return constant;
 }
 
-const OpCode constantInstructions[] = {
+static const OpCode constantInstructions[] = {
     [0] = OP_CONSTANT_ZERO,
     [1] = OP_CONSTANT_ONE,
     [2] = OP_CONSTANT_TWO
@@ -1588,7 +1586,7 @@ static ParseRule* getRule(const TokenType type) {
 
 ObjFunction* compile(InputFile source)
 {
-    initScanner(&scanner_obj, source);
+    initScanner(&parser.scanner, source);
 
     Compiler compiler;
     initCompiler(&compiler, TYPE_SCRIPT);
@@ -1603,7 +1601,7 @@ ObjFunction* compile(InputFile source)
     }
 
     ObjFunction* function = endCompiler();
-    freeScanner(&scanner_obj);
+    freeScanner(&parser.scanner);
     return parser.hadError ? NULL : function;
 }
 

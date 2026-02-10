@@ -7,5 +7,9 @@ FetchContent_Declare(
 )
 
 set(JANSSON_BUILD_DOCS OFF CACHE BOOL "Don't build Jansson docs" FORCE)
+set(JANSSON_WITHOUT_TESTS ON CACHE BOOL "Don't build Jansson tests" FORCE)
+set(JANSSON_EXAMPLES OFF CACHE BOOL "Don't build Jansson examples" FORCE)
 
 FetchContent_MakeAvailable(jansson)
+
+target_compile_options(jansson PRIVATE "-Wno-format")

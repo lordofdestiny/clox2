@@ -1,0 +1,31 @@
+class S {
+
+}
+
+var x = S();
+
+x.key = 1515;
+
+print "Has field: " + hasField(x , "baby");
+print "Has field: " + hasField(x , "key");
+
+setField(x, "key", 5);
+
+print getField(x, "key");
+
+print "Gonna sleep";
+sleepFor(2);
+print "I Woke up\n";
+
+print "Some long work:";
+
+var start = getTime();
+
+var pp = 0;
+for(var i = 0; i < 10000000; i+=1) {
+    pp += i;
+}
+
+var end = getTime();
+
+print "Elapsed: " + (end - start);

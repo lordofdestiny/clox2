@@ -1,6 +1,14 @@
 {
-    "library": "meta",
+    "library": "reflect",
     "functions": [
+        {
+            "export" : "hasField",
+            "args" : [
+                "Instance",
+                "String"
+            ],
+            "returns": "Bool"
+        },
         {
             "export": "getField",
             "args": [
@@ -15,6 +23,14 @@
                 "Instance",
                 "String",
                 "Value"
+            ],
+            "returns": "nil"
+        },
+        {
+            "export": "deleteField",
+            "args" : [
+                "Instance",
+                "String"
             ],
             "returns": "nil"
         }

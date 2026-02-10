@@ -1,11 +1,9 @@
 #ifndef __CLOX2_NATIVE_H__
 #define __CLOX2_NATIVE_H__
 
-#include "common.h"
-#include "value.h"
-#include "object.h"
-
-#define NATIVE_ERROR(msg) (OBJ_VAL((Obj*) copyString(msg, strlen(msg))))
+#include "clox/value.h"
+#include "clox/object.h"
+#include "clox/native.h"
 
 typedef struct {
     const char* name;
