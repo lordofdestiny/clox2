@@ -57,8 +57,8 @@ static void generateFunctionSignatures(FILE* file, NativeModuleDescriptor* modul
 
         fprintf(file, "%s %s(", returnTypeWrapperNames[function->returnType], function->export);
         for (size_t j = 0; j < function->argTypesCount; j++) {
-            fprintf(file, "%s%s", argTypeCastNames[function->argTypes[j]].typeName, 
-                    j < function->argTypesCount - 1 ? ", " : "");
+            const char* sep = j < function->argTypesCount - 1 ? ", " : "";
+            fprintf(file, "%s%s", argTypeCastNames[function->argTypes[j]].typeName, sep);
         }
         fprintf(file, ");\n");
     }

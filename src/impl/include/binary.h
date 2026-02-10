@@ -9,5 +9,4 @@ CLOX_EXPORT void writeBinary(const char* source_file, ObjFunction* compiled, con
 
 CLOX_EXPORT ObjFunction* loadBinary(const char* path);
 
-
 #endif // __CLOX2_BINARY_H__

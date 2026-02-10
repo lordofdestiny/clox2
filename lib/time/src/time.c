@@ -1,8 +1,8 @@
-#include <clox/time/timelib.h>
-
 #include <time.h>
 
 #include <unistd.h>
+
+#include <clox/time/timelib.h>
 
 NumberResult getTime() {
     return (NumberResult) {

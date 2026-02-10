@@ -7,6 +7,7 @@
 
 #include "clox/value.h"
 #include "chunk.h"
+#include "common.h"
 #include "table.h"
 #include "object.h"
 #include "inputfile.h"
@@ -28,6 +29,14 @@ typedef struct {
     uint8_t handlerCount;
     ExceptionHandler handlerStack[MAX_HANDLER_FRAMES];
 } CallFrame;
+
+typedef void (*LibraryEventFn)(void);
+
+typedef struct {
+    void* handle;
+    LibraryEventFn onLoad;
+    LibraryEventFn onUnload;
+} NativeLibrary;
 
 typedef struct {
     CallFrame frames[FRAMES_MAX];
@@ -52,7 +61,7 @@ typedef struct {
     int exit_code;
 
     size_t nativeLibCount;
-    void** nativeLibHandles;
+    NativeLibrary* nativeLibHandles;
 } VM;
 
 typedef enum {

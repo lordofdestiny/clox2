@@ -114,8 +114,6 @@ static void addNativeMethod(
 
 typedef size_t (*GetCountFn)(void); 
 
-typedef void (*EventFn)(void); 
-
 typedef void (*RegisterFunctionsFn)(DefineNativeFunctionFn);
 
 #define DLIB_ERROR() fprintf(stderr, "dlib error at %s:%d in %s: %s\n", __FILE__, __LINE__, __func__, dlerror())
@@ -129,7 +127,14 @@ static int loadNativeLib(const char* lib) {
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wpedantic"
-    EventFn onLoadFn = (EventFn) dlsym(handle, "onLoad");
+    LibraryEventFn onLoadFn = (LibraryEventFn) dlsym(handle, "onLoad");
+    if (onLoadFn == NULL) {
+        dlclose(handle);
+        DLIB_ERROR();
+        exit(FAILED_LIB_LOAD);
+    }
+
+    LibraryEventFn onUnload = (LibraryEventFn) dlsym(handle, "onUnload");
     if (onLoadFn == NULL) {
         dlclose(handle);
         DLIB_ERROR();
@@ -146,14 +151,19 @@ static int loadNativeLib(const char* lib) {
 
     registerFunctions(defineNative);
     
-    void** handleArr = realloc(vm.nativeLibHandles, (vm.nativeLibCount + 1) * sizeof(void*));
+    size_t size = (vm.nativeLibCount + 1) * sizeof(*vm.nativeLibHandles);
+    NativeLibrary* handleArr = realloc(vm.nativeLibHandles, size);
     if (handleArr == NULL) {
         dlclose(handle);
         printf("Failed to load '%s' lib: out of memory x\n", lib);
         exit(FAILED_LIB_LOAD);
     }
     vm.nativeLibHandles = handleArr;
-    handleArr[vm.nativeLibCount++] = handle;
+    handleArr[vm.nativeLibCount++] = (NativeLibrary) {
+        .handle = handle,
+        .onLoad = onLoadFn,
+        .onUnload = onUnload
+    };
 
     onLoadFn();
 
@@ -217,8 +227,10 @@ void initVM() {
 
 void freeVM() {
     for (size_t i = 0; i < vm.nativeLibCount; i++) {
-        dlclose(vm.nativeLibHandles[i]);
+        vm.nativeLibHandles[i].onUnload();
+        dlclose(vm.nativeLibHandles[i].handle);
     }
+    free(vm.nativeLibHandles);
     freeTable(&vm.globals);
     freeTable(&vm.strings);
     vm.initString = NULL;

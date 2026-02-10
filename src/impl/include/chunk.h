@@ -1,7 +1,6 @@
 #ifndef __CLOX2_CHUNK_H__
 #define __CLOX2_CHUNK_H__
 
-#include "common.h"
 #include "clox/value.h"
 #include "valarray.h"
 
