@@ -74,7 +74,7 @@ static ObjClass* getGlobalClass(const char* name) {
 #define FAILED_LIB_LOAD 69
 
 
-static void defineNative(const char* name, const int arity, const NativeFn function) {
+static bool defineNative(const char* name, const int arity, const NativeFn function) {
     push(OBJ_VAL((Obj *) copyString(name, (int) strlen(name))));
     push(OBJ_VAL((Obj *) newNative(function, arity)));
     if (tableGet(&vm.globals, AS_STRING(vm.stack[0]), NULL)) {
@@ -86,6 +86,7 @@ static void defineNative(const char* name, const int arity, const NativeFn funct
     tableSet(&vm.globals, AS_STRING(vm.stack[0]), vm.stack[1]);
     pop();
     pop();
+    return true;
 }
 
 static ObjClass* nativeClass(const char* name) {
@@ -115,48 +116,35 @@ typedef size_t (*GetCountFn)(void);
 
 typedef void (*EventFn)(void); 
 
-typedef void (*GetFunctionFn)(size_t i, size_t* arity, char** name, NativeFn* fn);
+typedef void (*RegisterFunctionsFn)(DefineNativeFunctionFn);
+
+#define DLIB_ERROR() fprintf(stderr, "dlib error at %s:%d in %s: %s\n", __FILE__, __LINE__, __func__, dlerror())
 
 static int loadNativeLib(const char* lib) {
     void* handle = dlopen(lib, RTLD_NOW);
     if (handle == NULL) {
-        fprintf(stderr, "dlib error: %s\n", dlerror());
+        DLIB_ERROR();
         exit(FAILED_LIB_LOAD);
     }
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wpedantic"
-    GetCountFn fnCountFn = (GetCountFn) dlsym(handle, "moduleFunctionCount");
-    if (fnCountFn == NULL) {
-        dlclose(handle);
-        fprintf(stderr, "dlib error: %s\n", dlerror());
-        exit(FAILED_LIB_LOAD);
-    }
-
     EventFn onLoadFn = (EventFn) dlsym(handle, "onLoad");
-    if (fnCountFn == NULL) {
+    if (onLoadFn == NULL) {
         dlclose(handle);
-        fprintf(stderr, "dlib error: %s\n", dlerror());
+        DLIB_ERROR();
         exit(FAILED_LIB_LOAD);
     }
     
-    GetFunctionFn getFnFn = (GetFunctionFn) dlsym(handle, "registerFunction");
-    if (fnCountFn == NULL) {
+    RegisterFunctionsFn registerFunctions = (RegisterFunctionsFn) dlsym(handle, "registerFunctions");
+    if (registerFunctions == NULL) {
         dlclose(handle);
-        fprintf(stderr, "dlib error: %s\n", dlerror());
+        DLIB_ERROR();
         exit(FAILED_LIB_LOAD);
     }
 #pragma GCC diagnostic pop
 
-    size_t fnCount = fnCountFn();
-    for (size_t i = 0; i < fnCount; i++) {
-        size_t arity;
-        char* name;
-        NativeFn fn;
-        getFnFn(i, &arity, &name, &fn);
-        printf("%s: loading function %s...\n", lib, name);
-        defineNative(name, arity, fn);
-    }
+    registerFunctions(defineNative);
     
     void** handleArr = realloc(vm.nativeLibHandles, (vm.nativeLibCount + 1) * sizeof(void*));
     if (handleArr == NULL) {
@@ -173,8 +161,10 @@ static int loadNativeLib(const char* lib) {
 }
 
 static void initNative() {
-    loadNativeLib("libcloxreflect.so");
-    loadNativeLib("libcloxtime.so");
+    static const char* libs[] = {"libcloxreflect.so", "libcloxtime.so"};
+    for (size_t i = 0; i < sizeof(libs)/sizeof(libs[0]); i++) {
+        loadNativeLib(libs[i]);
+    }
 
     // Define native methods
     for (int i = 0; nativeMethods[i].name != NULL; i++) {

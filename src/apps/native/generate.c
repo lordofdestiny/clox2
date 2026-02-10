@@ -160,33 +160,34 @@ static void generateFunctionWrapper(FILE* file, NativeFunctionDescriptor* functi
 }
 
 static void generateRegistrationFunctions(FILE* file, NativeModuleDescriptor* moduleDescriptor) {
-    fprintf(file,
-    "CLOX_EXPORT size_t moduleFunctionCount() {\n"
-    "    return %zu;\n"
-    "}\n\n",
-    moduleDescriptor->functionCount);
-
-    fprintf(file,
+    fprintf(file,""
     "CLOX_EXPORT size_t moduleClassCount() {\n"
     "    return 0;\n"
     "}\n\n");
 
-    fprintf(file,
-    "CLOX_EXPORT void registerFunction(size_t i, size_t* arity, char** name, NativeFn* fn) {\n"
-    "    auto fnd = &functionMap[i];\n"
-    "    *arity = fnd->arity;\n"
-    "    *name = fnd->name;\n"
-    "    *fn = fnd->fn;\n"
-    "}\n\n");
+    fprintf(file,""
+    "CLOX_EXPORT void registerFunctions(DefineNativeFunctionFn registerFn) {\n"
+    "    for (size_t i = 0; i < %zu; i++) {\n"
+    "       auto fnd = &functionMap[i];\n"
+    "       registerFn(fnd->name, fnd->arity, fnd->fn);\n"
+    "    }\n"
+    "}\n\n", 
+    moduleDescriptor->functionCount);
 }
 
 static void generateFunctionMap(FILE* file, NativeModuleDescriptor* moduleDescriptor) {
-    fprintf(file, "static struct {char* name; int arity; NativeFn fn; } functionMap[] = {\n");
+    fprintf(file, ""
+        "static struct {char* name; int arity; NativeFn fn; } functionMap[] = {\n"
+    );
     for(size_t i = 0; i < moduleDescriptor->functionCount; i++) {
         NativeFunctionDescriptor* fn = &moduleDescriptor->functions[i];
-        fprintf(file, "    {\"%s\", %zu, %sNativeWrapper},\n",  fn->name, fn->argTypesCount, fn->name);
+        fprintf(file, ""
+        "    {\"%s\", %zu, %sNativeWrapper},\n",  fn->name, fn->argTypesCount, fn->name
+        );
     }
-    fprintf(file,"};\n\n");
+    fprintf(file, ""
+        "};\n\n"
+    );
 }
 
 void generateModuleWrapperSource(FILE* file, const char* header, NativeModuleDescriptor* moduleDescriptor) {

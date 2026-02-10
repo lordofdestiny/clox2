@@ -6,6 +6,7 @@
 
 #include <clox_export.h>
 
+#include "clox/native.h"
 #include "clox/value.h"
 
 #define OBJ_TYPE(value) (AS_OBJ(value)->type)
@@ -97,7 +98,6 @@ CLOX_EXPORT ObjInstance* newInstance(ObjClass* klass);
 
 CLOX_EXPORT ObjInstance* newPrimitive(Value value, ObjClass* klass);
 
-typedef bool (*NativeFn)(int argCount, Value* implicit, Value* args);
 CLOX_EXPORT ObjNative* newNative(NativeFn function, int arity);
 
 CLOX_EXPORT ObjString* takeString(char* chars, int length);
