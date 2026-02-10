@@ -28,6 +28,7 @@ typedef enum {
 
 typedef struct {
     char* name;
+    char* export;
     NativeFunctionArgType returnType;
     size_t argTypesCount;
     NativeFunctionArgType* argTypes;

@@ -2,11 +2,13 @@
     "library": "time",
     "functions": [
         {
+            "name" : "clock",
             "export" : "getTime",
             "args": [],
             "returns": "Number"
         },
         {
+            "name" : "sleep",
             "export": "sleepFor",
             "args" : ["Number"],
             "returns": "Bool"

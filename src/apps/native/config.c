@@ -2,7 +2,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-
 #define assertm(expression, message) assert((expression) && (message))
 
 #include <jansson.h>
@@ -11,6 +10,7 @@
 
 static void freeNativeFunctionDescriptor(NativeFunctionDescriptor* functionDescriptor) {
     free(functionDescriptor->name);
+    free(functionDescriptor->export);
     free(functionDescriptor->argTypes);
 }
 
@@ -117,7 +117,7 @@ static int verifyFunctionsDescriptor(const char* filename, size_t index, json_t*
         return NATIVE_MODULE_LOAD_ERROR_FIELD_TYPE;
     }
 
-    json_t *exportField, *argsField, *returnsField;
+    json_t *nameField, *exportField, *argsField, *returnsField;
     exportField = json_object_get(root, "export");
     if(exportField == NULL) {
         STORE_ERROR(ERROR_FORMAT_FUNCTION_FIELD_MISSING, filename, index, "export");
@@ -125,6 +125,12 @@ static int verifyFunctionsDescriptor(const char* filename, size_t index, json_t*
     }
     if(!json_is_string(exportField)) {
         STORE_ERROR(ERROR_FORMAT_FUNCTION_FIELD_TYPE, filename, index, "export", "string", get_json_typename(exportField));
+        return NATIVE_MODULE_LOAD_ERROR_FIELD_TYPE;
+    }
+
+    nameField = json_object_get(root, "name");
+    if(nameField != NULL && !json_is_string(nameField)) {
+        STORE_ERROR(ERROR_FORMAT_FUNCTION_FIELD_TYPE, filename, index, "name", "string", get_json_typename(nameField));
         return NATIVE_MODULE_LOAD_ERROR_FIELD_TYPE;
     }
 
@@ -220,10 +226,17 @@ static int loadNativeModuleDescriptorImpl(const char* filename, json_t* root, Na
     bool failedAlloc = false;
     json_array_foreach(functionsField, index, functionObject) {
         json_t *exportField = json_object_get(functionObject, "export");
+        json_t *nameField = json_object_get(functionObject, "name");
         json_t *returnsField = json_object_get(functionObject, "returns");
         json_t *argsField = json_object_get(functionObject, "args");
 
-        const char* functionName = json_string_value(exportField);
+        const char* exportName = json_string_value(exportField);
+        const char* functionName;
+        if (nameField == NULL) {
+            functionName = exportName;
+        } else {
+            functionName = json_string_value(nameField);
+        }
         const char* returnType = json_string_value(returnsField);
         size_t argsSize = json_array_size(argsField);
         NativeFunctionArgType* argTypes = calloc(argsSize, sizeof(NativeFunctionArgType));
@@ -239,13 +252,21 @@ static int loadNativeModuleDescriptorImpl(const char* filename, json_t* root, Na
             argTypes[argIndex] = decodeArgType(typeName);
         }
 
+        char* exportNameCopy = strdup(exportName);
+        if (exportNameCopy == NULL) {
+            failedAlloc = true;
+            break;
+        }
+
         char* functionNameCopy = strdup(functionName);
         if (functionNameCopy == NULL) {
             failedAlloc = true;
             break;
         }
+
         functions[index] = (NativeFunctionDescriptor) {
             .name = functionNameCopy,
+            .export = exportNameCopy,
             .returnType = decodeArgType(returnType),
             .argTypesCount = argsSize,
             .argTypes = argTypes
@@ -304,7 +325,7 @@ int loadNativeModuleDescriptor(const char* filename, NativeModuleDescriptor* mod
 
 int formatFunctionSignature(char* buffer, int cap, NativeFunctionDescriptor* function) {
     int bufferSize = 0;
-    bufferSize += snprintf(buffer, cap, "fun %s(", function->name);
+    bufferSize += snprintf(buffer, cap, "fun %s(", function->export);
     if (bufferSize >= cap) {
         return bufferSize;
     }
@@ -328,7 +349,7 @@ int formatFunctionSignature(char* buffer, int cap, NativeFunctionDescriptor* fun
 
 int printFunctionSignature(FILE* file, NativeFunctionDescriptor* function) {
     int bufferSize = 0;
-    bufferSize += fprintf(file, "fun %s(", function->name);
+    bufferSize += fprintf(file, "fun %s(", function->export);
     for(size_t i = 0; i < function->argTypesCount; i++) {
         bufferSize += fprintf(
             file,

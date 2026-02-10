@@ -14,18 +14,18 @@ setField(x, "key", 5);
 print getField(x, "key");
 
 print "Gonna sleep";
-sleepFor(2);
+sleep(2);
 print "I Woke up\n";
 
 print "Some long work:";
 
-var start = getTime();
+var start = clock();
 
 var pp = 0;
 for(var i = 0; i < 10000000; i+=1) {
     pp += i;
 }
 
-var end = getTime();
+var end = clock();
 
 print "Elapsed: " + (end - start);

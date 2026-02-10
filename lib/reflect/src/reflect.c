@@ -1,10 +1,4 @@
-#include <stdio.h>
-
 #include <clox/reflect/reflectlib.h>
-
-void onLoad() {
-    printf("REFLECTION LIBRARY LOADED\n");
-}
 
 BoolResult hasField(ObjInstance* instance, ObjString* key) {
     return (BoolResult) {
