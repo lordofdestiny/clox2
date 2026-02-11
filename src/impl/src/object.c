@@ -11,8 +11,14 @@
 #include "vm.h"
 #include "table.h"
 
-#define ALLOCATE_OBJ(type, objectType) \
-    (type*) allocateObject(sizeof(type), objectType)
+#define IS_BUILTIN_OBJ_TYPE(objectType) (objectType > OBJ_NONE && objectType < OBJ_END)
+
+#define ALLOCATE_OBJ(type, objectType, ...) \
+    (type*) allocateObject(sizeof(type), objectType, \
+        __VA_OPT__(IS_BUILTIN_OBJ_TYPE(objectType)) \
+        __VA_OPT__(?)    &vtList[objectType] \
+        __VA_OPT__(: __VA_ARGS__) \
+    )
 
 static bool callNonCallable(Obj*, int);
 static void blackenNoOp(Obj*);
@@ -109,11 +115,11 @@ static ObjVT vtList[] = {
     },
 };
 
-static Obj* allocateObject(const size_t size, const ObjType type) {
+static Obj* allocateObject(const size_t size, const ObjType type, ObjVT* vtp) {
     Obj* object = (Obj*) reallocate(NULL, 0, size);
     object->type = type;
     object->isMarked = false;
-    object->vtp = &vtList[type];
+    object->vtp = vtp;
     object->next = vm.objects;
     vm.objects = object;
     return object;

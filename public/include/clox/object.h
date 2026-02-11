@@ -43,9 +43,11 @@
     ENUM_OBJTYPE_DEF(UPVALUE)
 
 typedef enum {
+    OBJ_NONE,
 #define ENUM_OBJTYPE_DEF(name) OBJ_##name,
 OBJECT_TYPE_ENUM_LIST
 #undef ENUM_OBJTYPE_DEF
+    OBJ_LAST
 } ObjType;
 
 static inline const char* objTypeToString(const ObjType type) {
