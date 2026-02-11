@@ -33,6 +33,7 @@ typedef struct {
 typedef void (*LibraryEventFn)(void);
 
 typedef struct {
+    const char* name;
     void* handle;
     LibraryEventFn onLoad;
     LibraryEventFn onUnload;

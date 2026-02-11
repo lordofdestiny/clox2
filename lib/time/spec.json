@@ -1,5 +1,5 @@
 {
-    "library": "time",
+    "library": "cloxtime",
     "functions": [
         {
             "name" : "clock",

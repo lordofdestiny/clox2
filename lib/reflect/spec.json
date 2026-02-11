@@ -1,5 +1,5 @@
 {
-    "library": "reflect",
+    "library": "cloxreflect",
     "functions": [
         {
             "export" : "hasField",

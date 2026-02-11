@@ -121,60 +121,56 @@ static void addNativeMethod(
 
 typedef size_t (*GetCountFn)(void); 
 
-typedef void (*RegisterFunctionsFn)(DefineNativeFunctionFn);
+typedef size_t (*RegisterFunctionsFn)(DefineNativeFunctionFn);
 
-#define DLIB_ERROR() fprintf(stderr, "dlib error: %s\n", dlerror())
-
-static int loadNativeLib(const char* lib) {
-    void* handle = dlopen(lib, RTLD_NOW);
-    if (handle == NULL) {
-        DLIB_ERROR();
-        exit(FAILED_LIB_LOAD);
-    }
+static int loadNativeLib(const char* libPath) {
+    void* handle = dlopen(libPath, RTLD_NOW);
+    if (handle == NULL) goto load_error_msg;
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wpedantic"
-    LibraryEventFn onLoadFn = (LibraryEventFn) dlsym(handle, "onLoad");
-    if (onLoadFn == NULL) {
-        dlclose(handle);
-        DLIB_ERROR();
-        exit(FAILED_LIB_LOAD);
-    }
+    const char* const libraryName = dlsym(handle,"CLOX_MODULE_NAME");
+    if (libraryName == NULL) goto load_error_msg;
 
+    LibraryEventFn onLoadFn = (LibraryEventFn) dlsym(handle, "onLoad");
+    if (onLoadFn == NULL) goto load_error_msg;
+    
     LibraryEventFn onUnload = (LibraryEventFn) dlsym(handle, "onUnload");
-    if (onLoadFn == NULL) {
-        dlclose(handle);
-        DLIB_ERROR();
-        exit(FAILED_LIB_LOAD);
-    }
+    if (onUnload == NULL) goto load_error_msg;
     
     RegisterFunctionsFn registerFunctions = (RegisterFunctionsFn) dlsym(handle, "registerFunctions");
-    if (registerFunctions == NULL) {
-        dlclose(handle);
-        DLIB_ERROR();
-        exit(FAILED_LIB_LOAD);
-    }
+    if (registerFunctions == NULL) goto load_error_msg;
 #pragma GCC diagnostic pop
 
-    registerFunctions(defineNative);
+    size_t count = registerFunctions(defineNative);
     
-    size_t size = (vm.nativeLibCount + 1) * sizeof(*vm.nativeLibHandles);
-    NativeLibrary* handleArr = realloc(vm.nativeLibHandles, size);
+    size_t newSize = (vm.nativeLibCount + 1) * sizeof(*vm.nativeLibHandles);
+    NativeLibrary* handleArr = realloc(vm.nativeLibHandles, newSize);
     if (handleArr == NULL) {
-        dlclose(handle);
-        printf("Failed to load '%s' lib: out of memory x\n", lib);
-        exit(FAILED_LIB_LOAD);
+        fprintf(stderr, "dlib error: out of memory while loading '%s' (%s)\n", libraryName, libPath);
+        goto load_error;
     }
+
     vm.nativeLibHandles = handleArr;
-    handleArr[vm.nativeLibCount++] = (NativeLibrary) {
+    NativeLibrary lib = {
+        .name = libraryName,
         .handle = handle,
         .onLoad = onLoadFn,
         .onUnload = onUnload
     };
 
+    handleArr[vm.nativeLibCount++] = lib;
+
     onLoadFn();
+    fprintf(stdout, "Dynamic library '%s' (%s) loaded. Fucntions: %zu\n", lib.name, libPath, count);
 
     return 0;
+
+load_error_msg:
+    fprintf(stderr, "dlib error: %s\n", dlerror());
+load_error:
+    if (handle != NULL) dlclose(handle);
+    exit(FAILED_LIB_LOAD);
 }
 
 static void initNative() {

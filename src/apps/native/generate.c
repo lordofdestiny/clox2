@@ -84,6 +84,8 @@ void generateModuleWrapperHeader(FILE* file, NativeModuleDescriptor* moduleDescr
     
     fprintf(file, "#include <clox/clox.h>\n\n");
     
+    fprintf(file, "extern const char CLOX_MODULE_NAME[];\n\n");
+
     generateFunctionSignatures(file, moduleDescriptor); 
 
     fprintf(file, "#endif // __CLOX_NATIVE_MODULE_%s_H__\n", moduleDescriptor->name);
@@ -176,12 +178,14 @@ static void generateRegistrationFunctions(FILE* file, NativeModuleDescriptor* mo
     "}\n\n");
 
     fprintf(file,""
-    "CLOX_EXPORT void registerFunctions(DefineNativeFunctionFn registerFn) {\n"
+    "CLOX_EXPORT size_t registerFunctions(DefineNativeFunctionFn registerFn) {\n"
     "    for (size_t i = 0; i < %zu; i++) {\n"
     "       auto fnd = &functionMap[i];\n"
     "       registerFn(fnd->name, fnd->arity, fnd->fn);\n"
     "    }\n"
+    "    return %zu;\n"
     "}\n\n", 
+    moduleDescriptor->functionCount,
     moduleDescriptor->functionCount);
 }
 
@@ -210,6 +214,8 @@ void generateModuleWrapperSource(FILE* file, const char* header, NativeModuleDes
     fprintf(file, "// Auto-generated source for native module: %s\n", moduleDescriptor->name);
     fprintf(file, "#include <stddef.h>\n\n");
     fprintf(file, "#include \"%s\"\n\n", header);
+
+    fprintf(file, "const char CLOX_MODULE_NAME[] = \"%s\";\n\n", moduleDescriptor->name);
 
     for(size_t i = 0; i < moduleDescriptor->functionCount; i++) {
         generateFunctionWrapper(file, &moduleDescriptor->functions[i]);
