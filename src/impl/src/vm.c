@@ -176,11 +176,7 @@ static void initNative() {
         loadNativeLib(libs[i]);
     }
 
-    // Define native methods
-    for (int i = 0; nativeMethods[i].name != NULL; i++) {
-        const NativeMethodDef* def = &nativeMethods[i];
-        defineNative(def->name, def->arity, def->function);
-    }
+    defineNative("exit", -1, exitNative);
 
     ObjClass* exception = nativeClass("Exception");
     addNativeMethod(exception, "init", initExceptionNative, -1);
@@ -696,11 +692,10 @@ static InterpretResult run() {
         }
         case OP_CONSTANT: push(READ_CONSTANT());
             break;
-        case OP_CONSTANT_ZERO: push(NUMBER_VAL(0));
-            break;
-        case OP_CONSTANT_ONE: push(NUMBER_VAL(1));
-            break;
-        case OP_CONSTANT_TWO: push(NUMBER_VAL(2));
+        case OP_CONSTANT_ZERO:
+        case OP_CONSTANT_ONE:
+        case OP_CONSTANT_TWO:
+            push(NUMBER_VAL(instruction - OP_CONSTANT_ZERO));
             break;
         case OP_NIL: push(NIL_VAL);
             break;
@@ -901,12 +896,12 @@ static InterpretResult run() {
         case OP_LESS: BINARY_OP(BOOL_VAL, <);
             break;
         case OP_ADD: {
-            /*
-             * TODO: instead of coercing primitives into strings,
+            /**
+             *  TODO: instead of coercing primitives into strings,
              *  which only allows for them to be concatenated with strings,
              *  call a version of "toString" for a value, before concatenating
              *  it with a string
-             * */
+             **/
             unpackPrimitive(0);
             unpackPrimitive(1);
             if (IS_STRING(peek(0)) && IS_STRING(peek(1))) {

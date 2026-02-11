@@ -10,7 +10,7 @@
 #include "object.h"
 #include "vm.h"
 
-static bool exitNative(int argCount, Value* implicit, Value* args) {
+bool exitNative(int argCount, Value* implicit, Value* args) {
     if (argCount > 1) {
         *implicit = NATIVE_ERROR("Exit takes zero arguments, or one argument that is a number");
         return false;
@@ -27,11 +27,6 @@ static bool exitNative(int argCount, Value* implicit, Value* args) {
     vm.exit_code = (int) AS_NUMBER(args[0]);
     longjmp(vm.exit_state, 1);
 }
-
-NativeMethodDef nativeMethods[] = {
-    {"exit", -1, exitNative},
-    {NULL, 0, NULL}
-};
 
 bool initExceptionNative(int argCount, Value* implicit, Value* args) {
     if (argCount > 1) {

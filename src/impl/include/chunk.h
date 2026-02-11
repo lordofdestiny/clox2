@@ -65,6 +65,9 @@ typedef enum {
     OP_LAST
 } OpCode;
 
+static_assert(OP_CONSTANT_ONE == OP_CONSTANT_ZERO + 1);
+static_assert(OP_CONSTANT_TWO == OP_CONSTANT_ONE + 1);
+
 typedef struct {
     int offset;
     int line;

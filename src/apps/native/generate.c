@@ -1,4 +1,5 @@
 // TODO Output #line directives
+// TODO Generate code for unpacking primitives
 #include "generate.h"
 
 static const char* returnTypeWrapperNames[] = {
