@@ -8,6 +8,7 @@
 
 #include "clox/native.h"
 #include "clox/value.h"
+#include "clox/valarray.h"
 
 #define OBJ_TYPE(value) (AS_OBJ(value)->type)
 
@@ -126,6 +127,11 @@ static inline bool isObjType(const Value value, const ObjType type) {
 
 #include "table.h"
 
+typedef struct ObjArray{
+    Obj obj;
+    ValueArray array;
+} ObjArray;
+
 typedef struct ObjClass {
     Obj obj;
     ObjString* name;
@@ -141,5 +147,13 @@ typedef struct ObjInstance {
     ObjClass* klass;
     Table fields;
 } ObjInstance;
+
+typedef struct ObjString {
+    Obj obj;
+    int length;
+    uint32_t hash;
+    char* chars;
+} ObjString;
+
 
 #endif // __CLOX_LIB_OBJECT_H__

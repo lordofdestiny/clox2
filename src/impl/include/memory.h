@@ -2,7 +2,7 @@
 #define __CLOX2_MEMORY_H__
 
 #include "clox/value.h"
-#include "valarray.h"
+#include "clox/valarray.h"
 
 #define ALLOCATE(type, count) \
     (type*) reallocate(NULL, 0, sizeof(type)*(count))

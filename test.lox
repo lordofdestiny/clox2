@@ -1,10 +1,20 @@
 class S {
-
+    init() {
+        this.mimimi = 111;
+        this.ab = 1;
+        this.ac = 1;
+        this.abd = 1;
+        this.akalakula = 51;
+    }
 }
+
 
 var x = S();
 
 x.key = 1515;
+
+var keys = fieldNames(x);
+print keys;
 
 print "Has field: " + hasField(x , "baby");
 print "Has field: " + hasField(x , "key");
@@ -29,3 +39,5 @@ for(var i = 0; i < 10000000; i+=1) {
 var end = clock();
 
 print "Elapsed: " + (end - start);
+
+exit(11);

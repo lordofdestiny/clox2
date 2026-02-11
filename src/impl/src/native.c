@@ -3,31 +3,11 @@
 #include <float.h>
 #include <math.h>
 #include <ctype.h>
-#include <setjmp.h>
 
 #include "clox/vm.h"
 #include "native.h"
 #include "memory.h"
 #include "object.h"
-#include "vm.h"
-
-bool exitNative(int argCount, Value* implicit, Value* args) {
-    if (argCount > 1) {
-        *implicit = NATIVE_ERROR("Exit takes zero arguments, or one argument that is a number");
-        return false;
-    }
-    if (argCount == 0) {
-        vm.exit_code = 0;
-        longjmp(vm.exit_state, 1);
-    }
-    if (!IS_NUMBER(args[0])) {
-        *implicit = NATIVE_ERROR("Exit code must be a number.");
-        return false;
-    }
-
-    vm.exit_code = (int) AS_NUMBER(args[0]);
-    longjmp(vm.exit_state, 1);
-}
 
 bool initExceptionNative(int argCount, Value* implicit, Value* args) {
     if (argCount > 1) {

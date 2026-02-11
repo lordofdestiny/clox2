@@ -32,6 +32,7 @@ typedef struct {
     NativeFunctionArgType returnType;
     size_t argTypesCount;
     NativeFunctionArgType* argTypes;
+    bool wrapped;
 } NativeFunctionDescriptor;
 
 typedef struct {

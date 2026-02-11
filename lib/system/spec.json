@@ -1,0 +1,10 @@
+{
+    "library": "spec",
+    "functions": [
+        {
+            "name" : "exit",
+            "export" : "exitNative",
+            "wrap" : false
+        }
+    ]
+}

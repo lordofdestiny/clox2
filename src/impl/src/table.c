@@ -1,3 +1,4 @@
+#include <assert.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -164,4 +165,45 @@ void markTable(Table* table) {
         markObject((Obj*) entry->key);
         markValue(entry->value);
     }
+}
+
+TableIterator newTableIterator(Table* table) {
+    TableIterator it = {
+        .table = table,
+        .index = 0,
+        .done = false
+    };
+    while(table->entries[it.index].key == NULL) {
+        advanceTableIterator(&it);
+    }
+    return it;
+}
+
+void advanceTableIterator(TableIterator* it) {
+    Entry* entries = it->table->entries;
+    int index = it->index + 1;
+    while (!it->done && index < it->table->capacity) {
+        Entry* entry = &entries[index];
+
+        if (entry->key != NULL) {
+            it->index = index;
+            return;
+        } 
+        index = (index + 1) & (it->table->capacity - 1);
+    }
+
+    it->done = true;
+}
+
+ObjString* getKeyTableIterator(TableIterator* it) {
+    Entry* entry = &it->table->entries[it->index];
+    ObjString* string = entry->key;
+    assert(string != NULL);
+    return string;
+}
+
+Value getValueTableIterator(TableIterator* it) {
+    ObjString* key = getKeyTableIterator(it);
+    assert(key != NULL);
+    return it->table->entries[it->index].value;
 }

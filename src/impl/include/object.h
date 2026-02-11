@@ -24,11 +24,6 @@ typedef struct ObjVT {
     PrintFn print;
 } ObjVT;
 
-typedef struct ObjArray{
-    Obj obj;
-    ValueArray array;
-} ObjArray;
-
 typedef struct ObjFunction {
     Obj obj;
     int arity;
@@ -56,13 +51,6 @@ typedef struct ObjNative {
     int arity;
     NativeFn function;
 } ObjNative;
-
-typedef struct ObjString {
-    Obj obj;
-    int length;
-    uint32_t hash;
-    char* chars;
-} ObjString;
 
 typedef struct ObjBoundMethod {
     Obj obj;

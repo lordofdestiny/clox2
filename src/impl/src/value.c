@@ -1,8 +1,8 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "object.h"
 #include "clox/value.h"
+#include "clox/object.h"
 #include "memory.h"
 
 bool valuesEqual(Value a, Value b) {

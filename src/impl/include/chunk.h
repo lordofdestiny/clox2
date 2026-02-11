@@ -2,7 +2,7 @@
 #define __CLOX2_CHUNK_H__
 
 #include "clox/value.h"
-#include "valarray.h"
+#include "clox/valarray.h"
 
 #define OPCODE_ENUM_LIST \
     ENUM_OPCODE_DEF(OP_ARRAY) \

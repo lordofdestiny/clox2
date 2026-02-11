@@ -22,6 +22,12 @@ typedef struct {
     Entry* entries;
 } Table;
 
+typedef struct {
+    Table* table;
+    int index;
+    bool done;
+} TableIterator;
+
 void initTable(Table* table);
 
 void freeTable(Table* table);
@@ -47,5 +53,13 @@ CLOX_EXPORT ObjString* tableFindOrAddString(
 CLOX_EXPORT void tableRemoveWhite(Table* table);
 
 CLOX_EXPORT void markTable(Table* table);
+
+CLOX_EXPORT TableIterator newTableIterator(Table* table);
+
+CLOX_EXPORT void advanceTableIterator(TableIterator* it);
+
+CLOX_EXPORT ObjString* getKeyTableIterator(TableIterator* it);
+
+CLOX_EXPORT Value getValueTableIterator(TableIterator* it);
 
 #endif //__CLOX2_TABLE_H__

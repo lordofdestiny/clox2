@@ -1,3 +1,5 @@
+#include <assert.h>
+
 #include <clox/reflect/reflectlib.h>
 
 BoolResult hasField(ObjInstance* instance, ObjString* key) {
@@ -37,3 +39,23 @@ NilResult deleteField(ObjInstance* instance, ObjString* key) {
         .value = NIL_VAL
     };
 }
+
+ArrayResult fieldNames(ObjInstance* instance) {
+    ObjArray* arr = newArray();
+    PUSH_OBJ(arr);
+
+    for(auto it = newTableIterator(&instance->fields);
+        !it.done;
+        advanceTableIterator(&it)
+    ) {
+        ObjString* key = getKeyTableIterator(&it);
+        writeValueArray(&arr->array, OBJ_VAL((Obj*) key));
+    }
+
+    pop();
+    return (ArrayResult) {
+        .success = true,
+        .value = arr
+    };
+}
+

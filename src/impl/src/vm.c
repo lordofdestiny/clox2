@@ -22,8 +22,14 @@
 #endif
 
 VM vm;
-CLOX_EXPORT const size_t* VM_MEMORY_USAGE = &vm.bytesAllocated;
 
+[[noreturn]]
+__attribute__((noreturn))
+void terminate(int code) {
+    vm.exit_code = code;
+    longjmp(vm.exit_state, 1);
+    __builtin_unreachable();
+}
 
 static void resetStack() {
     vm.stackTop = vm.stack;
@@ -117,7 +123,7 @@ typedef size_t (*GetCountFn)(void);
 
 typedef void (*RegisterFunctionsFn)(DefineNativeFunctionFn);
 
-#define DLIB_ERROR() fprintf(stderr, "dlib error at %s:%d in %s: %s\n", __FILE__, __LINE__, __func__, dlerror())
+#define DLIB_ERROR() fprintf(stderr, "dlib error: %s\n", dlerror())
 
 static int loadNativeLib(const char* lib) {
     void* handle = dlopen(lib, RTLD_NOW);
@@ -172,12 +178,10 @@ static int loadNativeLib(const char* lib) {
 }
 
 static void initNative() {
-    static const char* libs[] = {"libcloxreflect.so", "libcloxtime.so"};
+    static const char* libs[] = {"libcloxreflect.so", "libcloxtime.so", "libcloxsystem.so"};
     for (size_t i = 0; i < sizeof(libs)/sizeof(libs[0]); i++) {
         loadNativeLib(libs[i]);
     }
-
-    defineNative("exit", -1, exitNative);
 
     ObjClass* exception = nativeClass("Exception");
     addNativeMethod(exception, "init", initExceptionNative, -1);

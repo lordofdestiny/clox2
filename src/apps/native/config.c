@@ -117,7 +117,7 @@ static int verifyFunctionsDescriptor(const char* filename, size_t index, json_t*
         return NATIVE_MODULE_LOAD_ERROR_FIELD_TYPE;
     }
 
-    json_t *nameField, *exportField, *argsField, *returnsField;
+    json_t *nameField, *exportField, *argsField, *returnsField, *wrappedField;
     exportField = json_object_get(root, "export");
     if(exportField == NULL) {
         STORE_ERROR(ERROR_FORMAT_FUNCTION_FIELD_MISSING, filename, index, "export");
@@ -132,6 +132,16 @@ static int verifyFunctionsDescriptor(const char* filename, size_t index, json_t*
     if(nameField != NULL && !json_is_string(nameField)) {
         STORE_ERROR(ERROR_FORMAT_FUNCTION_FIELD_TYPE, filename, index, "name", "string", get_json_typename(nameField));
         return NATIVE_MODULE_LOAD_ERROR_FIELD_TYPE;
+    }
+
+    wrappedField = json_object_get(root, "wrap");
+    if(wrappedField != NULL && !json_is_boolean(wrappedField)) {
+        STORE_ERROR(ERROR_FORMAT_FUNCTION_FIELD_TYPE, filename, index, "wrap", "boolean", get_json_typename(nameField));
+        return NATIVE_MODULE_LOAD_ERROR_FIELD_TYPE;
+    }
+
+    if (wrappedField != NULL && !json_boolean_value(wrappedField)) {
+        return NATIVE_MODULE_LOAD_SUCCESS;
     }
 
     returnsField = json_object_get(root, "returns");
@@ -229,6 +239,7 @@ static int loadNativeModuleDescriptorImpl(const char* filename, json_t* root, Na
         json_t *nameField = json_object_get(functionObject, "name");
         json_t *returnsField = json_object_get(functionObject, "returns");
         json_t *argsField = json_object_get(functionObject, "args");
+        json_t *wrapField = json_object_get(functionObject, "wrap");
 
         const char* exportName = json_string_value(exportField);
         const char* functionName;
@@ -237,19 +248,31 @@ static int loadNativeModuleDescriptorImpl(const char* filename, json_t* root, Na
         } else {
             functionName = json_string_value(nameField);
         }
-        const char* returnType = json_string_value(returnsField);
-        size_t argsSize = json_array_size(argsField);
-        NativeFunctionArgType* argTypes = calloc(argsSize, sizeof(NativeFunctionArgType));
-        if (argTypes == NULL) {
-            failedAlloc = true;
-            break;
+        bool wrapFunction = true;
+        if (wrapField != NULL) {
+            wrapFunction = json_boolean_value(wrapField);
         }
-
-        size_t argIndex;
-        json_t* argValue;
-        json_array_foreach(argsField, argIndex, argValue) {
-            const char* const typeName = json_string_value(argValue);
-            argTypes[argIndex] = decodeArgType(typeName);
+        
+        NativeFunctionArgType returnType = NATIVE_FUNCTION_TYPE_NONE;
+        NativeFunctionArgType* argTypes = NULL;
+        size_t argsSize = 0;
+        if (wrapFunction) {
+            const char* returnTypeStr = json_string_value(returnsField);
+            returnType = decodeArgType(returnTypeStr);
+            
+            argsSize = json_array_size(argsField);
+            argTypes = calloc(argsSize, sizeof(NativeFunctionArgType));
+            if (argTypes == NULL) {
+                failedAlloc = true;
+                break;
+            }
+            
+            size_t argIndex;
+            json_t* argValue;
+            json_array_foreach(argsField, argIndex, argValue) {
+                const char* const typeName = json_string_value(argValue);
+                argTypes[argIndex] = decodeArgType(typeName);
+            }
         }
 
         char* exportNameCopy = strdup(exportName);
@@ -267,9 +290,10 @@ static int loadNativeModuleDescriptorImpl(const char* filename, json_t* root, Na
         functions[index] = (NativeFunctionDescriptor) {
             .name = functionNameCopy,
             .export = exportNameCopy,
-            .returnType = decodeArgType(returnType),
+            .returnType = returnType,
             .argTypesCount = argsSize,
-            .argTypes = argTypes
+            .argTypes = argTypes,
+            .wrapped = wrapFunction
         };
     }
 

@@ -56,12 +56,20 @@ static void generateFunctionSignatures(FILE* file, NativeModuleDescriptor* modul
     for (size_t i = 0; i < moduleDescriptor->functionCount; i++) {
         NativeFunctionDescriptor* function = &moduleDescriptor->functions[i];
 
-        fprintf(file, "%s %s(", returnTypeWrapperNames[function->returnType], function->export);
-        for (size_t j = 0; j < function->argTypesCount; j++) {
-            const char* sep = j < function->argTypesCount - 1 ? ", " : "";
-            fprintf(file, "%s%s", argTypeCastNames[function->argTypes[j]].typeName, sep);
+        if (function->wrapped) {
+            fprintf(file, "%s %s(", returnTypeWrapperNames[function->returnType], function->export);
+            for (size_t j = 0; j < function->argTypesCount; j++) {
+                const char* sep = j < function->argTypesCount - 1 ? ", " : "";
+                fprintf(file, "%s%s", argTypeCastNames[function->argTypes[j]].typeName, sep);
+            }
+            fprintf(file, ");\n");
+        } else {
+            fprintf(file,""
+                "bool %s(int argCount, Value* implicit, Value* args);\n",
+                function->export
+            );
         }
-        fprintf(file, ");\n");
+        
     }
     fprintf(file, "\n");
 }
@@ -98,6 +106,7 @@ static void generateFunctionArgCheck(FILE* file, NativeFunctionDescriptor* funct
 }
 
 static void generateFunctionWrapper(FILE* file, NativeFunctionDescriptor* function) {
+    if (!function->wrapped) return;
     fprintf(file, "CLOX_NO_EXPORT bool %sNativeWrapper(int argCount, Value* implicit, Value* args) {\n", function->name);
     for (size_t i = 0; i < function->argTypesCount; i++) {
         generateFunctionArgCheck(file, function, i);
@@ -182,9 +191,15 @@ static void generateFunctionMap(FILE* file, NativeModuleDescriptor* moduleDescri
     );
     for(size_t i = 0; i < moduleDescriptor->functionCount; i++) {
         NativeFunctionDescriptor* fn = &moduleDescriptor->functions[i];
-        fprintf(file, ""
-        "    {\"%s\", %zu, %sNativeWrapper},\n",  fn->name, fn->argTypesCount, fn->name
-        );
+        if (fn->wrapped) {
+            fprintf(file, ""
+            "    {\"%s\", %zu, %sNativeWrapper},\n",  fn->name, fn->argTypesCount, fn->name
+            );
+        } else {
+            fprintf(file, ""
+            "    {\"%s\", -1, %s},\n", fn->name, fn->export
+            );
+        }
     }
     fprintf(file, ""
         "};\n\n"

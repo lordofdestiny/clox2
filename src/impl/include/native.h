@@ -3,8 +3,6 @@
 
 #include "clox/value.h"
 
-bool exitNative(int argCount, Value* implicit, Value* args);
-
 bool initNumberNative(int argCount, Value* implicit, Value* args);
 bool toPrecisionNative(int argCount, Value* implicit, Value* args);
 

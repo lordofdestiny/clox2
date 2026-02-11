@@ -33,6 +33,11 @@
                 "String"
             ],
             "returns": "nil"
+        },
+        {
+            "export" : "fieldNames",
+            "args" : ["Instance"],
+            "returns" : "Array"
         }
     ]
 }

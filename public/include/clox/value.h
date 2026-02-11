@@ -37,7 +37,6 @@ typedef uint64_t Value;
 #define OBJ_VAL(obj) \
     (Value) (SIGN_BIT | QNAN | (uint64_t)(uintptr_t)(obj))
 
-
 static inline double valueToNum(const Value value) {
     double num;
     memcpy(&num, &value, sizeof(double));
@@ -49,6 +48,8 @@ static inline Value numToValue(const double num) {
     memcpy(&value, &num, sizeof(double));
     return value;
 }
+
+bool valuesEqual(Value a, Value b);
 
 #else
 typedef enum {
