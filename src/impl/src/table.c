@@ -203,7 +203,7 @@ ObjString* getKeyTableIterator(TableIterator* it) {
 }
 
 Value getValueTableIterator(TableIterator* it) {
-    ObjString* key = getKeyTableIterator(it);
+    [[maybe_unused]] ObjString* key = getKeyTableIterator(it);
     assert(key != NULL);
     return it->table->entries[it->index].value;
 }
