@@ -5,6 +5,7 @@
 #include <ctype.h>
 #include <setjmp.h>
 
+#include "clox/vm.h"
 #include "native.h"
 #include "memory.h"
 #include "object.h"

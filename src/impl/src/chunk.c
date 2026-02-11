@@ -1,7 +1,7 @@
 #include "clox/value.h"
+#include "clox/vm.h"
 #include "chunk.h"
 #include "memory.h"
-#include "vm.h"
 
 void initChunk(Chunk* chunk) {
     chunk->count = 0;

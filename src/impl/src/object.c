@@ -4,6 +4,7 @@
 #include <ctype.h>
 
 #include "clox/value.h"
+#include "clox/vm.h"
 #include "chunk.h"
 #include "memory.h"
 #include "object.h"

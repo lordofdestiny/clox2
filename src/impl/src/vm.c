@@ -7,11 +7,12 @@
 #include <setjmp.h>
 
 #include "clox/value.h"
-#include "vm.h"
+#include "clox/vm.h"
 #include "compiler.h"
 #include "memory.h"
-#include "object.h"
 #include "native.h"
+#include "object.h"
+#include "vm.h"
 
 
 #if defined(DEBUG_PRINT_CODE) || defined(DEBUG_TRACE_EXECUTION)

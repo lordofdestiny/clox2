@@ -3,10 +3,9 @@
 
 #include <unistd.h>
 
-#include "binary.h"
-#include "memory.h"
-#include "vm.h"
+#include "clox/vm.h"
 
+#include "binary.h"
 
 #define SAVE_FAILURE 44
 #define LOAD_FAILURE 33

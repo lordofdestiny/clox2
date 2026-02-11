@@ -83,8 +83,6 @@ CLOX_EXPORT InterpretResult interpret(InputFile source);
 
 CLOX_EXPORT InterpretResult interpretCompiled(ObjFunction* function);
 
-#include "clox/vm.h"
-
 void runtimeError(const char* format, ...);
 
 bool callClass(Obj* callable, int argCount);

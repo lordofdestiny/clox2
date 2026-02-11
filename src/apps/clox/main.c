@@ -1,7 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-
 #include "args.h"
 #include "commands.h"
 #include "exitcode.h"
