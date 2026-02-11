@@ -330,10 +330,11 @@ int formatFunctionSignature(char* buffer, int cap, NativeFunctionDescriptor* fun
         return bufferSize;
     }
     for(size_t i = 0; i < function->argTypesCount; i++) {
+        const char* sep = i != function->argTypesCount - 1 ? ", " : "";
         bufferSize += snprintf(
             buffer + bufferSize, cap - bufferSize,
             "%s%s", nativeFunctionArgName(function->argTypes[i]),
-            i != function->argTypesCount - 1 ? ", " : ""
+            sep
         );
         if (bufferSize >= cap) {
             return bufferSize;;
