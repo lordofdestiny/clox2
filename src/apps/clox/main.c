@@ -1,13 +1,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include <dlfcn.h>
-
-#include "vm.h"
 
 #include "args.h"
-#include "exitcode.h"
 #include "commands.h"
+#include "exitcode.h"
+#include "vm.h"
 
 int executeCommand(const Command* cmd) {
     switch (cmd->type) {
