@@ -34,6 +34,8 @@ set_target_properties(
     BUILD_RPATH "${PROJECT_BINARY_DIR}/lib"
 )
 
+target_compile_features(cloximpl PUBLIC c_std_23)
+
 generate_export_header(
   cloximpl
   BASE_NAME CLOX

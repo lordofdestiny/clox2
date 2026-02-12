@@ -6,7 +6,8 @@
 
 #include "args.h"
 
-static void printVersion(FILE *stream, [[maybe_unused]] struct argp_state *state) {
+static void printVersion(FILE *stream, struct argp_state *state) {
+    (void) state;
     fprintf(stream, "%s\n", argp_program_version);
 }
 
@@ -73,7 +74,8 @@ static error_t argpParser (int key, char *arg, struct argp_state *state) {
                 return ARGP_ERR_UNKNOWN;
             break;
         case ARGP_KEY_ARGS:{
-            [[maybe_unused]] char** remaining_args = state->argv + state->next;
+            char** remaining_args = state->argv + state->next;
+            (void) remaining_args;
             int num_remaining_args = state->argc - state->next;
             if (num_remaining_args > 0) {
                 argp_error(state, "Excessive positional arguments. Only one argument allowed");
@@ -145,7 +147,14 @@ Command parseArgs(const int argc, char *argv[]) {
                 .key='i',
                 .doc="Inline code in bytecode output",
             },
-            {}
+            {
+                .name = NULL,
+                .key = 0,
+                .arg = NULL,
+                .flags = 0,
+                .doc = 0,
+                .group = 0
+            }
         },
         .parser = &argpParser,
     };
@@ -202,6 +211,8 @@ Command parseArgs(const int argc, char *argv[]) {
                 .inline_code = options.inline_code,
             };
         default:
-            return (Command){};
+            return (Command){
+                .type = CMD_NONE
+            };
     };
 }

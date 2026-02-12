@@ -58,11 +58,6 @@ void deleteTestState(TestState* state) {
     free(state);
 }
 
-int setupTest(void **state) {
-    [[maybe_unused]] TestState* test_state = *(TestState**) state;
-    return 0;
-}
-
 int teardownTest(void **state) {
     TestState* test_state = *(TestState**) state;
     deleteTestState(test_state);
@@ -98,7 +93,7 @@ void test(void** state) {
 #define named_test(test_name, state) { \
     .name = test_name, \
     .test_func = test, \
-    .setup_func = setupTest, \
+    .setup_func = NULL, \
     .teardown_func = teardownTest, \
     .initial_state = state \
 } \

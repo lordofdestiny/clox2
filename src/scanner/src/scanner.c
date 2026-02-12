@@ -7,18 +7,15 @@
 #include "scanner_priv.h"
 #include "scanner_generated.h"
 
-Scanner* scanner;
-
-void initScanner(Scanner* scanner_arg, InputFile source) {
-    scanner = scanner_arg;
+void initScanner(Scanner* scanner, InputFile source) {
     scanner->start = source.content;
     scanner->current = source.content;
     scanner->line = 1;
     scanner->column = 1;
 }
 
-void freeScanner([[maybe_unused]] Scanner* scanner_arg) {
-    scanner = NULL;
+void freeScanner(Scanner* scanner_arg) {
+    (void) scanner_arg;
 }
 
 static bool isAlpha(const char c) {
@@ -39,13 +36,13 @@ static bool isHexDigit(const char c) {
     return isxdigit(c);
 }
 
-static char peek() {
+static char peek(Scanner* scanner) {
     return *scanner->current;
 }
 
-static void skipWhitespace() {
+static void skipWhitespace(Scanner* scanner) {
     while (true) {
-        const char c = peek();
+        const char c = peek(scanner);
         switch (c) {
         case '\n':
             scanner->line++;
@@ -54,13 +51,13 @@ static void skipWhitespace() {
         case ' ':
         case '\r':
         case '\t': {
-            advance();
+            advance(scanner);
             scanner->column++;
             break;
         }
         case '/':
-            if (peekNext() == '/') {
-                while (peek() != '\n' && !isAtEnd()) advance();
+            if (peekNext(scanner) == '/') {
+                while (peek(scanner) != '\n' && !isAtEnd(scanner)) advance(scanner);
                 break;
             }
         default: return;
@@ -68,21 +65,21 @@ static void skipWhitespace() {
     }
 }
 
-static Token identifier() {
-    while (isAlpha(peek()) || isDigit(peek())) advance();
-    return makeToken(identifierType());
+static Token identifier(Scanner* scanner) {
+    while (isAlpha(peek(scanner)) || isDigit(peek(scanner))) advance(scanner);
+    return makeToken(scanner, identifierType(scanner));
 }
 
-static Token number() {
-    while (isDigit(peek())) advance();
+static Token number(Scanner* scanner) {
+    while (isDigit(peek(scanner))) advance(scanner);
 
-    if (peek() == '.' && isDigit(peekNext())) {
-        advance();
+    if (peek(scanner) == '.' && isDigit(peekNext(scanner))) {
+        advance(scanner);
 
-        while (isDigit(peek())) advance();
+        while (isDigit(peek(scanner))) advance(scanner);
     }
 
-    return makeToken(TOKEN_NUMBER);
+    return makeToken(scanner, TOKEN_NUMBER);
 }
 
 bool isEscapable(char c) {
@@ -92,36 +89,36 @@ bool isEscapable(char c) {
 
 #define STRING_ERROR(str) do{errorMsg = str; goto skip; } while(0);
 
-static Token string() {
+static Token string(Scanner* scanner) {
     const char* errorMsg = NULL;
-    while (peek() != '"' && !isAtEnd()) {
-        if (peek() == '\n') {
+    while (peek(scanner) != '"' && !isAtEnd(scanner)) {
+        if (peek(scanner) == '\n') {
             scanner->line++;
             scanner->column = 1;
             STRING_ERROR( "unterminated string literal");
         }
-        if (peek() != '\\') {
-            advance();
+        if (peek(scanner) != '\\') {
+            advance(scanner);
             continue;
         }
 
         // Escape sequences
         // consume backslash
-        advance();
-        if (isAtEnd()) {
+        advance(scanner);
+        if (isAtEnd(scanner)) {
             STRING_ERROR( "unterminated string literal");
         }
-        if (isEscapable(peek())) {
-            advance();
+        if (isEscapable(peek(scanner))) {
+            advance(scanner);
             continue;
         }
-        if (peek() == 'x') {
-            advance();
+        if (peek(scanner) == 'x') {
+            advance(scanner);
             int i = 0;
             long total = 0;
             bool outOfRange = false;
-            while(isHexDigit(peek()) && !isAtEnd()) {
-                char c = advance();
+            while(isHexDigit(peek(scanner)) && !isAtEnd(scanner)) {
+                char c = advance(scanner);
                 total *= 16;
                 if (isDigit(c)) total += c - '0';
                 if (islower(c)) total += c - 'a';
@@ -133,12 +130,12 @@ static Token string() {
             if (outOfRange) STRING_ERROR("hex escape sequence out of range");
             continue;
         }
-        if (isOctDigit(peek())) {
+        if (isOctDigit(peek(scanner))) {
             int i = 0;
             int total = 0;
             bool outOfRange = false;
-            while(i < 3 && isOctDigit(peek()) && !isAtEnd()) {
-                char c = advance();
+            while(i < 3 && isOctDigit(peek(scanner)) && !isAtEnd(scanner)) {
+                char c = advance(scanner);
                 total = 8 * total + (c - '0');
                 if (total > 0xff) outOfRange = true;
                 i++;
@@ -149,20 +146,22 @@ static Token string() {
         STRING_ERROR("unknown escape sequence");
     }
 
-    if (isAtEnd()) return errorToken("unterminated string literal");
+    if (isAtEnd(scanner)) {
+        return errorToken(scanner, "unterminated string literal");
+    }
 
 skip:
-    while (peek() != '"' && !isAtEnd()) advance();
+    while (peek(scanner) != '"' && !isAtEnd(scanner)) advance(scanner);
     // The closing quote
-    advance();    
+    advance(scanner);    
     if (errorMsg != NULL) {
-        return errorToken(errorMsg);
+        return errorToken(scanner, errorMsg);
     }
-    return makeToken(TOKEN_STRING);
+    return makeToken(scanner, TOKEN_STRING);
 }
 
 TokenType checkKeyword(
-	int start, int length, const char* rest, TokenType type
+	Scanner* scanner, int start, int length, const char* rest, TokenType type
 ) {
 	if (scanner->current - scanner->start == (ptrdiff_t) start + length &&
 		memcmp(scanner->start + start, rest, length) == 0) {
@@ -171,17 +170,17 @@ TokenType checkKeyword(
 	return TOKEN_IDENTIFIER;
 }
 
-Token scanToken([[maybe_unused]] Scanner* scanner) {
+Token scanToken(Scanner* scanner) {
     scanner->column += (scanner->current - scanner->start);
-    skipWhitespace();
+    skipWhitespace(scanner);
     scanner->start = scanner->current;
 
-    if (isAtEnd()) return makeToken(TOKEN_EOF);
+    if (isAtEnd(scanner)) return makeToken(scanner, TOKEN_EOF);
 
-    const char c = advance();
-    if (isAlpha(c)) return identifier();
-    if (isDigit(c)) return number();
-    if (c == '"') return string();
+    const char c = advance(scanner);
+    if (isAlpha(c)) return identifier(scanner);
+    if (isDigit(c)) return number(scanner);
+    if (c == '"') return string(scanner);
 
-    return charToken(c);
+    return charToken(scanner, c);
 }

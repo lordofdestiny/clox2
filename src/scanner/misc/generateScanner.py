@@ -64,6 +64,7 @@ class GeneratorConfig(TypedDict):
     makeTokenFunctionName: str
     errorTokenFunctionName: str
     checkKeywordFunctionName: str
+    charTokenFunctionName: str
     identFunctionName: str
     symbolFunctionName: str
 
@@ -234,7 +235,7 @@ class GenerateIdentifierCode(IndexCodeGenerator):
 
         ident_token = self.gen.make_token(indentTokenName, TokenClass.SKIP)
 
-        print(f"{returnType} {function_name}() {{")
+        print(f"{returnType} {function_name}(Scanner* scanner) {{")
         with self.tabs.indent():
             self.handle_index(self.index, 0)
             print(f"return {ident_token};")
@@ -263,7 +264,7 @@ class GenerateIdentifierCode(IndexCodeGenerator):
             rem = len(word) - curr
             suffix = word[curr:]
             full_token = self.gen.make_token(word, TokenClass.KEYWORD)
-            args = f'{curr}, {rem}, "{suffix}", {full_token}'
+            args = f'scanner, {curr}, {rem}, "{suffix}", {full_token}'
             checkKeywordFun = self.gen.spec["settings"][
                 "checkKeywordFunctionName"
             ]
@@ -277,11 +278,11 @@ class GenerateSymbolCode(IndexCodeGenerator):
         errorTokenFun = settings["errorTokenFunctionName"]
         returnType = settings["tokenType"]
 
-        print(f"{returnType} {function_name}(char c) {{")
+        print(f"{returnType} {function_name}(Scanner* scanner, char c) {{")
         with self.tabs.indent():
             self.handle_index(self.index, 0)
             print()
-            print(f'return {errorTokenFun}("Unexpected character.");')
+            print(f'return {errorTokenFun}(scanner, "Unexpected character.");')
         print("}")
 
     def handle_index(self, index: Index, depth: int):
@@ -308,14 +309,14 @@ class GenerateSymbolCode(IndexCodeGenerator):
             for elem in node.index.elems:
                 token = self.make_token(elem.index)
                 print(
-                    f"if (match('{elem.char}')) return {makeTokenFun}({token});"
+                    f"if (match(scanner, '{elem.char}')) return {makeTokenFun}(scanner, {token});"
                 )
 
             token = self.make_token(node.index)
             if len(node.index.elems) == 0:
                 print(" ", end="")
 
-            print(f"return {makeTokenFun}({token});")
+            print(f"return {makeTokenFun}(scanner, {token});")
 
         if len(node.index.elems) != 0:
             print("}")
@@ -444,8 +445,12 @@ class CodeGenerator:
                 print()
                 self.generate_includes(self.spec["includes"]["header_file"])
                 print()
-                print(f"{settings['tokenEnumType']} identifierType();")
-                print(f"{settings['tokenType']} charToken(char c);")
+                print(
+                    f"{settings['tokenEnumType']} {settings["identFunctionName"]}(Scanner* scanner);"
+                )
+                print(
+                    f"{settings['tokenType']} {settings['charTokenFunctionName']}(Scanner* scanner, char c);"
+                )
                 print()
                 print("#endif // __CLOX2_SCANNER_GENERATED_H__")
 

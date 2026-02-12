@@ -21,5 +21,6 @@ set_target_properties(
     COMPILE_WARNING_AS_ERROR TRUE
 )
 
+target_compile_features(MiscTests PRIVATE c_std_23)
 
 add_test(NAME MiscTests COMMAND MiscTests)

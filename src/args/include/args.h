@@ -5,6 +5,7 @@
 #include <stdbool.h>
 
 typedef enum {
+    CMD_NONE,
     CMD_REPL,
     CMD_EXECUTE,
     CMD_COMPILE,

@@ -53,6 +53,8 @@ set_target_properties(
     COMPILE_WARNING_AS_ERROR TRUE
 )
 
+target_compile_features(cloxscanner PRIVATE c_std_23)
+
 target_include_directories(
   cloxscanner
   PUBLIC

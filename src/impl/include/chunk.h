@@ -59,14 +59,17 @@
     ENUM_OPCODE_DEF(OP_PROPAGATE_EXCEPTION)
 
 typedef enum {
-    #define ENUM_OPCODE_DEF(name) name,
+#define ENUM_OPCODE_DEF(name) name,
     OPCODE_ENUM_LIST
 #undef ENUM_OPCODE_DEF
     OP_LAST
 } OpCode;
 
-static_assert(OP_CONSTANT_ONE == OP_CONSTANT_ZERO + 1);
-static_assert(OP_CONSTANT_TWO == OP_CONSTANT_ONE + 1);
+static_assert(
+    OP_CONSTANT_ZERO + 1 == OP_CONSTANT_ONE &&
+    OP_CONSTANT_ZERO + 2 == OP_CONSTANT_TWO,
+    "Constant instructions must be consecutive."
+);
 
 typedef struct {
     int offset;

@@ -3,6 +3,7 @@
 
 #include <stddef.h>
 #include <stdio.h>
+#include <stdbool.h>
 
 #define NATIVE_MODULE_LOAD_SUCCESS 0
 #define NATIVE_MODULE_LOAD_ERROR_MEMORY 0x1

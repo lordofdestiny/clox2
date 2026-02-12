@@ -44,7 +44,7 @@ ArrayResult fieldNames(ObjInstance* instance) {
     ObjArray* arr = newArray();
     PUSH_OBJ(arr);
 
-    for(auto it = newTableIterator(&instance->fields);
+    for(TableIterator it = newTableIterator(&instance->fields);
         !it.done;
         advanceTableIterator(&it)
     ) {

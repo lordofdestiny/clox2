@@ -18,6 +18,10 @@ set_target_properties(TestScannerDefault TestScannerFlex
     COMPILE_WARNING_AS_ERROR TRUE
 )
 
+target_compile_features(TestScannerDefault PRIVATE c_std_23)
+
+target_compile_features(TestScannerFlex PRIVATE c_std_23)
+
 target_link_libraries(
   TestScannerDefault
   PUBLIC

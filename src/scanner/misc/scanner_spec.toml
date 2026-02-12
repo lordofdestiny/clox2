@@ -6,6 +6,7 @@ tokenEnumType = "TokenType"
 makeTokenFunctionName = "makeToken"
 errorTokenFunctionName = "errorToken"
 checkKeywordFunctionName = "checkKeyword"
+charTokenFunctionName = "charToken"
 identFunctionName = "identifierType"
 symbolFunctionName = "charToken"
 

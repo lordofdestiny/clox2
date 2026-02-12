@@ -11,8 +11,8 @@ typedef struct {
     int column;
 } Scanner;
 
-void initScanner(Scanner* scanner, InputFile source);
-void freeScanner(Scanner* scanner);
-Token scanToken(Scanner* scanners);
+__attribute__((visibility("default"))) void initScanner(Scanner* scanner, InputFile source);
+__attribute__((visibility("default"))) void freeScanner(Scanner* scanner);
+__attribute__((visibility("default"))) Token scanToken(Scanner* scanners);
 
 #endif //__CLOX2_SCANNER_H__

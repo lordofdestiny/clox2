@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 #include <string.h>
+#include <stdbool.h>
 
 typedef struct Obj Obj;
 typedef struct ObjString ObjString;

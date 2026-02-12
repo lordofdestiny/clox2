@@ -28,10 +28,12 @@ static const char* isArgTypeNames[] = {
     [NATIVE_FUNCTION_TYPE_OBJ_STRING] = "IS_STRING",
 };
 
-static struct {
+typedef struct {
     const char* typeName;
     const char* conversion;
-} argTypeCastNames[] = {
+} ArgTypeNameCast;
+
+static ArgTypeNameCast argTypeCastNames[] = {
     [NATIVE_FUNCTION_TYPE_NONE] = { NULL, NULL },
     [NATIVE_FUNCTION_TYPE_VALUE] = { "Value", NULL },
     [NATIVE_FUNCTION_TYPE_NUMBER] = { "double", "AS_NUMBER" },
@@ -117,7 +119,7 @@ static void generateFunctionWrapper(FILE* file, NativeFunctionDescriptor* functi
     // Cast arguments here
     for(size_t i = 0; i < function->argTypesCount; i++) {
         int typeId = function->argTypes[i];
-        auto desc = argTypeCastNames[typeId];
+        ArgTypeNameCast desc = argTypeCastNames[typeId];
         if(typeId == NATIVE_FUNCTION_TYPE_VALUE) {
             fprintf(file, "    Value arg%zu = args[%zu];\n", i, i);
         }
@@ -180,7 +182,7 @@ static void generateRegistrationFunctions(FILE* file, NativeModuleDescriptor* mo
     fprintf(file,""
     "CLOX_EXPORT size_t registerFunctions(DefineNativeFunctionFn registerFn) {\n"
     "    for (size_t i = 0; i < %zu; i++) {\n"
-    "       auto fnd = &functionMap[i];\n"
+    "       ExportedFunction* fnd = &functionMap[i];\n"
     "       registerFn(fnd->name, fnd->arity, fnd->fn);\n"
     "    }\n"
     "    return %zu;\n"
@@ -191,7 +193,13 @@ static void generateRegistrationFunctions(FILE* file, NativeModuleDescriptor* mo
 
 static void generateFunctionMap(FILE* file, NativeModuleDescriptor* moduleDescriptor) {
     fprintf(file, ""
-        "static struct {char* name; int arity; NativeFn fn; } functionMap[] = {\n"
+        "typedef struct {\n"
+        "    char* name;\n"
+        "    int arity;\n"
+        "    NativeFn fn;\n"
+        "} ExportedFunction;\n"
+        "\n"
+        "static ExportedFunction functionMap[] = {\n"
     );
     for(size_t i = 0; i < moduleDescriptor->functionCount; i++) {
         NativeFunctionDescriptor* fn = &moduleDescriptor->functions[i];

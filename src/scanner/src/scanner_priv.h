@@ -7,18 +7,16 @@
 
 #include "scanner.h"
 
-extern Scanner* scanner;
+bool isAtEnd(Scanner* scanner);
+char advance(Scanner* scanner);
+char peekNext(Scanner* scanner);
+char match(Scanner* scanner, const char expected);
 
-bool isAtEnd();
-char advance();
-char peekNext();
-char match(const char expected);
-
-Token makeToken(const TokenType type);
-Token errorToken(const char* message);
+Token makeToken(Scanner* scanner, const TokenType type);
+Token errorToken(Scanner* scanner, const char* message);
 
 TokenType checkKeyword(
-	int start, int length, const char* rest, TokenType type
-);
+	Scanner* scanner, int start, int length, const char* rest, TokenType type
+); 
 
 #endif //__CLOX2_SCANNER_H__
