@@ -5,13 +5,7 @@ add_library(cloxsystem MODULE)
 
 set(SPEC_FILE "${CMAKE_CURRENT_SOURCE_DIR}/spec.json")
 
-CloxNativeLibrary(
-  LIB_NAME system
-  TARGET_NAME cloxsystem
-  SPEC_FILE ${SPEC_FILE} 
-  OUT_HEADER WRAPPER_HEADER
-  OUT_SOURCE WRAPPER_SOURCE
-)
+CloxNativeLibrary(TARGET_NAME cloxsystem)
 
 set_target_properties(
   cloxsystem

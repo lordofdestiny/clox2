@@ -4,13 +4,7 @@ include(CloxNative)
 add_library(cloxtime MODULE)
 set(SPEC_FILE "${CMAKE_CURRENT_SOURCE_DIR}/spec.json")
 
-CloxNativeLibrary(
-  LIB_NAME time
-  TARGET_NAME cloxtime
-  SPEC_FILE ${SPEC_FILE} 
-  OUT_HEADER WRAPPER_HEADER
-  OUT_SOURCE WRAPPER_SOURCE
-)
+CloxNativeLibrary(TARGET_NAME cloxtime)
 
 set_target_properties(
   cloxtime

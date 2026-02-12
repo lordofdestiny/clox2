@@ -3,7 +3,7 @@
 
 #include <stdio.h>
 
-#include <clox_export.h>
+#include <clox/export.h>
 
 #include "clox/value.h"
 

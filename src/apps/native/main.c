@@ -14,11 +14,12 @@
 #define FAILED_TO_READ 15
 
 int main(int argc, char* argv[]) {
-    if (argc == 6  && strcmp(argv[1], "-p")==0) {
+    if (argc == 7  && strcmp(argv[1], "-p")==0) {
         const char* filename = argv[2];
         const char* header = argv[3];
         const char* source = argv[4];
-        const char* include = argv[5];
+        const char* includeHeader = argv[5];
+        const char* exportHeader = argv[6];
         
         printf("Command: cloxn -p %s %s %s\n", filename, header, source);
 
@@ -39,14 +40,14 @@ int main(int argc, char* argv[]) {
             fprintf(stderr,"Failed to open header output file: %s. %s\n", header, strerror(errno));
             exit(INVALID_FILE_PATH);
         }
-        generateModuleWrapperHeader(stdout, &desc);
+        generateModuleWrapperHeader(stdout, &desc, exportHeader);
 
         res = freopen(source, "w", stdout);
         if (res == NULL) {
             fprintf(stderr,"Failed to open source output file: %s. %s\n", source, strerror(errno));
             exit(INVALID_FILE_PATH);
         }
-        generateModuleWrapperSource(stdout, include, &desc);
+        generateModuleWrapperSource(stdout, &desc,includeHeader);
 
         freeNativeModuleDescriptor(&desc);
 

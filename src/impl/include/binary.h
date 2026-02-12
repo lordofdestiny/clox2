@@ -1,7 +1,7 @@
 #ifndef __CLOX2_BINARY_H__
 #define __CLOX2_BINARY_H__
 
-#include <clox_export.h>
+#include <clox/export.h>
 
 #include "object.h"
 

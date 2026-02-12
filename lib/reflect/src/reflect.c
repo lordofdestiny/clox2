@@ -1,6 +1,6 @@
 #include <assert.h>
 
-#include <clox/reflect/reflectlib.h>
+#include <clox/native/reflect/reflect.h>
 
 BoolResult hasField(ObjInstance* instance, ObjString* key) {
     return (BoolResult) {

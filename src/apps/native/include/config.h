@@ -38,6 +38,7 @@ typedef struct {
 
 typedef struct {
     char* name;
+    char* namePrefix;
     size_t functionCount;
     NativeFunctionDescriptor* functions;
 } NativeModuleDescriptor;
@@ -49,6 +50,6 @@ const char* nativeFunctionArgName(NativeFunctionArgType id);
 int formatFunctionSignature(char* buffer, int cap, NativeFunctionDescriptor* function);
 int printFunctionSignature(FILE* file, NativeFunctionDescriptor* function);
 
-char* getNativeModuleError();
+char* getNativeModuleError(void);
 
 #endif // __CLOX_NATIVE_LIBRARY_CONFIG_H__

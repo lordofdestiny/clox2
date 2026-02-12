@@ -1,4 +1,5 @@
 #include <assert.h>
+#include <ctype.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -191,6 +192,17 @@ static int verifyFunctionsDescriptor(const char* filename, size_t index, json_t*
     return NATIVE_MODULE_LOAD_SUCCESS;
 }
 
+static char* generateNamePrefix(const char* libNameCopy) {
+    size_t bufferSize = strlen(libNameCopy);
+    char* buffer = calloc(bufferSize + 1, sizeof(char));
+    assert(buffer != NULL);
+    strcpy(buffer, libNameCopy);
+    for(size_t i = 0 ; i < bufferSize; i++) {
+        buffer[i] = toupper(buffer[i]);
+    }
+    return buffer;
+}
+
 static int loadNativeModuleDescriptorImpl(const char* filename, json_t* root, NativeModuleDescriptor* moduleDescriptor) {
     json_t* libraryField, *functionsField;
 
@@ -312,6 +324,7 @@ static int loadNativeModuleDescriptorImpl(const char* filename, json_t* root, Na
 
     *moduleDescriptor = (NativeModuleDescriptor) {
         .name = libNameCopy,
+        .namePrefix = generateNamePrefix(libNameCopy),
         .functionCount = functionCount,
         .functions = functions
     };
@@ -389,6 +402,6 @@ int printFunctionSignature(FILE* file, NativeFunctionDescriptor* function) {
     return bufferSize;
 }
 
-char* getNativeModuleError() {
+char* getNativeModuleError(void) {
     return (char*) errorBuffer;
 }

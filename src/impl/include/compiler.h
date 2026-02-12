@@ -3,7 +3,7 @@
 
 #include <stdbool.h>
 
-#include <clox_export.h>
+#include <clox/export.h>
 
 #include "object.h"
 #include "inputfile.h"

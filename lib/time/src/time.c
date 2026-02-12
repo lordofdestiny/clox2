@@ -2,9 +2,9 @@
 
 #include <unistd.h>
 
-#include <clox/time/timelib.h>
+#include <clox/native/time/time.h>
 
-NumberResult getTime() {
+NumberResult getTime(void) {
     return (NumberResult) {
         .success = true,
         .value = (double) clock() / CLOCKS_PER_SEC

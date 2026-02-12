@@ -162,7 +162,15 @@ static int loadNativeLib(const char* libPath) {
     handleArr[vm.nativeLibCount++] = lib;
 
     onLoadFn();
-    fprintf(stdout, "Dynamic library '%s' (%s) loaded. Fucntions: %zu\n", lib.name, libPath, count);
+    fprintf(stdout, ""
+        "Library loaded:\n"
+        "  * Name: %s\n"
+        "  * Path: %s\n"
+        "  * Fucntions: %zu\n"
+        "  * Classes: Not supported\n"
+        "\n",
+        lib.name, libPath, count
+    );
 
     return 0;
 
@@ -898,7 +906,7 @@ static InterpretResult run() {
             break;
         case OP_ADD: {
             /**
-             *  TODO: instead of coercing primitives into strings,
+             *  TODO instead of coercing primitives into strings,
              *  which only allows for them to be concatenated with strings,
              *  call a version of "toString" for a value, before concatenating
              *  it with a string

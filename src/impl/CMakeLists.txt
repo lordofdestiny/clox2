@@ -39,7 +39,7 @@ target_compile_features(cloximpl PUBLIC c_std_23)
 generate_export_header(
   cloximpl
   BASE_NAME CLOX
-  EXPORT_FILE_NAME ${PROJECT_BINARY_DIR}/include/clox_export.h
+  EXPORT_FILE_NAME ${PROJECT_BINARY_DIR}/include/clox/export.h
 )
 
 target_link_libraries(cloximpl PRIVATE m)
