@@ -8,7 +8,6 @@ class S {
     }
 }
 
-
 var x = S();
 
 x.key = 1515;

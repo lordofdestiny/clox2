@@ -15,7 +15,8 @@
                 "Instance",
                 "String"
             ],
-            "returns": "Value"
+            "returns": "Value",
+            "fails" : true
         },
         {
             "export": "setField",

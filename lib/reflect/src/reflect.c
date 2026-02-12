@@ -2,11 +2,8 @@
 
 #include <clox/native/reflect/reflect.h>
 
-BoolResult hasField(ObjInstance* instance, ObjString* key) {
-    return (BoolResult) {
-        .success = true,
-        .value = tableGet(&instance->fields, key, NULL)
-    };
+bool hasField(ObjInstance* instance, ObjString* key) {
+    return tableGet(&instance->fields, key, NULL);
 }
 
 ValueResult getField(ObjInstance* instance, ObjString* key) {
@@ -24,23 +21,15 @@ ValueResult getField(ObjInstance* instance, ObjString* key) {
     };
 }
 
-NilResult setField(ObjInstance* instance, ObjString* key, Value value) {
+void setField(ObjInstance* instance, ObjString* key, Value value) {
     tableSet(&instance->fields, key, value);
-    return (NilResult) {
-        .success = true,
-        .value = NIL_VAL
-    };
 }
 
-NilResult deleteField(ObjInstance* instance, ObjString* key) {
+void deleteField(ObjInstance* instance, ObjString* key) {
     tableDelete(&instance->fields, key);
-    return (NilResult) {
-        .success = true,
-        .value = NIL_VAL
-    };
 }
 
-ArrayResult fieldNames(ObjInstance* instance) {
+ObjArray* fieldNames(ObjInstance* instance) {
     ObjArray* arr = newArray();
     PUSH_OBJ(arr);
 
@@ -53,9 +42,6 @@ ArrayResult fieldNames(ObjInstance* instance) {
     }
 
     pop();
-    return (ArrayResult) {
-        .success = true,
-        .value = arr
-    };
+    return arr;
 }
 

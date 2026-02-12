@@ -118,7 +118,7 @@ static int verifyFunctionsDescriptor(const char* filename, size_t index, json_t*
         return NATIVE_MODULE_LOAD_ERROR_FIELD_TYPE;
     }
 
-    json_t *nameField, *exportField, *argsField, *returnsField, *wrappedField;
+    json_t *nameField, *exportField, *argsField, *returnsField, *wrappedField, *failsField;
     exportField = json_object_get(root, "export");
     if(exportField == NULL) {
         STORE_ERROR(ERROR_FORMAT_FUNCTION_FIELD_MISSING, filename, index, "export");
@@ -137,7 +137,7 @@ static int verifyFunctionsDescriptor(const char* filename, size_t index, json_t*
 
     wrappedField = json_object_get(root, "wrap");
     if(wrappedField != NULL && !json_is_boolean(wrappedField)) {
-        STORE_ERROR(ERROR_FORMAT_FUNCTION_FIELD_TYPE, filename, index, "wrap", "boolean", get_json_typename(nameField));
+        STORE_ERROR(ERROR_FORMAT_FUNCTION_FIELD_TYPE, filename, index, "wrap", "boolean", get_json_typename(wrappedField));
         return NATIVE_MODULE_LOAD_ERROR_FIELD_TYPE;
     }
 
@@ -158,6 +158,12 @@ static int verifyFunctionsDescriptor(const char* filename, size_t index, json_t*
     if (decodeArgType(typeName) == NATIVE_FUNCTION_TYPE_NONE) {
         STORE_ERROR(ERROR_FORMAT_FUNCTION_FIELD " Unknown return type \'%s\'", filename, index, typeName);
         return NATIVE_MODULE_LOAD_ERROR_FUNCTION_ARG_TYPE;
+    }
+
+    failsField = json_object_get(root, "fails");
+    if(failsField != NULL && !json_is_boolean(failsField)) {
+        STORE_ERROR(ERROR_FORMAT_FUNCTION_FIELD_TYPE, filename, index, "fails", "boolean", get_json_typename(failsField));
+        return NATIVE_MODULE_LOAD_ERROR_FIELD_TYPE;
     }
 
     argsField = json_object_get(root, "args");
@@ -252,6 +258,7 @@ static int loadNativeModuleDescriptorImpl(const char* filename, json_t* root, Na
         json_t *returnsField = json_object_get(functionObject, "returns");
         json_t *argsField = json_object_get(functionObject, "args");
         json_t *wrapField = json_object_get(functionObject, "wrap");
+        json_t *failsField = json_object_get(functionObject, "fails");
 
         const char* exportName = json_string_value(exportField);
         const char* functionName;
@@ -263,6 +270,10 @@ static int loadNativeModuleDescriptorImpl(const char* filename, json_t* root, Na
         bool wrapFunction = true;
         if (wrapField != NULL) {
             wrapFunction = json_boolean_value(wrapField);
+        }
+        bool fails = false;
+        if (failsField != NULL) {
+            fails = json_boolean_value(failsField);
         }
         
         NativeFunctionArgType returnType = NATIVE_FUNCTION_TYPE_NONE;
@@ -305,7 +316,8 @@ static int loadNativeModuleDescriptorImpl(const char* filename, json_t* root, Na
             .returnType = returnType,
             .argTypesCount = argsSize,
             .argTypes = argTypes,
-            .wrapped = wrapFunction
+            .wrapped = wrapFunction,
+            .canFail = fails
         };
     }
 

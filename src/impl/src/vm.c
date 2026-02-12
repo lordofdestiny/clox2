@@ -182,7 +182,12 @@ load_error:
 }
 
 static void initNative() {
-    static const char* libs[] = {"libcloxreflect.so", "libcloxtime.so", "libcloxsystem.so"};
+    static const char* libs[] = {
+        "libcloxreflect.so", 
+        "libcloxtime.so", 
+        "libcloxsystem.so",
+        "libcloxmath.so"
+    };
     for (size_t i = 0; i < sizeof(libs)/sizeof(libs[0]); i++) {
         loadNativeLib(libs[i]);
     }

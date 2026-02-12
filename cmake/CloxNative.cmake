@@ -69,10 +69,9 @@ function(CloxNativeLibrary)
   
   add_custom_command(
     OUTPUT
-      ${ExportHeaderPath}
       ${WrapperHeaderPath}
       ${WrapperSourcePath}
-    DEPENDS cloxn ${SpecFile}
+    DEPENDS cloxn ${SpecFile} ${ExportHeaderPath}
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
     COMMAND cloxn -p ${SpecFile} ${WrapperHeaderPath} ${WrapperSourcePath} ${WrapperHeaderInclude} ${ExportHeaderInclude}
   )
@@ -87,9 +86,9 @@ function(CloxNativeLibrary)
       FILE_SET HEADERS
       BASE_DIRS
         include
-        ${TargetHeaders}
         ${GenIncludePath}
       FILES
+        ${TargetHeaders}
         ${WrapperHeaderPath}
     )
 
@@ -97,7 +96,7 @@ function(CloxNativeLibrary)
     COMMAND "${CMAKE_COMMAND}" -E copy 
       "$<TARGET_FILE:${TargetName}>"
       "${PROJECT_BINARY_DIR}/lib/$<TARGET_FILE_NAME:${TargetName}>" 
-    COMMENT "Copying to output directory"
+    COMMENT "Copying native lib ${TargetName} to runpath"
   )
 
   target_include_directories(

@@ -1,0 +1,113 @@
+{
+    "library": "cloxmath",
+    "functions": [
+        {   
+            "name" : "abs",
+            "export" : "fabs",
+            "args" : ["Number"],
+            "returns": "Number"
+        },
+        {
+            "name" : "max",
+            "export" : "fmax",
+            "args" : ["Number", "Number"],
+            "returns": "Number"
+        },
+        {
+            "name" : "min",
+            "export" : "fmin",
+            "args" : ["Number", "Number"],
+            "returns": "Number"
+        },
+        {
+            "export" : "exp",
+            "args" : ["Number"],
+            "returns": "Number"
+        },
+        {
+            "export" : "log",
+            "args" : ["Number"],
+            "returns": "Number"
+        },
+        {
+            "export" : "log2",
+            "args" : ["Number"],
+            "returns": "Number"
+        },
+        {
+            "export" : "log10",
+            "args" : ["Number"],
+            "returns": "Number"
+        },
+        {
+            "export" : "sqrt",
+            "args" : ["Number"],
+            "returns": "Number"
+        },
+        {
+            "export" : "cbrt",
+            "args" : ["Number"],
+            "returns": "Number"
+        },
+        {
+            "export" : "hypot",
+            "args" : ["Number", "Number"],
+            "returns": "Number"
+        },
+        {
+            "export" : "sin",
+            "args" : ["Number"],
+            "returns": "Number"
+        },
+        {
+            "export" : "cos",
+            "args" : ["Number"],
+            "returns": "Number"
+        },
+        {
+            "export" : "tan",
+            "args" : ["Number"],
+            "returns": "Number"
+        },
+        {
+            "export" : "asin",
+            "args" : ["Number"],
+            "returns": "Number"
+        },
+        {
+            "export" : "acos",
+            "args" : ["Number"],
+            "returns": "Number"
+        },
+        {
+            "export" : "atan",
+            "args" : ["Number"],
+            "returns": "Number"
+        },
+        {
+            "export" : "atan2",
+            "args" : ["Number", "Number"],
+            "returns": "Number"
+        },
+        {
+            "export" : "ceil",
+            "args" : ["Number"],
+            "returns": "Number"
+        },
+        {
+            "export" : "floor",
+            "args" : ["Number"],
+            "returns": "Number"
+        },
+        {
+            "export" : "trunc",
+            "args" : ["Number"],
+            "returns": "Number"
+        },
+        {
+            "export" : "round",
+            "args" : ["Number"],
+            "returns": "Number"
+        }
+    ]
+}
