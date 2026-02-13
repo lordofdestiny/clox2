@@ -18,7 +18,8 @@
     "tamasfe.even-better-toml",
     "GitHub.copilot",
     "GitHub.copilot-chat",
-    "jlevere.elfpreview"
+    "jlevere.elfpreview",
+    "ms-vscode.live-server"
    ],
    "settings": {
       "python.terminal.activateEnvironment": true,

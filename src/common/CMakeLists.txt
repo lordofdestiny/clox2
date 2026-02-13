@@ -10,10 +10,13 @@ set_target_properties(
 target_sources(cloxcommon
   PRIVATE
     inputfile.c
+    arena.c
 
   PUBLIC
     FILE_SET HEADERS
     BASE_DIRS include
     FILES
       include/inputfile.h
+      include/arena.h
+      include/util.h
 )

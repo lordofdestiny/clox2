@@ -11,23 +11,41 @@
         "CMAKE_BUILD_TYPE": "Debug",
         "CMAKE_EXPORT_COMPILE_COMMANDS": "YES"
       }
+    },
+    {
+      "inherits" : "dev",
+      "name" : "cov",
+      "displayName": "Coverage",
+      "description": "Preset to use for test coverage analysis",
+      "binaryDir": "${sourceDir}/coverage",
+      "cacheVariables": {
+        "ENABLE_COVERAGE" : "YES"
+      }
     }
   ],
   "buildPresets": [
     {
-      "name": "default-build",
+      "name": "build-dev",
       "configurePreset": "dev"
+    },
+    {
+      "name" : "build-cov",
+      "configurePreset": "cov"
     }
   ],
   "testPresets": [
     {
-      "name": "default-test",
+      "name": "test-dev",
       "configurePreset": "dev"
+    },
+    {
+      "name": "test-cov",
+      "configurePreset": "cov"
     }
   ],
   "workflowPresets": [
     {
-      "name": "build-and-test",
+      "name": "dev-build-verify",
       "displayName": "Build and Test Workflow",
       "steps": [
         {
@@ -36,11 +54,29 @@
         },
         {
           "type": "build",
-          "name": "default-build"
+          "name": "build-dev"
         },
         {
           "type": "test",
-          "name": "default-test"
+          "name": "test-dev"
+        }
+      ]
+    },
+    {
+      "name": "dev-build-coverage",
+      "displayName": "Build and Test Workflow with Coverage",
+      "steps": [
+        {
+          "type": "configure",
+          "name": "cov"
+        },
+        {
+          "type": "build",
+          "name": "build-cov"
+        },
+        {
+          "type": "test",
+          "name": "test-cov"
         }
       ]
     }

@@ -1,0 +1,221 @@
+#ifdef IMPLEMENT_TESTCASES
+
+#ifndef TEST_PREFIX
+# error "You must define TEST_PREFIX to give a name to the test suite"
+#endif
+
+#include "arena_functions.h"
+
+#ifdef USE_ARENA
+
+static arena_t* TEMP_ARENA_NAME = NULL;
+
+#endif // USE_ARENA
+
+#define ALLOCATION_END_POSITION(base, size) \
+    (base + ARENA_ALIGN_SIZE(size + alignof(max_align_t)))
+
+#define TEST_CASE(testfn) cmocka_unit_test_setup_teardown(testfn, TEST_NAME(verify), TEST_NAME(reset))
+
+static void TEST_NAME(alloc)(void**) {
+    size_t before = SAVE();
+    void* ptr = ALLOC(20);
+    assert_non_null(ptr);
+    assert_uint_equal(SAVE(), ALLOCATION_END_POSITION(before, 20));
+}
+
+static void TEST_NAME(calloc)(void**) {
+    size_t before = SAVE();
+    char* ptr = CALLOC(4, 8);
+    assert_non_null(ptr);
+    assert_uint_equal(SAVE(), ALLOCATION_END_POSITION(before, 4 * 8));
+    for(size_t i = 0; i < 4 * 8; i++) {
+        assert_int_equal(ptr[i], 0);
+    }
+}
+
+static void TEST_NAME(realloc)(void**) {
+    size_t before = SAVE();
+    void* ptr = REALLOC(NULL, 20);
+    assert_non_null(ptr);
+    assert_uint_equal(SAVE(), ALLOCATION_END_POSITION(before, 20));
+}
+
+static void TEST_NAME(realloc_decrease)(void**) {
+    size_t before = SAVE();
+    size_t size = 20;
+    
+    uint8_t* ptr = ALLOC(size);
+    assert_non_null(ptr);
+    assert_uint_equal(SAVE(), ALLOCATION_END_POSITION(before, size));
+    for (size_t i = 0; i < size; i++) {
+        ptr[i] = i + 1;
+    }
+
+    // Try and reduce the last allocation
+    void* new_ptr = REALLOC(ptr, 16);
+    assert_non_null(ptr);
+    assert_ptr_equal(ptr, new_ptr);
+    // Improperly redues the size of the last allocation
+    assert_uint_equal(SAVE(), ALLOCATION_END_POSITION(before, 16));
+    assert_memory_equal(ptr, new_ptr, size);
+
+    // Make sure no size reduction if it's not a last allocation
+    void* other = ALLOC(24);
+    assert_non_null(ptr);
+    size_t after_other = SAVE();
+
+    void* new_new_ptr = REALLOC(new_ptr, 8);
+    assert_ptr_equal(new_ptr, new_new_ptr);
+    assert_uint_equal(SAVE(), after_other);
+    FREE(other);
+    assert_uint_equal(SAVE(), ALLOCATION_END_POSITION(before, 16));
+}
+
+static void TEST_NAME(realloc_increase_inplace)(void**) {
+    size_t before = SAVE();
+    size_t size1 = 20;
+    size_t size2 = 64;
+
+    char* ptr0 = ALLOC(size1);
+    assert_non_null(ptr0);
+    assert_uint_equal(SAVE(), ALLOCATION_END_POSITION(before, size1));
+    for (size_t i = 0; i < size1; i++) {
+        ptr0[i] = i + 1;
+    }
+
+    void* new_ptr = REALLOC(ptr0, size2);
+    assert_non_null(new_ptr);
+    assert_ptr_equal(ptr0, new_ptr);
+    assert_uint_equal(SAVE(), ALLOCATION_END_POSITION(before, size2));
+    assert_memory_equal(ptr0, new_ptr, size1);
+}
+
+static void TEST_NAME(realloc_increase)(void**) {
+    size_t before0 = SAVE();
+    size_t size0 = 20;
+    char* ptr0 = ALLOC(size0);
+    assert_non_null(ptr0);
+    assert_uint_equal(SAVE(), ALLOCATION_END_POSITION(before0, size0));
+    for(size_t i = 0; i < size0; i++) {
+        ptr0[i] = i + 1;
+    }
+    
+    size_t before1 = SAVE();
+    size_t size1 = 12;
+    void* ptr1 = ALLOC(size1);
+    assert_non_null(ptr1);
+    assert_uint_equal(SAVE(), ALLOCATION_END_POSITION(before1, size1));
+
+    size_t before2 = SAVE();
+    size_t size2 = 64;
+    void* new_ptr = REALLOC(ptr0, size2);
+    assert_non_null(new_ptr);
+    assert_ptr_not_equal(ptr0, new_ptr);
+    assert_uint_equal(SAVE(), ALLOCATION_END_POSITION(before2, size2));
+    assert_memory_equal(ptr0, new_ptr, size0);
+}
+
+static void TEST_NAME(reuse)(void**) {
+    size_t start = SAVE();
+    size_t size = 40;
+    void* ptr = ALLOC(size);
+    assert_non_null(ptr);
+    assert_uint_equal(SAVE(), ALLOCATION_END_POSITION(start, size));
+
+    size_t assert_post = SAVE();
+    ptr = ALLOC(size);
+
+    size_t before = SAVE();
+
+    ptr = ALLOC(size);
+    ptr = ALLOC(size);
+
+    REWIND(before);
+
+    assert_int_equal(SAVE(), ALLOCATION_END_POSITION(assert_post, size));
+}
+
+static void TEST_NAME(free)(void**) {
+    // Frist check that freeing the previous allocation decrements
+    size_t start = SAVE();
+    size_t size = 40;
+    void* ptr0 = ALLOC(size);
+    assert_non_null(ptr0);
+    assert_uint_equal(SAVE(), ALLOCATION_END_POSITION(start, size));
+    FREE(ptr0);
+    assert_uint_equal(SAVE(), start);
+    
+    // Then check that freeing the older one doesn't, and that immidiately does
+    void* ptr1 = ALLOC(2*size);
+    assert_non_null(ptr1);
+    size_t before2 = SAVE();
+    void* ptr2 = ALLOC(size);
+    size_t after = SAVE();
+    assert_non_null(ptr2);
+    
+    FREE(ptr1);
+    assert_uint_equal(SAVE(), after);
+    
+    FREE(ptr2);
+    assert_uint_equal(SAVE(), before2);
+}
+
+static int TEST_NAME(verify)(void**) {
+    assert_uint_equal(SAVE(), sizeof(arena_t));
+    return 0;
+}
+
+static int TEST_NAME(reset)(void**) {
+    RESET();
+    return 0;
+}
+
+#ifndef TEST_SUITE_FUNCTION
+
+#define TEST_SUITE_FUNCTION_XX(prefix) run_##prefix##_##tests
+#define TEST_SUITE_FUNCTION_X(prefix) TEST_SUITE_FUNCTION_XX(prefix)
+#define TEST_SUITE_FUNCTION() TEST_SUITE_FUNCTION_X(TEST_PREFIX)
+
+#endif
+
+static int TEST_NAME(init_suite)(void** state) {
+#ifdef USE_ARENA
+    TEMP_ARENA_NAME = arena_create(1024 * 1024); // 1 MB arena
+    assert_non_null(TEMP_ARENA_NAME);
+#endif // USE_ARENA
+    return TEST_NAME(reset)(state);
+}
+
+static int TEST_NAME(teardown_suite)(void** state) {
+    (void) TEST_NAME(verify)(state);
+#ifdef USE_ARENA
+    arena_destroy(TEMP_ARENA_NAME);
+    TEMP_ARENA_NAME = NULL;
+#endif // USE_ARENA
+    return 0;
+}
+
+int TEST_SUITE_FUNCTION()(void) {
+    const struct CMUnitTest sbuff_tests[] = {
+        TEST_CASE(TEST_NAME(alloc)),
+        TEST_CASE(TEST_NAME(calloc)),
+        TEST_CASE(TEST_NAME(realloc)),
+        TEST_CASE(TEST_NAME(realloc_decrease)),
+        TEST_CASE(TEST_NAME(realloc_increase_inplace)),
+        TEST_CASE(TEST_NAME(realloc_increase)),
+        TEST_CASE(TEST_NAME(reuse)),
+        TEST_CASE(TEST_NAME(free)),
+    };
+
+    return cmocka_run_group_tests(sbuff_tests, TEST_NAME(init_suite), TEST_NAME(teardown_suite));
+}
+
+#define UNDEF_ALL
+
+#include "arena_functions.h"
+
+#undef UNDEF_ALL
+
+
+#endif // IMPLEMENT_TESTCASES

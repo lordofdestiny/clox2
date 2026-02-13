@@ -1,8 +1,8 @@
 # Project exclude paths
-/*build*
-/out/
-compile_commands.json
+build*/
+coverage/
 .vscode/
 .venv/
 .cache/
+compile_commands.json
 valgrind-out.txt
