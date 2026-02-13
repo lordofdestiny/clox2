@@ -13,6 +13,8 @@
 #define INVALID_FILE_PATH 66
 #define FAILED_TO_READ 15
 
+#define HIDE_LOG 0
+
 int main(int argc, char* argv[]) {
     if (argc == 7  && strcmp(argv[1], "-p")==0) {
         const char* filename = argv[2];
@@ -21,14 +23,15 @@ int main(int argc, char* argv[]) {
         const char* includeHeader = argv[5];
         const char* exportHeader = argv[6];
    
-#if 0
-printf("Command: cloxn -p %s %s %s\n", filename, header, source);
+#if HIDE_LOG
+        printf("Command: cloxn -p %s %s %s\n", filename, header, source);
 #endif
 
 
         NativeModuleDescriptor desc;
         int rc = loadNativeModuleDescriptor(filename, &desc);
-#if 0
+        (void)rc;
+#if HIDE_LOG
         if(rc != 0) {
             fprintf(stderr, "%s", getNativeModuleError());
             return FAILED_TO_READ;
@@ -36,8 +39,6 @@ printf("Command: cloxn -p %s %s %s\n", filename, header, source);
         
         printf("Module: %s\n", desc.name);
         printf("Function count: %zu\n", desc.functionCount);
-#else
-        (void)rc;
 #endif
 
         void* res; 
