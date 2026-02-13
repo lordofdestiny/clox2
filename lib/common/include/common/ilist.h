@@ -43,7 +43,6 @@ static inline void ilist_add_back(ilist_t* list, ilist_node_t* node) {
     ilist_add_between(list->head.prev, &list->head , node);
 }
 
-
 static inline void ilist_remove_between(ilist_node_t * prev, ilist_node_t * next) {
 	next->prev = prev;
 	prev->next = next;
@@ -61,7 +60,6 @@ static inline void list_replace(ilist_node_t *node, ilist_node_t * with) {
 	with->prev = node->prev;
 	with->prev->next = with;
 }
-
 
 #define ILIST_FOR_EACH(head, node) \
     for (node = (head).next; node != &(head); node = node->next)
