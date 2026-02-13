@@ -5,7 +5,6 @@ COPY .bash_aliases /root
 RUN apt-get update && \
     apt-get install -y \
         git coreutils \
-        gcovr \
         clang clang-format clang-tidy clang-tools clangd \
         libclang-dev libclang1 \
         lld lldb llvm-dev llvm-runtime llvm \
