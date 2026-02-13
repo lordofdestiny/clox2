@@ -72,6 +72,6 @@ int formatInputFileError(char* buffer, size_t cap, const char* file, InputFileEr
 
     return snprintf(
         buffer, cap,
-        "Failed to read the input file \"%s\": %s\n",
+        "Failed to read the input file \"%s\": %s\n\n",
         file, errorMessages[cause]);
 }
