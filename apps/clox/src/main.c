@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "args.h"
+#include <args.h>
 #include "commands.h"
 #include "exitcode.h"
 #include <impl/vm.h>

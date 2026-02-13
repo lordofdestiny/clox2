@@ -9,6 +9,8 @@ set_target_properties(
     COMPILE_WARNING_AS_ERROR TRUE
 )
 
+target_compile_features(cloxcommon PUBLIC c_std_23)
+
 target_sources(cloxcommon
   PRIVATE
     src/inputfile.c
@@ -23,3 +25,5 @@ target_sources(cloxcommon
       include/common/ilist.h
       include/common/util.h
 )
+
+add_subdirectory(test)

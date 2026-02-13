@@ -1,6 +1,6 @@
 #ifdef IMPLEMENT_TESTCASES
 
-#include "arena.h"
+#include <common/arena.h>
 
 #if !defined(UNDEF_ALL) && !defined(USE_SBUFF) && !defined(USE_ARENA)
 #error "You must define either USE_SBUFF or USE_ARENA to declare the tests, or UNDEF_ALL to undefine all macros"
