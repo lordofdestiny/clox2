@@ -1,6 +1,7 @@
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <limits.h>
 #include <string.h>
 #include <stdbool.h>
 
@@ -14,15 +15,15 @@
 
 #define IS_ALIGNED(ptr) (((uintptr_t) ptr) % ARENA_ALIGNMENT == 0)
 
-#define BLOCK_BASE(ptr) ((void*) (((uint8_t*)ptr) - sizeof(block_header_t)))
+#define BLOCK_BASE(ptr) ((void*) (((uint8_t*) ptr) - sizeof(block_header_t)))
 
-#define BLOCK_SIZE(ptr) (((block_header_t*)BLOCK_BASE(ptr))->size)
+#define BLOCK_SIZE(ptr) (((block_header_t*) BLOCK_BASE(ptr))->size)
 
 #define IS_FREE(ptr) ((block_header_t*) BLOCK_BASE(ptr))->free
 
 typedef struct {
     size_t free : 1;
-    size_t size : sizeof(size_t) * 8 - 1;
+    size_t size : 8 * sizeof(size_t) - 1;
     // Insert padding to future proof the implementation for new features
     char padding[ARENA_ALIGNMENT - sizeof(size_t)];
 } block_header_t;
@@ -74,25 +75,23 @@ void arena_destroy(arena_t *arena) {
     free(arena);
 }
 
-static void* init_block(void* ptr, size_t size) {
-    block_header_t* block = ptr;
-    block->free = 0;
-    block->size = size;
-    return ((uint8_t*)block) + sizeof(block_header_t);
-}
-
-// Make sure release build is not broken once macros are 
-[[maybe_unused]]static bool arena_owns(arena_t * arena, void* ptr) {
+[[maybe_unused]]
+static bool arena_owns(arena_t * arena, void* ptr) {
     uint8_t* arena_b = (uint8_t*) arena;
     uint8_t* ptr_b = ptr;
-    size_t size = BLOCK_SIZE(ptr);
-    return (ptr_b >= arena_b) && (arena_b + size < arena_b + arena->capacity);
+    return (ptr_b >= arena_b) && (arena_b + BLOCK_SIZE(ptr) < arena_b + arena->capacity);
 }
 
 static bool arena_last_alloc(arena_t* arena, block_header_t* block) {
     return ((uint8_t*)block) + block->size == ((uint8_t*)arena) + arena->position;
 }
 
+static void* init_block(void* ptr, size_t size) {
+    block_header_t* block = ptr;
+    block->free = 0;
+    block->size = size;
+    return ((uint8_t*)block) + sizeof(block_header_t);
+}
 
 void* arena_alloc(arena_t *arena, size_t req_size) {
     size_t size = ALIGNED_BLOCK_SIZE(req_size);
@@ -105,73 +104,75 @@ void* arena_alloc(arena_t *arena, size_t req_size) {
 }
 
 void* arena_calloc(arena_t *arena, size_t count, size_t size) {
-    void* zone = arena_alloc(arena, count * size);
+    size_t total_size = count * size;
+    if (size > 0 && count > ULONG_MAX  / size) {
+        return NULL;
+    }
+
+    void* zone = arena_alloc(arena, total_size);
     if (zone != NULL) {
         memset(zone, 0, BLOCK_SIZE(zone) - sizeof(block_header_t));
     }
+    
     return zone;
 }
 
 void* arena_realloc(arena_t *arena, void *ptr, size_t req_size) {
-    if(ptr == NULL) {
-        return arena_alloc(arena, req_size);
-    }
+    if(ptr == NULL) return arena_alloc(arena, req_size);
 
     massert(arena_owns(arena, ptr),  "arena does not own reallocated pointer");
     massert(IS_ALIGNED(ptr), "unialigned pointer reallocated in arena");
     massert(!IS_FREE(ptr), "reallocating a freed pointer in arena");
 
     size_t new_size = ALIGNED_BLOCK_SIZE(req_size);
-    block_header_t* base = BLOCK_BASE(ptr);
+    block_header_t* block = BLOCK_BASE(ptr);
     
-    bool is_last = arena_last_alloc(arena, base);
+    bool is_last = arena_last_alloc(arena, block);
     
     if (req_size == 0) {
+        block->free = 0;
         if (is_last) {
-            arena->position -= base->size;
+            arena->position -= block->size;
         }
-        base->free = 0;
         return NULL;
     }
 
-    if (new_size <= base->size) {
-        size_t diff = base->size - new_size;
+    if (new_size <= block->size) {
+        size_t decrement = block->size - new_size;
         if (is_last) {
-            arena->position -= diff;
+            arena->position -= decrement;
         }
         return ptr;
     }
 
     if (is_last) {
-        size_t diff = new_size - base->size;
-        uintptr_t new_end = ((uintptr_t) base) + new_size;
-        uintptr_t arena_end = ((uintptr_t)arena) + arena->capacity;
-        if (new_end > arena_end){
-            return NULL;
-        }
-        base->size += diff;
+        size_t diff = new_size - block->size;
+        uint8_t* new_end = ((uint8_t*) block) + new_size;
+        uint8_t* arena_end = ((uint8_t*)arena) + arena->capacity;
+        if (new_end > arena_end)  return NULL;
+        block->size += diff;
         arena->position += diff;
         return ptr;
     }
 
     void* new_ptr = arena_alloc(arena, req_size);
     if (new_ptr != NULL) {
-        memmove(new_ptr, ptr, base->size - ARENA_ALIGNMENT);
+        memmove(new_ptr, ptr, block->size - sizeof(block_header_t));
     }
     return new_ptr;
 }
 
 void arena_free(arena_t *arena, void *ptr) {
-    if (ptr == NULL) {
-        return;
-    }
+    if (ptr == NULL) return;
 
     massert(arena_owns(arena, ptr),  "arena does not own freed pointer");
     massert(IS_ALIGNED(ptr), "unialigned pointer freed in arena");
     massert(!IS_FREE(ptr), "double free corruption in arena allocator: %p");
 
-    if (arena_last_alloc(arena, BLOCK_BASE(ptr))) {
-        arena->position -= BLOCK_SIZE(ptr);
+    block_header_t* block = BLOCK_BASE(ptr);
+    if (arena_last_alloc(arena, block)) {
+        block->free = true;
+        arena->position -= block->size;
     }
 }
 
