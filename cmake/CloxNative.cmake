@@ -3,7 +3,7 @@ function(CloxNativeLibrary)
     CLOX_NATIVE_LIBARARY_PARGS
     ""
     "SPEC_FILE;TARGET_NAME;OUT_HEADER;OUT_SOURCE"
-    "EXTRA_LIBS"
+    "LINK_LIBS"
     "${ARGN}"
   )
 
@@ -11,7 +11,7 @@ function(CloxNativeLibrary)
   set(TargetName ${CLOX_NATIVE_LIBARARY_PARGS_TARGET_NAME})
   set(OutHeader ${CLOX_NATIVE_LIBARARY_PARGS_OUT_HEADER})
   set(OutSource ${CLOX_NATIVE_LIBARARY_PARGS_OUT_SOURCE})
-  set(ExtraLibs ${CLOX_NATIVE_LIBARARY_PARGS_EXTRA_LIBS})
+  set(LinkLibs ${CLOX_NATIVE_LIBARARY_PARGS_LINK_LIBS})
 
   if(NOT CLOX_NATIVE_LIBARARY_PARGS_SPEC_FILE)
     set(SpecFile "spec.json")
@@ -46,8 +46,8 @@ function(CloxNativeLibrary)
   set(WrapperHeaderInclude "${GenIncludeDir}/${LibName}.h")
   set(WrapperHeaderPath "${GenIncludePath}/${WrapperHeaderInclude}")
 
-  set(GenSourcePath "${CMAKE_CURRENT_BINARY_DIR}/src")
-  set(WrapperSourcePath "${GenSourcePath}/${LibName}_wrapper.c")
+  set(GenSourcePath "${CMAKE_CURRENT_BINARY_DIR}/gen/src")
+  set(WrapperSourcePath "${GenSourcePath}/${LibName}.c")
 
   cmake_path(GET WrapperHeaderPath PARENT_PATH HeaderDirectory)
   cmake_path(GET WrapperSourcePath PARENT_PATH SourceDirectory)
@@ -61,12 +61,18 @@ function(CloxNativeLibrary)
     set(${OutSource} ${WrapperSourcePath} PARENT_SCOPE)
   endif()
 
-  if(NOT EXISTS ${PROJECT_SOURCE_DIR}/src) 
+  if(NOT EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/src) 
     message(SEND_ERROR "CLoxNativeLibrary: ${TargetName} has no 'src' directory")
   endif()
 
   # TODO Refactor how cloxn -p is called, so that export there is less implicit "knowledge"
   
+  generate_export_header(
+    ${TargetName}
+      BASE_NAME ""
+      EXPORT_FILE_NAME ${ExportHeaderPath}
+  )
+
   add_custom_command(
     OUTPUT
       ${WrapperHeaderPath}
@@ -99,21 +105,8 @@ function(CloxNativeLibrary)
     COMMENT "Copying native lib ${TargetName} to runpath"
   )
 
-  target_include_directories(
-    ${TargetName}
-    PRIVATE
-      ${PROJECT_BINARY_DIR}/include
-      ${CMAKE_CURRENT_BINARY_DIR}/include
-  )
-
-  generate_export_header(
-    ${TargetName}
-      BASE_NAME ""
-      EXPORT_FILE_NAME ${ExportHeaderPath}
-  )
-
   target_compile_options(${TargetName} PRIVATE "-Wno-unused-parameter")
 
-  target_link_libraries(${TargetName} PRIVATE cloxpublic ${ExtraLibs})
+  target_link_libraries(${TargetName} PUBLIC cloximpl::api_native PRIVATE ${LinkLibs})
 
 endfunction()

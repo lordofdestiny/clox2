@@ -13,5 +13,4 @@ set(WITH_EXAMPLES OFF CACHE BOOL "CMocka: Build examples" FORCE)
 set(UNIT_TESTING OFF CACHE BOOL "CMocka: Build with unit testing" FORCE)
 set(PICKY_DEVELOPER OFF CACHE BOOL "CMocka: Build with picky developer flags" FORCE)
 
-# Download cmocka, and execute its cmakelists.txt
 FetchContent_MakeAvailable(cmocka)

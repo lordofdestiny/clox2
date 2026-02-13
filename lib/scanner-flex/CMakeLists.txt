@@ -1,0 +1,65 @@
+find_package(FLEX 2.6.4 REQUIRED)
+
+file(GLOB_RECURSE SCANNER_HEADERS include/*.h)
+file(GLOB_RECURSE SCANNER_SOURCES src/*.c)
+
+if(FLEX_FOUND)
+  set(SCANNER_SPEC misc/scanner_spec.l)
+  
+  set(SCANNER_IMPL_HEADER ${CMAKE_CURRENT_BINARY_DIR}/include/scanner/gen/scanner_impl.h)
+  set(SCANNER_IMPL_SOURCE ${CMAKE_CURRENT_BINARY_DIR}/src/gen/scanner_impl.c)
+
+  cmake_path(GET SCANNER_IMPL_HEADER PARENT_PATH INCLUDE_DIR_PATH)
+  cmake_path(GET SCANNER_IMPL_SOURCE PARENT_PATH SOURCE_DIR_PATH)
+
+  file(MAKE_DIRECTORY ${INCLUDE_DIR_PATH} ${SOURCE_DIR_PATH})
+
+  flex_target(
+    generate_flex_scanner
+    ${SCANNER_SPEC}
+    ${SCANNER_IMPL_SOURCE}
+    DEFINES_FILE ${SCANNER_IMPL_HEADER}
+  )
+
+  add_library(cloxscanner_flex OBJECT)
+
+  target_sources(
+    cloxscanner_flex
+    PRIVATE
+      ${SCANNER_SOURCES}
+      ${SCANNER_IMPL_SOURCE}
+    
+    PRIVATE
+      FILE_SET private_headers TYPE HEADERS
+      BASE_DIRS
+        ${CMAKE_CURRENT_BINARY_DIR}/include
+      FILES
+        ${SCANNER_IMPL_HEADER}
+    
+    PUBLIC
+      FILE_SET public_headers TYPE HEADERS
+      BASE_DIRS
+        include
+      FILES
+        ${SCANNER_HEADERS}
+  )
+
+  set_target_properties(
+    cloxscanner_flex
+    PROPERTIES
+      C_VISIBILITY_PRESET default
+      VISIBILITY_INLINES_HIDDEN YES 
+      POSITION_INDEPENDENT_CODE TRUE
+      COMPILE_WARNING_AS_ERROR TRUE
+  )
+
+  target_include_directories(cloxscanner_flex PUBLIC ${PROJECT_BINARY_DIR}/include)
+
+  target_compile_options(cloxscanner_flex PRIVATE "-Wno-unused-function;-Wno-sign-compare")
+
+  target_link_libraries(
+    cloxscanner_flex
+    PUBLIC
+      cloxcommon
+  )
+endif()
