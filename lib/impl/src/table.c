@@ -1,5 +1,4 @@
 #include <assert.h>
-#include <stdlib.h>
 #include <string.h>
 
 #include <clox/table.h>
@@ -45,10 +44,7 @@ static Entry* findEntry(Entry* entries, const int capacity, const ObjString* key
 
 static void adjustCapacity(Table* table, const int capacity) {
     Entry* entries = ALLOCATE(Entry, capacity);
-    if (entries == NULL) {
-        fprintf(stderr, "Memory allocation failed: File: %s; Line: %d\n", __FILE__, __LINE__);
-        exit(1);
-    }
+
     for (int i = 0; i < capacity; i++) {
         entries[i] = (Entry){NULL, NIL_VAL};
     }

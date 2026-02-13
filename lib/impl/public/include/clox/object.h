@@ -101,7 +101,7 @@ CLOX_EXPORT ObjInstance* newInstance(ObjClass* klass);
 
 CLOX_EXPORT ObjInstance* newPrimitive(Value value, ObjClass* klass);
 
-CLOX_EXPORT ObjNative* newNative(NativeFn function, int arity);
+CLOX_EXPORT ObjNative* newNative(const char* name, NativeFn function, int arity);
 
 CLOX_EXPORT ObjString* takeString(char* chars, int length);
 
@@ -127,7 +127,7 @@ static inline bool isObjType(const Value value, const ObjType type) {
  * This will be removed in the future.
 **/
 
-#include "table.h"
+#include <clox/table.h>
 
 typedef struct ObjArray{
     Obj obj;

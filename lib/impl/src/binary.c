@@ -4,6 +4,7 @@
 #include <unistd.h>
 
 #include <clox/vm.h>
+#include <impl/vm.h>
 
 #include <impl/binary.h>
 
@@ -337,7 +338,7 @@ static void writeStrings(FILE* file, ValueQueue* strings) {
 }
 
 void writeBinary(const char* source_file, ObjFunction* compiled, const char* path) {
-    push(OBJ_VAL((Obj*) compiled));
+   PUSH_OBJ(compiled);
     FILE* file = fopen(path, "w+b");
     setbuf(file, NULL);
 
@@ -530,7 +531,7 @@ static Value loadFunction(FILE* file, GenericArray* patchList) {
     checkSegment(file, SEG_FUNCTION);
 
     ObjFunction* function = newFunction();
-    push(OBJ_VAL((Obj*) function));
+    PUSH_OBJ(function);
     
     checkSegment(file, SEG_FUNCTION_HEADER);
     loadFunctionHeader(file, function);
@@ -617,7 +618,7 @@ ObjFunction* loadBinary(const char* path) {
     FILE* file = fopen(path, "rb");
     if (file == NULL) {
         fprintf(stderr, "Could not open file c\"%s\".\n", path);
-        exit(74);
+        exit(LOAD_FAILURE);
     }
 
     checkSegment(file, SEG_FILE_START);
@@ -631,10 +632,10 @@ ObjFunction* loadBinary(const char* path) {
     free(file_name);
 
     ObjArray* functions = newArray();
-    push(OBJ_VAL((Obj*) functions));
+    PUSH_OBJ(functions);
     
     ObjArray* strings = newArray();
-    push(OBJ_VAL((Obj*) strings));
+    PUSH_OBJ(strings);
 
     GenericArray patchList;
     GENERIC_INIT(FunctionPatch, &patchList);

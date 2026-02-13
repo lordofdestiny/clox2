@@ -12,10 +12,9 @@ CLOX_EXPORT
 __attribute__((noreturn))
 void terminate(int code);
 
-CLOX_EXPORT void push(Value value);
-
-CLOX_EXPORT Value pop();
-
-#define PUSH_OBJ(obj) push(OBJ_VAL((Obj*) obj))
+CLOX_EXPORT int referenceScope();
+CLOX_EXPORT void pushReference(Value val);
+CLOX_EXPORT Value popReference();
+CLOX_EXPORT void resetReferences(int scope);
 
 #endif //  __CLOX_LIB_VM_H__

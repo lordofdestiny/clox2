@@ -24,11 +24,19 @@
 
 #endif
 
+#define FAILED_LIB_LOAD 50
+#define FAILED_REF_STACK_FULL 55
+
 VM vm;
+NativeLibraryState nativeState;
 
 [[noreturn]]
 __attribute__((noreturn))
 void terminate(int code) {
+    if (!vm.exit_state_ready){
+        fprintf(stderr, "FATAL: terminate() called from VM before jump state was set");
+        abort();
+    }
     vm.exit_code = code;
     longjmp(vm.exit_state, 1);
     __builtin_unreachable();
@@ -56,15 +64,14 @@ void runtimeError(const char* format, ...) {
     va_start(args, format);
     vfprintf(stderr, format, args);
     va_end(args);
-    fputs("\n", stderr);
+    fprintf(stderr, "\n");
 
     for (int i = vm.frameCount - 1; i >= 0; i--) {
         const CallFrame* frame = &vm.frames[i];
         ObjFunction* function = getFrameFunction(frame);
         const size_t instruction = frame->ip - function->chunk.code - 1;
         const int line = getLine(&function->chunk, (int) instruction);
-        fprintf(stderr, "[line %d] in ", line);
-        
+
         const char* name = function->name ? function->name->chars : "script";
         fprintf(stderr, "[line %d] in %s\n", line, name);
     }
@@ -81,28 +88,28 @@ static ObjClass* getGlobalClass(const char* name) {
     return NULL;
 }
 
-#define FAILED_LIB_LOAD 69
-
-
 static bool defineNative(const char* name, const int arity, const NativeFn function) {
-    push(OBJ_VAL((Obj *) copyString(name, (int) strlen(name))));
-    push(OBJ_VAL((Obj *) newNative(function, arity)));
+    PUSH_OBJ(copyString(name, (int) strlen(name)));
+    PUSH_OBJ(newNative(name, function, arity));
+
     if (tableGet(&vm.globals, AS_STRING(vm.stack[0]), NULL)) {
         pop();
         pop(); 
         runtimeError("Function '%s' already registered!", name);
-        exit(FAILED_LIB_LOAD);
+        terminate(FAILED_LIB_LOAD);
     }
+
     tableSet(&vm.globals, AS_STRING(vm.stack[0]), vm.stack[1]);
     pop();
     pop();
+    
     return true;
 }
 
 static ObjClass* nativeClass(const char* name) {
-    push(OBJ_VAL((Obj *) copyString(name, (int) strlen(name))));
+    PUSH_OBJ(copyString(name, (int) strlen(name)));
     ObjClass* klass = newClass(AS_STRING(vm.stack[0]));
-    push(OBJ_VAL((Obj *) klass));
+    PUSH_OBJ(klass);
     tableSet(&vm.globals, AS_STRING(vm.stack[0]), vm.stack[1]);
     pop();
     pop();
@@ -112,8 +119,8 @@ static ObjClass* nativeClass(const char* name) {
 static void addNativeMethod(
     ObjClass* klass, const char* name, const NativeFn method, const int arity
 ) {
-    push(OBJ_VAL((Obj *) copyString(name, (int) strlen(name))));
-    push(OBJ_VAL((Obj *) newNative(method, arity)));
+    PUSH_OBJ(copyString(name, (int) strlen(name)));
+    PUSH_OBJ(newNative(name, method, arity));
     tableSet(&klass->methods, AS_STRING(vm.stack[0]), vm.stack[1]);
     if (AS_STRING(vm.stack[0]) == vm.initString) klass->initializer = vm.stack[1];
     pop();
@@ -147,14 +154,14 @@ static int loadNativeLib(const char* libPath) {
 
     [[maybe_unused]] size_t count = registerFunctions(defineNative);
     
-    size_t newSize = (vm.nativeLibCount + 1) * sizeof(*vm.nativeLibHandles);
-    NativeLibrary* handleArr = realloc(vm.nativeLibHandles, newSize);
+    size_t newSize = (nativeState.nativeLibCount + 1) * sizeof(*nativeState.nativeLibHandles);
+    NativeLibrary* handleArr = realloc(nativeState.nativeLibHandles, newSize);
     if (handleArr == NULL) {
         fprintf(stderr, "dlib error: out of memory while loading '%s' (%s)\n", libraryName, libPath);
         goto load_error;
     }
 
-    vm.nativeLibHandles = handleArr;
+    nativeState.nativeLibHandles = handleArr;
     NativeLibrary lib = {
         .name = libraryName,
         .handle = handle,
@@ -162,7 +169,7 @@ static int loadNativeLib(const char* libPath) {
         .onUnload = onUnload
     };
 
-    handleArr[vm.nativeLibCount++] = lib;
+    handleArr[nativeState.nativeLibCount++] = lib;
 
     onLoadFn();
     
@@ -184,10 +191,18 @@ load_error_msg:
     fprintf(stderr, "dlib error: %s\n", dlerror());
 load_error:
     if (handle != NULL) dlclose(handle);
-    exit(FAILED_LIB_LOAD);
+    terminate(FAILED_LIB_LOAD);
 }
 
 static void initNative() {
+    nativeState.nativeLibCount = 0;
+    nativeState.nativeLibHandles = NULL;
+    
+    nativeState.nativeRcNext = 0;
+
+    nativeState.nativeArgsCap = 0;
+    nativeState.nativeArgs = NULL;
+
     static const char* libs[] = {
         "libcloxreflect.so", 
         "libcloxtime.so", 
@@ -221,6 +236,7 @@ void initVM() {
     resetStack();
     vm.objects = NULL;
     vm.exit_code = 0;
+    vm.exit_state_ready = false;
 
     vm.grayCount = 0;
     vm.grayCapacity = 0;
@@ -236,17 +252,17 @@ void initVM() {
     vm.initString = NULL;
     vm.initString = copyString("init", 4);
 
-    vm.nativeLibCount = 0;
-    vm.nativeLibHandles = NULL;
     initNative();
 }
 
 void freeVM() {
-    for (size_t i = 0; i < vm.nativeLibCount; i++) {
-        vm.nativeLibHandles[i].onUnload();
-        dlclose(vm.nativeLibHandles[i].handle);
+    for (size_t i = 0; i < nativeState.nativeLibCount; i++) {
+        nativeState.nativeLibHandles[i].onUnload();
+        dlclose(nativeState.nativeLibHandles[i].handle);
     }
-    free(vm.nativeLibHandles);
+    free(nativeState.nativeLibHandles);
+    free(nativeState.nativeArgs);
+    
     freeTable(&vm.globals);
     freeTable(&vm.strings);
     vm.initString = NULL;
@@ -260,6 +276,31 @@ void freeVM() {
 int vmExitCode() {
     return vm.exit_code;
 }
+
+int referenceScope() {
+    return nativeState.nativeRcNext;
+}
+
+void pushReference(Value val) {
+    if (nativeState.nativeRcNext == MAX_NATIVE_RC) {
+        runtimeError("Native function reference stack overflow [cap=%d]", MAX_NATIVE_RC);
+        terminate(FAILED_REF_STACK_FULL);
+    }
+    nativeState.nativeRc[nativeState.nativeRcNext++] = val;
+}
+
+Value popReference() {
+    if (nativeState.nativeRcNext <= 0) {
+        runtimeError("Native function reference stack underflow");
+        terminate(FAILED_REF_STACK_FULL);
+    }
+    return nativeState.nativeRc[--nativeState.nativeRcNext];
+}
+
+void resetReferences(int scope) {
+    nativeState.nativeRcNext = scope;
+}
+
 
 void push(const Value value) {
     *vm.stackTop++ = value;
@@ -285,7 +326,7 @@ static void unpackPrimitive(const int distance) {
 
 static bool promote(const int distance, ObjClass* klass) {
     const Value value = peek(distance);
-    push(OBJ_VAL((Obj*) newPrimitive(value, klass))); // This
+    PUSH_OBJ(newPrimitive(value, klass)); // This
     push(value); // Value being promoted passed as an argument to the ctor
     if (CALL_OBJ(klass->initializer, 1)) { // call the class ctor
         const Value promoted = pop(); // Pop result of ctor call - promoted value
@@ -458,13 +499,23 @@ bool callNative(Obj* callable, const int argCount) {
         return false;
     }
 
-    Value* const args = vm.stackTop - argCount;
-    if (native->function(argCount, args - 1, args)) {
-        vm.stackTop -= argCount;
-        return true;
+    if (nativeState.nativeArgsCap < argCount) {
+        size_t newCap = argCount + 1;
+        nativeState.nativeArgs = GROW_ARRAY(Value, nativeState.nativeArgs, nativeState.nativeArgsCap, newCap);
+        nativeState.nativeArgsCap = newCap;
     }
 
-    runtimeError(AS_STRING(vm.stackTop[-argCount - 1])->chars);
+    Value* const stack = vm.stackTop - argCount -1;
+    memcpy(nativeState.nativeArgs, stack, sizeof(Value) * (argCount + 1));
+    
+    if (native->function(argCount, nativeState.nativeArgs, nativeState.nativeArgs + 1)) {
+        vm.stackTop -= argCount;
+        vm.stackTop[-1] = *nativeState.nativeArgs;
+        return true;
+    }
+    
+
+    runtimeError("Native function failed");
     return false;
 }
 
@@ -523,7 +574,7 @@ static bool bindMethod(ObjClass* klass, ObjString* name) {
 
     ObjBoundMethod* bound = newBoundMethod(peek(0), AS_OBJ(method));
     pop();
-    push(OBJ_VAL((Obj *) bound));
+    PUSH_OBJ(bound);
     return true;
 }
 
@@ -608,7 +659,7 @@ static void concatenate() {
     );
     pop();
     pop();
-    push(OBJ_VAL((Obj *) result));
+    PUSH_OBJ(result);
 }
 
 static int primitiveStringLength(const Value value) {
@@ -637,7 +688,7 @@ static void concatenateStringWithPrimitive() {
         b->chars, b->length);
     pop();
     pop();
-    push(OBJ_VAL((Obj *) result));
+    PUSH_OBJ(result);
 }
 
 static void concatenatePrimitiveWithString() {
@@ -653,7 +704,7 @@ static void concatenatePrimitiveWithString() {
         primitiveStr, primitiveStrLen);
     pop();
     pop();
-    push(OBJ_VAL((Obj *) result));
+    PUSH_OBJ(result);
 }
 
 static InterpretResult run() {
@@ -702,12 +753,12 @@ static InterpretResult run() {
             ObjArray* array = newArray();
             size_t size = READ_SHORT();
             Value* elements = vm.stackTop - size;
-            push(OBJ_VAL((Obj*)array));
+            PUSH_OBJ(array);
             for (size_t i = 0; i < size; i++) {
                 writeValueArray(&array->array, elements[i]);
             }
             vm.stackTop = elements;
-            push(OBJ_VAL((Obj*)array));
+            PUSH_OBJ(array);
             break;
         }
         case OP_CONSTANT: push(READ_CONSTANT());
@@ -1047,7 +1098,7 @@ static InterpretResult run() {
         case OP_CLOSURE: {
             ObjFunction* function = AS_FUNCTION(READ_CONSTANT());
             ObjClosure* closure = newClosure(function);
-            push(OBJ_VAL((Obj *) closure));
+            PUSH_OBJ(closure);
             for (int i = 0; i < closure->upvalueCount; i++) {
                 uint8_t isLocal = READ_BYTE();
                 uint8_t index = READ_BYTE();
@@ -1077,7 +1128,7 @@ static InterpretResult run() {
             break;
         }
         case OP_CLASS: {
-            push(OBJ_VAL((Obj *) newClass(READ_STRING())));
+            PUSH_OBJ(newClass(READ_STRING()));
             break;
         }
         case OP_INHERIT: {
@@ -1158,10 +1209,11 @@ static InterpretResult run() {
 
 InterpretResult interpretCompiled(ObjFunction* function) {
     if (function == NULL) return INTERPRET_COMPILE_ERROR;
-    push(OBJ_VAL((Obj *) function));
+    PUSH_OBJ(function);
     callFunction((Obj*) function, 0);
 
     if (setjmp(vm.exit_state) == 0) {
+        vm.exit_state_ready = true;
         return run();
     }
 

@@ -3,6 +3,7 @@
 
 #include <impl/chunk.h>
 #include <impl/memory.h>
+#include <impl/vm.h>
 
 void initChunk(Chunk* chunk) {
     chunk->count = 0;

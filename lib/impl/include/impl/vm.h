@@ -17,6 +17,9 @@
 #define FRAMES_MAX 64
 #define STACK_MAX (FRAMES_MAX * UINT8_COUNT)
 #define MAX_HANDLER_FRAMES 16
+#define MAX_NATIVE_RC 64
+
+#define PUSH_OBJ(obj) push(OBJ_VAL((Obj*) obj))
 
 typedef struct {
     Value klass;
@@ -42,11 +45,25 @@ typedef struct {
 } NativeLibrary;
 
 typedef struct {
+    size_t nativeLibCount;
+    NativeLibrary* nativeLibHandles;
+
+    int nativeRcNext;
+    Value nativeRc[MAX_NATIVE_RC];
+
+    int nativeArgsCap;
+    Value* nativeArgs;
+} NativeLibraryState;
+
+extern NativeLibraryState nativeState;
+
+typedef struct {
     CallFrame frames[FRAMES_MAX];
     int frameCount;
 
     Chunk* chunk;
     Value stack[STACK_MAX];
+    
     Value* stackTop;
     Table globals;
     Table strings;
@@ -61,11 +78,11 @@ typedef struct {
     int grayCapacity;
     Obj** grayStack;
     jmp_buf exit_state;
+    bool exit_state_ready;
     int exit_code;
-
-    size_t nativeLibCount;
-    NativeLibrary* nativeLibHandles;
 } VM;
+
+extern VM vm;
 
 typedef enum {
     INTERPRET_OK,
@@ -74,13 +91,15 @@ typedef enum {
     INTERPRET_RUNTIME_ERROR,
 } InterpretResult;
 
-extern VM vm;
-
 CLOX_EXPORT void initVM();
 
 CLOX_EXPORT void freeVM();
 
 CLOX_EXPORT int vmExitCode();
+
+void push(Value value);
+
+Value pop();
 
 CLOX_EXPORT InterpretResult interpret(InputFile source);
 

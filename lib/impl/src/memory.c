@@ -1,5 +1,7 @@
 #include <stdlib.h>
 
+#include <clox/vm.h>
+
 #include <impl/common.h>
 #include <impl/memory.h>
 #include <impl/vm.h>
@@ -31,7 +33,10 @@ void* reallocate(void* previous, const size_t oldSize, const size_t newSize) {
         return NULL;
     }
     void* result = realloc(previous, newSize);
-    if (result == NULL) exit(1);
+    if (result == NULL) {
+        runtimeError("Failed to allocate memory");
+        terminate(1);
+    }
     return result;
 }
 
@@ -53,7 +58,8 @@ void markObject(Obj* object) {
         // Shut down if it can't allocate more space for gray stack
         if (newGrayStack == NULL) {
             free(vm.grayStack);
-            exit(1);
+            runtimeError("Failed to grow GC grey stack");
+            terminate(1);
         }
 
         vm.grayStack = newGrayStack;
@@ -121,6 +127,10 @@ static void markRoots() {
 
     markCompilerRoots();
     markObject((Obj*) vm.initString);
+
+    for(int i = 0; i < nativeState.nativeRcNext; i++) {
+        markValue(nativeState.nativeRc[i]);
+    }
 }
 
 static void traceReferences() {

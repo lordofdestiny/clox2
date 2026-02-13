@@ -9,6 +9,7 @@
 #include <impl/native.h>
 #include <impl/memory.h>
 #include <impl/object.h>
+#include <impl/vm.h>
 
 bool initExceptionNative(int argCount, Value* implicit, Value* args) {
     if (argCount > 1) {
@@ -270,7 +271,7 @@ bool initArrayNative(int argCount, Value* implicit, Value* args) {
             ? value
             : AS_INSTANCE(value)->this_);
         ObjArray* array_ = newArray();
-        push(OBJ_VAL((Obj*) array_));
+        PUSH_OBJ(array_);
         valueInitValueArray(&array_->array, NIL_VAL, len);
         instance->this_ = OBJ_VAL((Obj*) array_);
         tableSet(&instance->fields, copyString("length", 6), NUMBER_VAL(len));

@@ -2,7 +2,6 @@
 #define __CLOX2_TABLE_H__
 
 #include <clox/export.h>
-
 #include <clox/value.h>
 
 typedef struct ObjString ObjString;
@@ -15,9 +14,9 @@ typedef struct {
 } Entry;
 
 typedef struct {
+    Entry* entries;
     int count;
     int capacity;
-    Entry* entries;
 } Table;
 
 typedef struct {

@@ -33,7 +33,7 @@ else()
   message(WARNING "IPO is not supported: ${output}")
 endif()
 
-set(CMAKE_C_FLAGS "-pedantic-errors -Wpedantic -pedantic -Wall -Wextra")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -pedantic-errors -Wpedantic -pedantic -Wall -Wextra")
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 

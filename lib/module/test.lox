@@ -39,4 +39,21 @@ var end = clock();
 
 print "Elapsed: " + (end - start);
 
-exit(11);
+fun my_max(a, b) {
+    return a < b ? b : a;
+}
+
+start = clock();
+
+for (var i = 0; i < 100000000; i += 1) my_max(55, 99);
+
+var end = clock();
+print "Elapsed: " + (end - start);
+
+start = clock();
+
+for (var i = 0; i < 100000000; i += 1) max(44, 11);
+
+var end = clock();
+print "Elapsed: " + (end - start);
+

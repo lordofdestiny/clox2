@@ -133,7 +133,7 @@ void printObject(FILE* out, const Value value) {
 
 ObjArray* newArray() {
     ObjArray* array = ALLOCATE_OBJ(ObjArray, OBJ_ARRAY);
-    push(OBJ_VAL((Obj*) array));
+    PUSH_OBJ(array);
     initValueArray(&array->array);
     pop();
     return array;
@@ -311,8 +311,9 @@ static void printInstance(Obj* obj, FILE* out) {
     }
 }
 
-ObjNative* newNative(const NativeFn function, const int arity) {
+ObjNative* newNative(const char* name, const NativeFn function, const int arity) {
     ObjNative* native = ALLOCATE_OBJ(ObjNative, OBJ_NATIVE);
+    native->name = name;
     native->function = function;
     native->arity = arity;
     return native;
@@ -323,7 +324,7 @@ static void freeNative(Obj* object) {
 }
 
 static void printNative([[maybe_unused]] Obj* obj, FILE* out) {
-    fprintf(out, "<native fn>");
+    fprintf(out, "<native fn %s>", ((ObjNative*)obj)->name);
 }
 
 ObjInstance* newPrimitive(const Value value, ObjClass* klass) {
@@ -339,7 +340,7 @@ static ObjString* allocateString(char* chars, const int length, const uint32_t h
     string->length = length;
     string->chars = chars;
     string->hash = hash;
-    push(OBJ_VAL((Obj *) string));
+    PUSH_OBJ(string);
     tableSet(&vm.strings, string, NIL_VAL);
     pop();
     return string;

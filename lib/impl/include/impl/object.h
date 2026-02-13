@@ -50,6 +50,7 @@ typedef struct ObjClosure {
 typedef struct ObjNative {
     Obj obj;
     int arity;
+    const char* name;
     NativeFn function;
 } ObjNative;
 

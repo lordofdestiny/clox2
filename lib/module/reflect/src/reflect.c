@@ -7,18 +7,14 @@ bool hasField(ObjInstance* instance, ObjString* key) {
 }
 
 ValueResult getField(ObjInstance* instance, ObjString* key) {
-    Value value;
-    if(!tableGet(&instance->fields, key, &value)) {
-        return (ValueResult) {
-            .success = false,
-            .exception = NATIVE_ERROR("Instance doesn't have the requested field.")
-        };
+    ValueResult result;
+    result.success = tableGet(&instance->fields, key, &result.value);
+
+    if (!result.success) {
+        result.exception = NATIVE_ERROR("Instance doesn't have the requested field.");
     }
 
-    return (ValueResult) {
-        .success = true,
-        .value = value
-    };
+    return result;
 }
 
 void setField(ObjInstance* instance, ObjString* key, Value value) {
@@ -30,8 +26,10 @@ void deleteField(ObjInstance* instance, ObjString* key) {
 }
 
 ObjArray* fieldNames(ObjInstance* instance) {
+    int refScope = referenceScope();
     ObjArray* arr = newArray();
-    PUSH_OBJ(arr);
+
+    pushReference(OBJ_VAL((Obj*) arr));
 
     for(TableIterator it = newTableIterator(&instance->fields);
         !it.done;
@@ -41,7 +39,7 @@ ObjArray* fieldNames(ObjInstance* instance) {
         writeValueArray(&arr->array, OBJ_VAL((Obj*) key));
     }
 
-    pop();
+    resetReferences(refScope);
     return arr;
 }
 
