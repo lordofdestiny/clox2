@@ -4,13 +4,13 @@ project(clox LANGUAGES C)
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 
 include(CheckIPOSupported)
+include(CTest)
 
-option(BUILD_TESTS "Include testing targets during build" YES)
 option(ENABLE_COVERAGE "Enable code coverage generation" NO)
 option(CLOX_NAN_BOXING "Enable NAN BOXING for stack values" YES)
 
 
-if(BUILD_TESTS)
+if(BUILD_TESTING)
   include(FetchCMocka)
   enable_testing()
 endif()
@@ -37,7 +37,7 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -pedantic-errors -Wpedantic -pedantic -Wall 
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 
-if(BUILD_TESTS AND ENABLE_COVERAGE)
+if(BUILD_TESTING AND ENABLE_COVERAGE)
     # Check for compatible compilers (GCC and Clang support --coverage flag)
     if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
         add_compile_options("--coverage" "-O0" "-g") # Disable optimization for accurate coverage

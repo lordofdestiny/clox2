@@ -11,6 +11,6 @@ target_sources(cloxargs
       include/args.h
 )
 
-if(BUILD_TESTS)
+if(BUILD_TESTING)
   add_subdirectory(test)
 endif()

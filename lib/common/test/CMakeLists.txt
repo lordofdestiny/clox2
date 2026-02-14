@@ -1,2 +1,2 @@
 include(Utils)
-IncludeSubdirectories(${BUILD_TESTS})
+IncludeSubdirectories(${BUILD_TESTING})
