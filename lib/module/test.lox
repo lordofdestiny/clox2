@@ -36,9 +36,11 @@ fun timeme(function) {
 
 print "Some long work:";
 
+var N = 10000000;
+
 timeme(|| {
     var pp = 0;
-    for(var i = 0; i < 10000000; i+=1) {
+    for(var i = 0; i < N; i+=1) {
         pp += i;
     }
 });
@@ -48,11 +50,11 @@ fun my_max(a, b) {
 }
 
 timeme(|| {
-    for (var i = 0; i < 10000000; i += 1) max(55, 99);
+    for (var i = 0; i < N; i += 1) max(55, 99);
 });
 
 timeme(|| {
-    for (var i = 0; i < 10000000; i += 1) my_max(55, 99);
+    for (var i = 0; i < N; i += 1) my_max(55, 99);
 });
 
 print "sin(pi/4) = " + sin(PI() / 4) + " = " + (sqrt(2) / 2);
