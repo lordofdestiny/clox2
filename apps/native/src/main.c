@@ -29,8 +29,11 @@ int main(int argc, char* argv[]) {
 
 
         NativeModule module;
-        int rc = loadNativeModule(filename, &module);
-        (void)rc;
+        ParseResult pr = loadNativeModule(filename, &module);
+        if (pr.count > 0) {
+            return pr.code;
+        }
+        
 #if HIDE_LOG
         if(rc != 0) {
             fprintf(stderr, "%s", getNativeModuleError());

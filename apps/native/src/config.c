@@ -9,6 +9,44 @@
 
 #include "config.h"
 
+#define ERROR_FORMAT_FAILED_OPEN \
+    "NativeModuleError: %s\n"
+
+#define ERROR_FORMAT_LOAD \
+    "NativeModuleError [%s:%d:%d]: %s\n"
+
+#define ERROR_FORMAT_LOCATION \
+    "NativeModuleError in file \'%s\'. "
+
+#define ERROR_FORMAT_EXPECTED \
+    "Expected JSON %s, but found %s"
+
+#define ERROR_FORMAT_MODULE \
+    ERROR_FORMAT_LOCATION "%s.\n"
+
+#define ERROR_FORMAT_MODULE_FIELD_MISSING \
+    ERROR_FORMAT_LOCATION "Missing field \"%s\".\n"
+
+#define ERROR_FORMAT_MODULE_FIELD_TYPE \
+    ERROR_FORMAT_LOCATION \
+    " Invalid type for field \"%s\"." \
+    " " ERROR_FORMAT_EXPECTED ".\n"
+
+#define ERROR_FORMAT_FUNCTION_FIELD \
+    ERROR_FORMAT_LOCATION \
+    "Function at index %zu: "
+
+#define ERROR_FORMAT_FUNCTION_FIELD_MISSING \
+    ERROR_FORMAT_FUNCTION_FIELD \
+    "missing field \"%s\".\n"
+
+#define ERROR_FORMAT_FUNCTION_FIELD_TYPE \
+    ERROR_FORMAT_FUNCTION_FIELD \
+     "invalid type for field \"%s\"."\
+    " " ERROR_FORMAT_EXPECTED ".\n"
+
+#define LOG_ERROR(FORMAT, ...) fprintf(stderr, "> " FORMAT, __VA_ARGS__)
+
 static void freeNativeFunction(NativeFunction* function) {
     free(function->name);
     free(function->export);
@@ -17,6 +55,7 @@ static void freeNativeFunction(NativeFunction* function) {
 
 void freeNativeModule(NativeModule* module) {
     free(module->name);
+    free(module->namePrefix);
     for(size_t i = 0 ; i < module->functionCount; i++) {
         freeNativeFunction(&module->functions[i]);
     }
@@ -54,6 +93,10 @@ const char* nativeFunctionArgName(NativeFunctionArgType id) {
 }
 
 static NativeFunctionArgType decodeArgType(const char* const type) {
+    if (type == NULL) {
+        return NATIVE_FUNCTION_TYPE_NONE;
+    }
+    
     for(size_t i = 0; i < arg_types_size; i++) {
         if (supported_arg_types[i] == NULL) continue;
         if (strcmp(type, supported_arg_types[i]) == 0) {
@@ -72,130 +115,193 @@ static const char* get_json_typename(json_t * node) {
     return json_typenames[typeid];
 }
 
-#define ERROR_FORMAT_FAILED_OPEN \
-    "NativeModuleError: %s\n"
+typedef struct {
+    ParseResult pr;
+    bool failed;
+    bool fatal;
+} ParseState;
 
-#define ERROR_FORMAT_LOAD \
-    "NativeModuleError [%s:%d:%d]: %s\n"
+void nonFatalError(ParseState* pe, int code) {
+    pe->pr.count++;
+    pe->pr.code = code;
+    pe->failed = false;
+    pe->fatal = false;
+}
 
-#define ERROR_FORMAT_LOCATION \
-    "NativeModuleError in file \'%s\'. "
+void fatalError(ParseState* pe, int code) {
+    nonFatalError(pe, code);
+    pe->fatal = true;
+}
 
-#define ERROR_FORMAT_EXPECTED \
-    "Expected JSON %s, but found %s"
-
-#define ERROR_FORMAT_MODULE \
-    ERROR_FORMAT_LOCATION "%s.\n"
-
-#define ERROR_FORMAT_MODULE_FIELD_MISSING \
-    ERROR_FORMAT_LOCATION "Missing field \"%s\".\n"
-
-#define ERROR_FORMAT_MODULE_FIELD_TYPE \
-    ERROR_FORMAT_LOCATION \
-    " Invalid type for field \"%s\"." \
-    " " ERROR_FORMAT_EXPECTED ".\n"
-
-#define ERROR_FORMAT_FUNCTION_FIELD \
-    ERROR_FORMAT_LOCATION \
-    "Function at index %zu: "
-
-#define ERROR_FORMAT_FUNCTION_FIELD_MISSING \
-    ERROR_FORMAT_FUNCTION_FIELD \
-    "missing field \"%s\".\n"
-
-#define ERROR_FORMAT_FUNCTION_FIELD_TYPE \
-    ERROR_FORMAT_FUNCTION_FIELD \
-     "invalid type for field \"%s\"."\
-    " " ERROR_FORMAT_EXPECTED ".\n"
-
-#define ERROR_BUFFER_SIZE 1024
-static char* errorBuffer[ERROR_BUFFER_SIZE];
-
-#define STORE_ERROR(FORMAT, ...) snprintf((char*) errorBuffer, sizeof(errorBuffer), FORMAT, __VA_ARGS__)
-
-static int verifyFunctions(const char* filename, size_t index, json_t* root) {
+static void parseFunction(ParseState* pe, const char* filename, size_t index, json_t* root, NativeFunction* out_function) {
+    if (root == NULL) {
+        nonFatalError(pe, LOAD_ERROR_NULL_ROOT);
+        return;
+    }
+    
     if(!json_is_object(root)) {
-        return NATIVE_MODULE_LOAD_ERROR_FIELD_TYPE;
+        LOG_ERROR(
+            ERROR_FORMAT_FUNCTION_FIELD "Invalid type. " ERROR_FORMAT_EXPECTED,
+            filename, index, "object", get_json_typename(root));
+        nonFatalError(pe,LOAD_ERROR_INVALID_STRUCTURE);
+        return;
     }
-
-    json_t *nameField, *exportField, *argsField, *returnsField, *wrappedField, *failsField;
-    exportField = json_object_get(root, "export");
+    
+    json_t* exportField = json_object_get(root, "export");
+    const char* exportName = json_string_value(exportField);
     if(exportField == NULL) {
-        STORE_ERROR(ERROR_FORMAT_FUNCTION_FIELD_MISSING, filename, index, "export");
-        return NATIVE_MODULE_LOAD_ERROR_MISSING_FIELD;
+        LOG_ERROR(
+            ERROR_FORMAT_FUNCTION_FIELD_MISSING,
+            filename, index, "export");
+        nonFatalError(pe,LOAD_ERROR_MISSING_FIELD);
+    } else if(!json_is_string(exportField)) {
+        LOG_ERROR(
+            ERROR_FORMAT_FUNCTION_FIELD_TYPE, 
+            filename, index, "export", "string", get_json_typename(exportField));
+        nonFatalError(pe,LOAD_ERROR_FIELD_TYPE);
     }
-    if(!json_is_string(exportField)) {
-        STORE_ERROR(ERROR_FORMAT_FUNCTION_FIELD_TYPE, filename, index, "export", "string", get_json_typename(exportField));
-        return NATIVE_MODULE_LOAD_ERROR_FIELD_TYPE;
+    
+    json_t *nameField = json_object_get(root, "name");
+    const char* functionName = json_string_value(nameField);
+    if (functionName == NULL) {
+        functionName = exportName;
     }
-
-    nameField = json_object_get(root, "name");
     if(nameField != NULL && !json_is_string(nameField)) {
-        STORE_ERROR(ERROR_FORMAT_FUNCTION_FIELD_TYPE, filename, index, "name", "string", get_json_typename(nameField));
-        return NATIVE_MODULE_LOAD_ERROR_FIELD_TYPE;
+        LOG_ERROR(
+            ERROR_FORMAT_FUNCTION_FIELD_TYPE,
+            filename, index, "name", "string", get_json_typename(nameField));
+        nonFatalError(pe,LOAD_ERROR_FIELD_TYPE);
     }
-
-    wrappedField = json_object_get(root, "wrap");
+    
+    json_t* wrappedField = json_object_get(root, "wrap");
     if(wrappedField != NULL && !json_is_boolean(wrappedField)) {
-        STORE_ERROR(ERROR_FORMAT_FUNCTION_FIELD_TYPE, filename, index, "wrap", "boolean", get_json_typename(wrappedField));
-        return NATIVE_MODULE_LOAD_ERROR_FIELD_TYPE;
+        LOG_ERROR(
+            ERROR_FORMAT_FUNCTION_FIELD_TYPE,
+            filename, index, "wrap", "boolean", get_json_typename(wrappedField));
+        nonFatalError(pe, LOAD_ERROR_FIELD_TYPE);
     }
 
     if (wrappedField != NULL && !json_boolean_value(wrappedField)) {
-        return NATIVE_MODULE_LOAD_SUCCESS;
+        if (pe->failed) return;
+        char* functionNameDup = strdup(functionName);
+        char* exportNameDup = strdup(exportName);
+        
+        if (functionNameDup == NULL || exportNameDup == NULL) {
+            free(functionNameDup);
+            free(exportNameDup);
+            fatalError(pe, LOAD_ERROR_MEMORY);
+            return;
+        }
+
+        *out_function = (NativeFunction) {
+            .name = functionNameDup,
+            .export = exportNameDup,
+            .returnType = NATIVE_FUNCTION_TYPE_NONE,
+            .argTypesCount = 0,
+            .argTypes = NULL,
+            .wrapped = false,
+            .canFail = true
+        };
+
+        return; // Success
     }
 
-    returnsField = json_object_get(root, "returns");
-    if(returnsField == NULL) {
-        STORE_ERROR(ERROR_FORMAT_FUNCTION_FIELD_MISSING, filename, index, "returns");
-        return NATIVE_MODULE_LOAD_ERROR_MISSING_FIELD;
-    }
-    if(!json_is_string(returnsField)) {
-        STORE_ERROR(ERROR_FORMAT_FUNCTION_FIELD_TYPE, filename, index, "returns", "string", get_json_typename(returnsField));
-        return NATIVE_MODULE_LOAD_ERROR_FIELD_TYPE;
-    }
-    const char* const typeName = json_string_value(returnsField);
-    if (decodeArgType(typeName) == NATIVE_FUNCTION_TYPE_NONE) {
-        STORE_ERROR(ERROR_FORMAT_FUNCTION_FIELD " Unknown return type \'%s\'", filename, index, typeName);
-        return NATIVE_MODULE_LOAD_ERROR_FUNCTION_ARG_TYPE;
-    }
-
-    failsField = json_object_get(root, "fails");
+    json_t *failsField = json_object_get(root, "fails");
     if(failsField != NULL && !json_is_boolean(failsField)) {
-        STORE_ERROR(ERROR_FORMAT_FUNCTION_FIELD_TYPE, filename, index, "fails", "boolean", get_json_typename(failsField));
-        return NATIVE_MODULE_LOAD_ERROR_FIELD_TYPE;
+        LOG_ERROR(
+            ERROR_FORMAT_FUNCTION_FIELD_TYPE,
+            filename, index, "fails", "boolean", get_json_typename(failsField));
+        nonFatalError(pe, LOAD_ERROR_FIELD_TYPE);
+    }
+    
+    json_t* returnsField = json_object_get(root, "returns");
+    const char* typeName = json_string_value(returnsField);
+    if(returnsField == NULL) {
+        LOG_ERROR(
+            ERROR_FORMAT_FUNCTION_FIELD_MISSING,
+            filename, index, "returns");
+        nonFatalError(pe, LOAD_ERROR_MISSING_FIELD);
+    }else if(!json_is_string(returnsField)) {
+        LOG_ERROR(
+            ERROR_FORMAT_FUNCTION_FIELD_TYPE,
+            filename, index, "returns", "string", get_json_typename(returnsField));
+        nonFatalError(pe, LOAD_ERROR_FIELD_TYPE);
+    }else if (decodeArgType(typeName) == NATIVE_FUNCTION_TYPE_NONE) {
+        LOG_ERROR(
+            ERROR_FORMAT_FUNCTION_FIELD " Unknown return type \'%s\'\n",
+            filename, index, typeName);
+        nonFatalError(pe, LOAD_ERROR_FUNCTION_ARG_TYPE);
     }
 
+    json_t *argsField;
     argsField = json_object_get(root, "args");
     if(argsField == NULL) {
-        STORE_ERROR(ERROR_FORMAT_FUNCTION_FIELD_MISSING, filename, index, "args");
-        return NATIVE_MODULE_LOAD_ERROR_MISSING_FIELD;
+        LOG_ERROR(ERROR_FORMAT_FUNCTION_FIELD_MISSING, filename, index, "args");
+        nonFatalError(pe, LOAD_ERROR_MISSING_FIELD);
+    } else if(!json_is_array(argsField)) {
+        LOG_ERROR(ERROR_FORMAT_FUNCTION_FIELD_TYPE, filename, index, "args", "array", get_json_typename(argsField));
+        nonFatalError(pe, LOAD_ERROR_FIELD_TYPE);
     }
-    if(!json_is_array(argsField)) {
-        STORE_ERROR(ERROR_FORMAT_FUNCTION_FIELD_TYPE, filename, index, "args", "array", get_json_typename(argsField));
-        return NATIVE_MODULE_LOAD_ERROR_FIELD_TYPE;
-    }
+
+    if(pe->failed) return;
 
     size_t argIndex;
-    json_t* argIndexValue;
-    json_array_foreach(argsField, argIndex, argIndexValue) {
-        if (!json_is_string(argIndexValue)) {
-            STORE_ERROR(
+    json_t* argValue;
+    json_array_foreach(argsField, argIndex, argValue) {
+        const char* const typeName = json_string_value(argValue);
+        if (!json_is_string(argValue)) {
+            LOG_ERROR(
                 ERROR_FORMAT_FUNCTION_FIELD ERROR_FORMAT_EXPECTED ", for argument at index %zu.\n",
-                filename, index,
-                "string",
-                get_json_typename(argIndexValue),
-                argIndex);
-            return NATIVE_MODULE_LOAD_ERROR_FIELD_TYPE;
-        }
-        const char* const typeName = json_string_value(argIndexValue);
-        if (decodeArgType(typeName) == NATIVE_FUNCTION_TYPE_NONE) {
-            STORE_ERROR(ERROR_FORMAT_FUNCTION_FIELD " Unknown argument type at index %zu -\'%s\'.\n", filename, index, argIndex, typeName);
-            return NATIVE_MODULE_LOAD_ERROR_FUNCTION_ARG_TYPE;
+                filename, index, "string", get_json_typename(argValue), argIndex);
+            nonFatalError(pe, LOAD_ERROR_FIELD_TYPE);
+        } else if (decodeArgType(typeName) == NATIVE_FUNCTION_TYPE_NONE) {
+            LOG_ERROR(
+                ERROR_FORMAT_FUNCTION_FIELD " Unknown argument type at index %zu -\'%s\'.\n",
+                filename, index, argIndex, typeName);
+            nonFatalError(pe, LOAD_ERROR_FUNCTION_ARG_TYPE);
         }
     }
 
-    return NATIVE_MODULE_LOAD_SUCCESS;
+    char* functionNameDup = NULL;
+    char* exportNameDup = NULL;
+    NativeFunctionArgType* argTypes = NULL;;
+    size_t argCount = 0;
+
+    functionNameDup = strdup(functionName);
+    exportNameDup = strdup(exportName);
+        
+    if (functionNameDup == NULL || exportNameDup == NULL) {
+        goto out_of_memory;
+    }
+    
+    argCount = json_array_size(argsField);
+    argTypes = calloc(argCount, sizeof(NativeFunctionArgType));
+    if (argTypes == NULL) {
+        goto out_of_memory;
+    }
+
+    json_array_foreach(argsField, argIndex, argValue) {
+        const char* const typeName = json_string_value(argValue);
+        argTypes[argIndex] = decodeArgType(typeName);
+    }
+
+    *out_function = (NativeFunction) {
+            .name = functionNameDup,
+            .export = exportNameDup,
+            .returnType = decodeArgType(typeName),
+            .argTypesCount = argCount,
+            .argTypes = argTypes,
+            .wrapped = json_boolean_value(wrappedField) || true,
+            .canFail = false || json_boolean_value(failsField)
+    };
+
+    return; // Success
+    
+out_of_memory:
+    free(functionNameDup);
+    free(exportNameDup);
+    free(argTypes);
+    fatalError(pe, LOAD_ERROR_MEMORY);
 }
 
 static char* generateNamePrefix(const char* libNameCopy) {
@@ -214,167 +320,145 @@ static char* generateNamePrefix(const char* libNameCopy) {
     return buffer;
 }
 
-static int loadNativeModuleImpl(const char* filename, json_t* root, NativeModule* module) {
-    json_t* libraryField, *functionsField;
+static void loadNativeModuleImpl(ParseState* pe, const char* filename, json_t* root, NativeModule* module) {
+    if (root == 0) {
+        fatalError(pe, LOAD_ERROR_NULL_ROOT);
+        return;
+    }
 
-    libraryField = json_object_get(root, "library");
-    if (libraryField == NULL) {
-        STORE_ERROR(ERROR_FORMAT_MODULE_FIELD_MISSING, filename, "library");
-        return NATIVE_MODULE_LOAD_ERROR_MISSING_FIELD;
+    json_t* interfaceVersionField = json_object_get(root, "interfaceVersion");
+    int interfaceVersion = CURRENT_INTERFACE_VERSION;
+    if (interfaceVersionField != NULL && !json_is_integer(interfaceVersionField)) {
+        LOG_ERROR(
+            ERROR_FORMAT_MODULE_FIELD_TYPE,
+            filename, "library", "string", get_json_typename(interfaceVersionField));
+        nonFatalError(pe, LOAD_ERROR_FIELD_TYPE);
+    }else {
+        interfaceVersion = json_integer_value(interfaceVersionField);
     }
-    if (!json_is_string(libraryField)) {
-        STORE_ERROR(ERROR_FORMAT_MODULE_FIELD_TYPE, filename, "library", "string", get_json_typename(libraryField));
-        return NATIVE_MODULE_LOAD_ERROR_FIELD_TYPE;
-    }
+
+    json_t* libraryField = json_object_get(root, "library");
     const char* libName = json_string_value(libraryField);
+    if (libraryField == NULL) {
+        LOG_ERROR(
+            ERROR_FORMAT_MODULE_FIELD_MISSING,
+            filename, "library");
+        nonFatalError(pe, LOAD_ERROR_MISSING_FIELD);
+    }else if (!json_is_string(libraryField)) {
+        LOG_ERROR(ERROR_FORMAT_MODULE_FIELD_TYPE, filename, "library", "string", get_json_typename(libraryField));
+        nonFatalError(pe, LOAD_ERROR_FIELD_TYPE);
+    }
 
-    functionsField = json_object_get(root, "functions");
+    json_t *functionsField = json_object_get(root, "functions");
     if (functionsField == NULL) {
-        STORE_ERROR(ERROR_FORMAT_MODULE_FIELD_MISSING, filename, "functions");
-        return NATIVE_MODULE_LOAD_ERROR_MISSING_FIELD;
+        LOG_ERROR(
+            ERROR_FORMAT_MODULE_FIELD_MISSING,
+            filename, "functions");
+        fatalError(pe, LOAD_ERROR_MISSING_FIELD);
+        return;
+    } else if(!json_is_array(functionsField)) {
+        LOG_ERROR(
+            ERROR_FORMAT_MODULE_FIELD_TYPE,
+            filename, "functions", "array", get_json_typename(functionsField));
+        fatalError(pe, LOAD_ERROR_MISSING_FIELD);
+        return;
     }
-    if(!json_is_array(functionsField)) {
-        STORE_ERROR(ERROR_FORMAT_MODULE_FIELD_TYPE, "filename", "functions", "array", get_json_typename(functionsField));
-        return NATIVE_MODULE_LOAD_ERROR_FIELD_TYPE;
-    }
-    const size_t functionCount = json_array_size(functionsField);
-
+    
     size_t index;
     json_t* functionObject;
 
-    // Verify all objects have required fields
-    json_array_foreach(functionsField, index, functionObject) {
-        int status = verifyFunctions(filename, index, functionObject);
-        if(status != NATIVE_MODULE_LOAD_SUCCESS) {
-            return status;
-        }
-    }
+    char* libNameDup = NULL;
+    char* libNamePrefix = NULL;
+    NativeFunction* functions = NULL;
+    size_t functionCount = 0;
 
-    NativeFunction* functions = calloc(functionCount, sizeof(NativeFunction));
-    if (functions == NULL) {
-        return NATIVE_MODULE_LOAD_ERROR_MEMORY;
+    libNameDup = strdup(libName);
+    if (libNameDup == NULL) {
+        fatalError(pe, LOAD_ERROR_MEMORY);
+        goto free_all;
     }
     
-    // Parse here
-    bool failedAlloc = false;
+    libNamePrefix = generateNamePrefix(libNameDup);
+    if (libNamePrefix == NULL) {
+        fatalError(pe, LOAD_ERROR_MEMORY);
+        goto free_all;
+    }
+
+    functionCount = json_array_size(functionsField);
+    functions = calloc(functionCount, sizeof(NativeFunction));
+    if (functions == NULL) {
+        fatalError(pe, LOAD_ERROR_MEMORY);
+        return;
+    }
+
     json_array_foreach(functionsField, index, functionObject) {
-        json_t *exportField = json_object_get(functionObject, "export");
-        json_t *nameField = json_object_get(functionObject, "name");
-        json_t *returnsField = json_object_get(functionObject, "returns");
-        json_t *argsField = json_object_get(functionObject, "args");
-        json_t *wrapField = json_object_get(functionObject, "wrap");
-        json_t *failsField = json_object_get(functionObject, "fails");
-
-        const char* exportName = json_string_value(exportField);
-        const char* functionName;
-        if (nameField == NULL) {
-            functionName = exportName;
-        } else {
-            functionName = json_string_value(nameField);
+        parseFunction(pe, filename, index, functionObject, &functions[index]);
+        if (pe->fatal) {
+            goto free_all;
+            return;
         }
-        bool wrapFunction = true;
-        if (wrapField != NULL) {
-            wrapFunction = json_boolean_value(wrapField);
-        }
-        bool fails = false;
-        if (failsField != NULL) {
-            fails = json_boolean_value(failsField);
-        }
-        
-        NativeFunctionArgType returnType = NATIVE_FUNCTION_TYPE_NONE;
-        NativeFunctionArgType* argTypes = NULL;
-        size_t argsSize = 0;
-        if (wrapFunction) {
-            const char* returnTypeStr = json_string_value(returnsField);
-            returnType = decodeArgType(returnTypeStr);
-            
-            argsSize = json_array_size(argsField);
-            argTypes = calloc(argsSize, sizeof(NativeFunctionArgType));
-            if (argTypes == NULL) {
-                failedAlloc = true;
-                break;
-            }
-            
-            size_t argIndex;
-            json_t* argValue;
-            json_array_foreach(argsField, argIndex, argValue) {
-                const char* const typeName = json_string_value(argValue);
-                argTypes[argIndex] = decodeArgType(typeName);
-            }
-        }
-
-        char* exportNameCopy = strdup(exportName);
-        if (exportNameCopy == NULL) {
-            failedAlloc = true;
-            break;
-        }
-
-        char* functionNameCopy = strdup(functionName);
-        if (functionNameCopy == NULL) {
-            failedAlloc = true;
-            break;
-        }
-
-        functions[index] = (NativeFunction) {
-            .name = functionNameCopy,
-            .export = exportNameCopy,
-            .returnType = returnType,
-            .argTypesCount = argsSize,
-            .argTypes = argTypes,
-            .wrapped = wrapFunction,
-            .canFail = fails
-        };
     }
 
-    if (failedAlloc) {
-        for(size_t i = 0; i < index; i++) {
-            freeNativeFunction(&functions[i]);
-        }
-        return NATIVE_MODULE_LOAD_ERROR_MEMORY;
-    }
-
-    char* libNameCopy = strdup(libName);
-    if (libNameCopy == NULL) {
-        failedAlloc = true;
-        return NATIVE_MODULE_LOAD_ERROR_MEMORY;
-    }
+    if (pe->failed)  goto free_all;
 
     *module = (NativeModule) {
-        .name = libNameCopy,
-        .namePrefix = generateNamePrefix(libNameCopy),
+        .interfaceVersion = interfaceVersion,
+        .name = libNameDup,
+        .namePrefix = libNamePrefix,
         .functionCount = functionCount,
         .functions = functions
     };
+
+    return; // Success
    
-    return NATIVE_MODULE_LOAD_SUCCESS;
+free_all:
+    for(size_t i = 0; i < functionCount; i++) {
+        freeNativeFunction(&functions[i]);
+    }
+    free(functions);
 }
 
-int loadNativeModule(const char* filename, NativeModule* module) {
-    massert(filename != NULL, "Expected non-NULL filename");
-    massert(module != NULL, "Expected non-NULL NativeModule pointer");
-
+static void loadConfigRoot(ParseState* pe, const char* filename, json_t** out_root) {
     json_error_t error;
     json_t* root = json_load_file(filename, JSON_REJECT_DUPLICATES, &error);
+
     if (root == NULL) {
         if(json_error_code(&error) == json_error_cannot_open_file) {
-            STORE_ERROR(ERROR_FORMAT_FAILED_OPEN, error.text);
-            return NATIVE_MODULE_LOAD_ERROR_FAILED_OPEN;
+            LOG_ERROR(ERROR_FORMAT_FAILED_OPEN, error.text);
+            fatalError(pe, LOAD_ERROR_FAILED_OPEN);
+            return;
         }
 
-        STORE_ERROR(ERROR_FORMAT_LOAD, filename, error.line, error.column, (char*) error.text);
-        return NATIVE_MODULE_LOAD_ERROR_INVALID_JSON_FORMAT;
+        LOG_ERROR(ERROR_FORMAT_LOAD, filename, error.line, error.column, (char*) error.text);
+        fatalError(pe, LOAD_ERROR_INVALID_JSON_FORMAT);
     }
 
     if (!json_is_object(root)) {
-        STORE_ERROR(ERROR_FORMAT_MODULE, filename, "Invalid module  format. Expected JSON object.");
+        LOG_ERROR(ERROR_FORMAT_MODULE, filename, "Invalid module  format. Expected JSON object.");
         json_decref(root);
-        return NATIVE_MODULE_LOAD_ERROR_INVALID_STRUCTURE;
+        fatalError(pe, LOAD_ERROR_INVALID_STRUCTURE);
     }
 
-    int status = loadNativeModuleImpl(filename, root, module);
+    *out_root = root;
+}
+
+ParseResult loadNativeModule(const char* filename, NativeModule* module) {
+    massert(filename != NULL, "Expected non-NULL filename");
+    massert(module != NULL, "Expected non-NULL NativeModule pointer");
+
+    ParseState pe = {{0, 0}, 0, false};
+
+    json_t* root;
+    loadConfigRoot(&pe, filename, &root);
+
+    if (pe.failed && pe.fatal) {
+        return pe.pr;
+    }
+
+    loadNativeModuleImpl(&pe, filename, root, module);
     json_decref(root);
 
-    return status;
+    return pe.pr;
 }
 
 int formatFunctionSignature(char* buffer, int cap, NativeFunction* function) {
@@ -387,14 +471,15 @@ int formatFunctionSignature(char* buffer, int cap, NativeFunction* function) {
         const char* sep = i != function->argTypesCount - 1 ? ", " : "";
         bufferSize += snprintf(
             buffer + bufferSize, cap - bufferSize,
-            "%s%s", nativeFunctionArgName(function->argTypes[i]),
-            sep
+            "%s%s",
+            nativeFunctionArgName(function->argTypes[i]), sep
         );
         if (bufferSize >= cap) {
-            return bufferSize;;
+            return bufferSize;
         }
     }
-    bufferSize += snprintf(buffer + bufferSize, cap - bufferSize, 
+    bufferSize += snprintf(
+        buffer + bufferSize, cap - bufferSize, 
         ") -> %s",
         nativeFunctionArgName(function->returnType)
     );
@@ -406,19 +491,17 @@ int printFunctionSignature(FILE* file, NativeFunction* function) {
     int bufferSize = 0;
     bufferSize += fprintf(file, "fun %s(", function->export);
     for(size_t i = 0; i < function->argTypesCount; i++) {
+        const char* sep = i != function->argTypesCount - 1 ? ", " : "";
         bufferSize += fprintf(
             file,
-            "%s%s", nativeFunctionArgName(function->argTypes[i]),
-            i != function->argTypesCount - 1 ? ", " : ""
+            "%s%s",
+            nativeFunctionArgName(function->argTypes[i]), sep
         );
     }
-    bufferSize += fprintf(file, ") -> %s",
+    bufferSize += fprintf(
+        file, ") -> %s",
         nativeFunctionArgName(function->returnType)
     );
 
     return bufferSize;
-}
-
-char* getNativeModuleError(void) {
-    return (char*) errorBuffer;
 }

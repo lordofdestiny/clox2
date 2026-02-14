@@ -5,14 +5,17 @@
 #include <stdio.h>
 #include <stdbool.h>
 
-#define NATIVE_MODULE_LOAD_SUCCESS 0
-#define NATIVE_MODULE_LOAD_ERROR_MEMORY 0x1
-#define NATIVE_MODULE_LOAD_ERROR_FAILED_OPEN 0x10
-#define NATIVE_MODULE_LOAD_ERROR_INVALID_JSON_FORMAT 0x100
-#define NATIVE_MODULE_LOAD_ERROR_INVALID_STRUCTURE 0x1000
-#define NATIVE_MODULE_LOAD_ERROR_MISSING_FIELD 0x1001
-#define NATIVE_MODULE_LOAD_ERROR_FIELD_TYPE 0x1002
-#define NATIVE_MODULE_LOAD_ERROR_FUNCTION_ARG_TYPE 0x10001
+#define CURRENT_INTERFACE_VERSION 1
+
+#define LOAD_SUCCESS 0
+#define LOAD_ERROR_MEMORY 0x1
+#define LOAD_ERROR_FAILED_OPEN 0x10
+#define LOAD_ERROR_INVALID_JSON_FORMAT 0x100
+#define LOAD_ERROR_NULL_ROOT 0x101 // Function received NULL root
+#define LOAD_ERROR_INVALID_STRUCTURE 0x1000
+#define LOAD_ERROR_MISSING_FIELD 0x1001
+#define LOAD_ERROR_FIELD_TYPE 0x1002
+#define LOAD_ERROR_FUNCTION_ARG_TYPE 0x10001
 
 typedef enum {
     NATIVE_FUNCTION_TYPE_NONE,
@@ -42,16 +45,21 @@ typedef struct {
     char* namePrefix;
     size_t functionCount;
     NativeFunction* functions;
+    int interfaceVersion;
 } NativeModule;
 
-int loadNativeModule(const char* filename, NativeModule* module);
+typedef struct {
+    int code;
+    int count;
+} ParseResult;
+
+[[nodiscard]]
+ParseResult loadNativeModule(const char* filename, NativeModule* module);
 void freeNativeModule(NativeModule* module);
 
 const char* nativeFunctionArgName(NativeFunctionArgType id);
 
 int formatFunctionSignature(char* buffer, int cap, NativeFunction* function);
 int printFunctionSignature(FILE* file, NativeFunction* function);
-
-char* getNativeModuleError(void);
 
 #endif // __CLOX_NATIVE_LIBRARY_CONFIG_H__
