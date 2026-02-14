@@ -1,0 +1,10 @@
+{
+    "library": "cloxsystem",
+    "functions": [
+        {
+            "name" : "exit",
+            "export" : "exitNative",
+            "wrap" : false
+        }
+    ]
+}

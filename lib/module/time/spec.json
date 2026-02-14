@@ -1,0 +1,16 @@
+{
+    "library": "cloxtime",
+    "functions": [
+        {
+            "name" : "clock",
+            "export" : "getTime",
+            "returns": "Number"
+        },
+        {
+            "name" : "sleep",
+            "export": "sleepFor",
+            "args" : ["Number"],
+            "returns": "Bool"
+        }
+    ]
+}

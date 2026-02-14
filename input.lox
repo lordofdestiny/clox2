@@ -1,3 +1,45 @@
+{
+    var array = [1, 2, 3, 4, 5];
+    print array;
+
+    class Test {
+        init(a, b) {
+            this.a = a;
+            this.b = b;
+        }
+
+        total() {
+            return this.a + this.b;
+        }
+
+        hello() {
+            var x = 11;
+            return || x + this.total();
+        }
+    }
+    print Test;
+
+    var obj = Test(2, 3);
+    print obj;
+
+    var total = obj.total;
+    print total;
+    print total();
+
+    var hi = obj.hello();
+    print hi;
+    print hi();
+
+    fun baby() {
+        return 11;
+    }
+
+    print baby;
+    print baby();
+
+    print "hello world";
+}
+
 var array = [1,2,3];
 print array;
 print array.length.toPrecision(6);
@@ -31,9 +73,7 @@ print array;
 print array.pop();
 print array;
 
-exit(0);
-
-for(var i = 0; i < 50000000; i = i+1) {
+for(var i = 0; i < 500000; i = i+1) {
     class Test {
         get() { return i; }
         set(string, value) {

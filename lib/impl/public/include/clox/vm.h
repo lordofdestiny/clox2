@@ -1,0 +1,20 @@
+#ifndef __CLOX_LIB_VM_H__
+#define __CLOX_LIB_VM_H__
+
+#include <clox/export.h>
+
+#include <clox/value.h>
+#include <clox/native.h>
+
+typedef bool (*DefineNativeFunctionFn)(const char* name, int arity, NativeFn native);
+
+CLOX_EXPORT
+__attribute__((noreturn))
+void terminate(int code);
+
+CLOX_EXPORT int referenceScope();
+CLOX_EXPORT void pushReference(Value val);
+CLOX_EXPORT Value popReference();
+CLOX_EXPORT void resetReferences(int scope);
+
+#endif //  __CLOX_LIB_VM_H__

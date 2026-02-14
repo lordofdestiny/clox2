@@ -10,7 +10,7 @@ if [ ! -d "coverage/html" ]; then
     mkdir -p coverage/html
 fi
 
-python -m gcovr -r . -e ".*\.h" -e src/impl/src -e coverage/_deps/ -e test/ \
+python -m gcovr -r . -e ".*\.h" -e lib/impl/src -e coverage/_deps/ -e lib/**/test/ \
     --html-details coverage/html/index.html \
     --markdown coverage/coverage.md \
 

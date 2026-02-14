@@ -1,0 +1,42 @@
+{
+    "library": "cloxreflect",
+    "functions": [
+        {
+            "export" : "hasField",
+            "args" : [
+                "Instance",
+                "String"
+            ],
+            "returns": "Bool"
+        },
+        {
+            "export": "getField",
+            "args": [
+                "Instance",
+                "String"
+            ],
+            "returns": "Value",
+            "fails" : true
+        },
+        {
+            "export": "setField",
+            "args": [
+                "Instance",
+                "String",
+                "Value"
+            ]
+        },
+        {
+            "export": "deleteField",
+            "args" : [
+                "Instance",
+                "String"
+            ]
+        },
+        {
+            "export" : "fieldNames",
+            "args" : ["Instance"],
+            "returns" : "Array"
+        }
+    ]
+}

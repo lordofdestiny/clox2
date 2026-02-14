@@ -1,0 +1,61 @@
+class S {
+    init() {
+        this.mimimi = 111;
+        this.ab = 1;
+        this.ac = 1;
+        this.abd = 1;
+        this.akalakula = 51;
+    }
+}
+
+var x = S();
+
+x.key = 1515;
+
+var keys = fieldNames(x);
+print keys;
+
+print "Has field: " + hasField(x , "baby");
+print "Has field: " + hasField(x , "key");
+
+setField(x, "key", 5);
+
+print getField(x, "key");
+
+print "Gonna sleep";
+sleep(2);
+print "I Woke up\n";
+
+fun timeme(function) {
+    var start = clock();
+    function();
+    var end = clock();
+
+    print "Elapsed: " + (end - start);
+}
+
+print "Some long work:";
+
+var N = 10000000;
+
+timeme(|| {
+    var pp = 0;
+    for(var i = 0; i < N; i+=1) {
+        pp += i;
+    }
+});
+
+fun my_max(a, b) {
+    return a < b ? b : a;
+}
+
+timeme(|| {
+    for (var i = 0; i < N; i += 1) max(55, 99);
+});
+
+timeme(|| {
+    for (var i = 0; i < N; i += 1) my_max(55, 99);
+});
+
+print "sin(pi/4) = " + sin(PI() / 4) + " = " + (sqrt(2) / 2);
+print "cos(pi/6) = " + cos(PI() / 6) + " = " + (sqrt(3) / 2);

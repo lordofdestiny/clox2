@@ -16,10 +16,10 @@
     "ms-python.black-formatter",
     "ms-python.python",
     "tamasfe.even-better-toml",
-    "GitHub.copilot",
     "GitHub.copilot-chat",
     "jlevere.elfpreview",
-    "ms-vscode.live-server"
+    "ms-vscode.live-server",
+    "ms-vscode.hexeditor"
    ],
    "settings": {
       "python.terminal.activateEnvironment": true,

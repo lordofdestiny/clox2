@@ -1,0 +1,278 @@
+// TODO Output #line directives
+// TODO Generate code for unpacking primitives
+#include "generate.h"
+
+static const char* returnTypeWrapperNames[] = {
+    [NATIVE_FUNCTION_TYPE_NONE] = NULL,
+    [NATIVE_FUNCTION_TYPE_VALUE] = "ValueResult",
+    [NATIVE_FUNCTION_TYPE_NUMBER] = "NumberResult",
+    [NATIVE_FUNCTION_TYPE_BOOL] = "BoolResult",
+    [NATIVE_FUNCTION_TYPE_NIL] = "NilResult",
+    [NATIVE_FUNCTION_TYPE_OBJ] = "ObjResult",
+    [NATIVE_FUNCTION_TYPE_OBJ_ARRAY] = "ArrayResult",
+    [NATIVE_FUNCTION_TYPE_OBJ_CLASS] = "ClassResult",
+    [NATIVE_FUNCTION_TYPE_OBJ_INSTANCE] = "InstanceResult",
+    [NATIVE_FUNCTION_TYPE_OBJ_STRING] = "StringResult",
+};
+
+static const char* isArgTypeNames[] = {
+    [NATIVE_FUNCTION_TYPE_NONE] = NULL,
+    [NATIVE_FUNCTION_TYPE_VALUE] = NULL,
+    [NATIVE_FUNCTION_TYPE_NUMBER] = "IS_NUMBER",
+    [NATIVE_FUNCTION_TYPE_BOOL] = "IS_BOOL",
+    [NATIVE_FUNCTION_TYPE_NIL] = "IS_NIL",
+    [NATIVE_FUNCTION_TYPE_OBJ] = "IS_OBJ",
+    [NATIVE_FUNCTION_TYPE_OBJ_ARRAY] = "IS_ARRAY",
+    [NATIVE_FUNCTION_TYPE_OBJ_CLASS] = "IS_CLASS",
+    [NATIVE_FUNCTION_TYPE_OBJ_INSTANCE] = "IS_INSTANCE",
+    [NATIVE_FUNCTION_TYPE_OBJ_STRING] = "IS_STRING",
+};
+
+typedef struct {
+    const char* typeName;
+    const char* conversion;
+} ArgTypeNameCast;
+
+static ArgTypeNameCast argTypeCastNames[] = {
+    [NATIVE_FUNCTION_TYPE_NONE] = { NULL, NULL },
+    [NATIVE_FUNCTION_TYPE_VALUE] = { "Value", NULL },
+    [NATIVE_FUNCTION_TYPE_NUMBER] = { "double", "AS_NUMBER" },
+    [NATIVE_FUNCTION_TYPE_BOOL] = { "bool", "AS_BOOL" },
+    [NATIVE_FUNCTION_TYPE_NIL] = { "void*", "AS_NIL" },
+    [NATIVE_FUNCTION_TYPE_OBJ] = { "Obj*", "AS_OBJ" },
+    [NATIVE_FUNCTION_TYPE_OBJ_ARRAY] = { "ObjArray*", "AS_ARRAY" },
+    [NATIVE_FUNCTION_TYPE_OBJ_CLASS] = { "ObjClass*", "AS_CLASS" },
+    [NATIVE_FUNCTION_TYPE_OBJ_INSTANCE] = { "ObjInstance*", "AS_INSTANCE" },
+    [NATIVE_FUNCTION_TYPE_OBJ_STRING] = { "ObjString*", "AS_STRING" },
+};
+
+#define PREFIXED(COMMAND) "%s_"#COMMAND
+
+static void generateFunctionSignatures(FILE* file, NativeModule* module) {
+    for (size_t i = 0; i < module->functionCount; i++) {
+        NativeFunction* function = &module->functions[i];
+        
+        if (function->wrapped) {
+            const char* returnTypeName = function->canFail
+                ? returnTypeWrapperNames[function->returnType]
+                : function->returnType == NATIVE_FUNCTION_TYPE_NIL
+                ? "void"
+                : argTypeCastNames[function->returnType].typeName;
+
+            fprintf(file, "%s %s(", returnTypeName, function->export);
+            if (function->argTypesCount > 0) {
+                for (size_t j = 0; j < function->argTypesCount; j++) {
+                    const char* sep = j < function->argTypesCount - 1 ? ", " : "";
+                    fprintf(file, "%s%s", argTypeCastNames[function->argTypes[j]].typeName, sep);
+                }
+            }else {
+                fprintf(file, "void");
+            }
+            fprintf(file, ");\n");
+        } else {
+            fprintf(file,""
+                "bool %s(int argCount, Value* implicit, Value* args);\n",
+                function->export
+            );
+        }
+        
+    }
+    fprintf(file, "\n");
+}
+
+static void generateComment(FILE* file, NativeModule* module) {
+    fprintf(file, "// Auto-generated for native module: %s\n", module->name);
+    fprintf(file, "// \n");
+    fprintf(file, "// You should not edit this code.\n");
+    fprintf(file, "// This code implements the module native's wrapper.\n");
+    fprintf(file, "// \n");
+    fprintf(file, "// Header declares functions you should implement. \n");
+    fprintf(file, "// \n");
+    fprintf(file, "// Source file contains the wrappers and the interface between the library and the clox VM\n");
+    fprintf(file, "\n");
+}
+
+
+void generateModuleWrapperHeader(FILE* file, NativeModule* module, const char* exportHeader) {
+    generateComment(file, module);
+
+    fprintf(file, "#ifndef __CLOX_NATIVE_MODULE_%s_H__\n", module->name);
+    fprintf(file, "#define __CLOX_NATIVE_MODULE_%s_H__\n\n", module->name);
+
+    fprintf(file, "#include <stdbool.h>\n\n");
+
+    fprintf(file, "#include <%s>\n\n", exportHeader);
+    
+    fprintf(file, "#include <clox/clox.h>\n\n");
+    
+    fprintf(file, PREFIXED(EXPORT)" extern const char CLOX_MODULE_NAME[];\n\n", module->namePrefix);
+
+    generateFunctionSignatures(file, module); 
+
+    fprintf(file, "#endif // __CLOX_NATIVE_MODULE_%s_H__\n", module->name);
+}
+
+static void generateFunctionArgCheck(FILE* file, NativeFunction* function, size_t argIndex) {
+    NativeFunctionArgType argType = function->argTypes[argIndex];
+    const char* isTypeName = isArgTypeNames[argType];
+    
+    if (!isTypeName) {
+        fprintf(file, "    // Argument %zu is of type %s, no check needed.\n", argIndex, nativeFunctionArgName(argType));
+        return;
+    }
+
+    fprintf(file, "    if (!%s(args[%zu])) {\n", isTypeName, argIndex);
+    fprintf(file, "        *implicit = NATIVE_ERROR(\"Function '%s' expects first argument to be of type %s\");\n",
+                 function->name, nativeFunctionArgName(argType));
+    fprintf(file, "        return false; // Invalid argument type\n");
+    fprintf(file, "    }\n");
+}
+
+static void generateFunctionWrapper(FILE* file,NativeModule* module, NativeFunction* function) {
+    if (!function->wrapped) return;
+    fprintf(file, PREFIXED(NO_EXPORT)" bool %sNativeWrapper(int argCount, Value* implicit, Value* args) {\n",
+        module->namePrefix,
+        function->name);
+    for (size_t i = 0; i < function->argTypesCount; i++) {
+        generateFunctionArgCheck(file, function, i);
+    }
+    fprintf(file, "    // Call the actual function here\n");
+    // Cast arguments here
+    for(size_t i = 0; i < function->argTypesCount; i++) {
+        int typeId = function->argTypes[i];
+        ArgTypeNameCast desc = argTypeCastNames[typeId];
+        if(typeId == NATIVE_FUNCTION_TYPE_VALUE) {
+            fprintf(file, "    Value arg%zu = args[%zu];\n", i, i);
+        }
+        else {
+            fprintf(file, "    %s arg%zu = %s(args[%zu]);\n", desc.typeName, i, desc.conversion, i);
+        }
+    }
+    fprintf(file, "\n");
+
+    const char* returnTypeName = function->canFail
+                ? returnTypeWrapperNames[function->returnType]
+                : argTypeCastNames[function->returnType].typeName;
+    if (function->returnType != NATIVE_FUNCTION_TYPE_NIL) {
+        fprintf(file, "    %s result = ", returnTypeName);
+    }
+    
+    fprintf(file, "%s(", function->export);
+    for (size_t i = 0; i < function->argTypesCount; i++) {
+        fprintf(file, "arg%zu%s", i, i < function->argTypesCount - 1 ? ", " : "");
+    }
+    fprintf(file, ");\n");
+    if(function->canFail) {
+        fprintf(file, ""
+            "    if (!result.success) {\n"
+            "        *implicit = result.exception;\n"
+            "        return false;\n"
+            "    }"
+            "    \n"
+        );
+    }
+
+    fprintf(file, ""
+        "\n"
+        "   *implicit = "
+    );
+
+    const char* resultSource = function->canFail ? "result.value" : "result";
+
+    if (function->returnType == NATIVE_FUNCTION_TYPE_VALUE) {
+        fprintf(file, "%s;\n",resultSource);
+    } else if (function->returnType == NATIVE_FUNCTION_TYPE_BOOL){
+        fprintf(file, "BOOL_VAL(%s);\n",resultSource);
+    } else if (function->returnType == NATIVE_FUNCTION_TYPE_NUMBER){
+        fprintf(file, "NUMBER_VAL(%s);\n",resultSource);
+    } else if (function->returnType == NATIVE_FUNCTION_TYPE_NIL){
+        fprintf(file, """NIL_VAL;\n");
+    } else {
+        fprintf(file, "OBJ_VAL(%s);\n",resultSource);
+    }
+
+    fprintf(file, ""
+        "    return true;\n"
+    );
+
+    fprintf(file, "}\n\n");
+}
+
+static void generateRegistrationFunctions(FILE* file, NativeModule* module) {
+    fprintf(file,""
+    PREFIXED(EXPORT)" size_t moduleClassCount(void) {\n"
+    "    return 0;\n"
+    "}\n\n", module->namePrefix);
+
+    fprintf(file,""
+    PREFIXED(EXPORT)" size_t registerFunctions(DefineNativeFunctionFn registerFn) {\n"
+    "    for (size_t i = 0; i < %zu; i++) {\n"
+    "       ExportedFunction* fnd = &functionMap[i];\n"
+    "       registerFn(fnd->name, fnd->arity, fnd->fn);\n"
+    "    }\n"
+    "    return %zu;\n"
+    "}\n\n",
+    module->namePrefix,
+    module->functionCount,
+    module->functionCount);
+}
+
+static void generateFunctionMap(FILE* file, NativeModule* module) {
+    fprintf(file, ""
+        "typedef struct {\n"
+        "    char* name;\n"
+        "    int arity;\n"
+        "    NativeFn fn;\n"
+        "} ExportedFunction;\n"
+        "\n"
+        "static ExportedFunction functionMap[] = {\n"
+    );
+    for(size_t i = 0; i < module->functionCount; i++) {
+        NativeFunction* fn = &module->functions[i];
+        if (fn->wrapped) {
+            fprintf(file, ""
+            "    {\"%s\", %zu, %sNativeWrapper},\n",  fn->name, fn->argTypesCount, fn->name
+            );
+        } else {
+            fprintf(file, ""
+            "    {\"%s\", -1, %s},\n", fn->name, fn->export
+            );
+        }
+    }
+    fprintf(file, ""
+        "};\n\n"
+    );
+}
+
+void generateModuleWrapperSource(FILE* file, NativeModule* module, const char* includeHeader) {
+    generateComment(file, module);
+    
+    fprintf(file, "#include <stddef.h>\n\n");
+
+    if (module->includeCount > 0) {
+        fprintf(file, "// USER INCLUDES START\n");
+        for (size_t i = 0 ; i < module->includeCount; i++) {
+            fprintf(file, "#include %s\n", module->includes[i]);
+        }
+        fprintf(file, "// USER INCLUDES END\n\n");
+    }
+
+    fprintf(file, "#include <%s>\n\n", includeHeader);
+
+    fprintf(file, "const char CLOX_MODULE_NAME[] = \"%s\";\n\n", module->name);
+
+    for(size_t i = 0; i < module->functionCount; i++) {
+        generateFunctionWrapper(file, module, &module->functions[i]);
+    }
+
+    fprintf(file, PREFIXED(NO_EXPORT)" void %sDefaultModuleOnLoad(void) { }\n", module->namePrefix, module->name);
+    fprintf(file, PREFIXED(EXPORT)" void onLoad(void) __attribute__((weak, alias(\"%sDefaultModuleOnLoad\")));\n", module->namePrefix, module->name);
+
+    fprintf(file, PREFIXED(NO_EXPORT)" void %sDefaultModuleOnUnload(void) { }\n", module->namePrefix, module->name);
+    fprintf(file, PREFIXED(EXPORT)" void onUnload(void) __attribute__((weak, alias(\"%sDefaultModuleOnUnload\")));\n", module->namePrefix, module->name);
+    fprintf(file, "\n");
+
+    generateFunctionMap(file, module);
+
+    generateRegistrationFunctions(file, module);
+}
