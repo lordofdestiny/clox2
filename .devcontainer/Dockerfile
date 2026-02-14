@@ -12,9 +12,8 @@ RUN apt-get update && \
 
 RUN apt-get autoremove -y clang
 
-RUN ln -s /usr/bin/clangd-20 /usr/bin/clangd &&
-
-RUN ln -s /usr/bin/clang-20 /usr/bin/clang
+RUN ln -s /usr/bin/clang-20 /usr/bin/clang && \
+    ln -s /usr/bin/clangd-20 /usr/bin/clangd
 
 RUN apt-get install -y \
     python3-venv python3-pip
