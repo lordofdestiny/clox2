@@ -189,7 +189,7 @@ static int loadNativeLib(const char* libPath) {
     return 0;
 
 load_error_msg:
-    fprintf(stderr, "dlib error: %s\n", dlerror());
+    runtimeError("dlib error: %s\n", dlerror());
 load_error:
     if (handle != NULL) dlclose(handle);
     terminate(FAILED_LIB_LOAD);
@@ -515,7 +515,7 @@ bool callNative(Obj* callable, const int argCount) {
         return false;
     }
 
-    if (nativeState.nativeArgsCap < argCount) {
+    if (nativeState.nativeArgsCap < argCount + 1) {
         size_t newCap = argCount + 1;
         nativeState.nativeArgs = GROW_ARRAY(Value, nativeState.nativeArgs, nativeState.nativeArgsCap, newCap);
         nativeState.nativeArgsCap = newCap;
@@ -747,15 +747,15 @@ static InterpretResult run() {
 
     while (true) {
 #ifdef DEBUG_TRACE_EXECUTION
-        printf("\t\t");
+        fprintf(stdout, "\t\t");
         for (Value *slot = vm.stack; slot < vm.stackTop; slot++) {
-            printf("[ ");
-            if (IS_STRING(*slot)) printf("\"");
+            fprintf(stdout, "[ ");
+            if (IS_STRING(*slot)) fprintf(stdout, "\"");
             printValue(stdout, *slot);
-            if (IS_STRING(*slot)) printf("\"");
-            printf(" ]");
+            if (IS_STRING(*slot)) fprintf(stdout, "\"");
+            fprintf(stdout, " ]");
         }
-        printf("\n");
+        fprintf(stdout, "\n");
         disassembleInstruction(
             stdout,
                 &getFrameFunction(frame)->chunk,
