@@ -26,6 +26,7 @@
 #define FAILED_LIB_LOAD 50
 #define FAILED_REF_STACK_FULL 55
 #define FAILED_STACK_UNDERFLOW 60
+#define FAILED_STACK_OVERFLOW 70
 
 VM vm;
 NativeLibraryState nativeState;
@@ -34,7 +35,7 @@ NativeLibraryState nativeState;
 __attribute__((noreturn))
 void terminate(int code) {
     if (!vm.exit_state_ready){
-        fprintf(stderr, "FATAL: terminate() called from VM before jump state was set");
+        fprintf(stderr, "FATAL: terminate() called from VM before jump state was set\n");
         abort();
     }
     vm.exit_code = code;
@@ -238,6 +239,13 @@ void initVM() {
     vm.exit_code = 0;
     vm.exit_state_ready = false;
 
+    if (setjmp(vm.exit_state) != 0) {
+        fprintf(stderr, "FATAL: VM initialization failed\n");
+        exit(255);
+        return;
+    }
+
+    vm.exit_state_ready = true;
     vm.grayCount = 0;
     vm.grayCapacity = 0;
     vm.grayStack = NULL;
@@ -253,6 +261,7 @@ void initVM() {
     vm.initString = copyString("init", 4);
 
     initNative();
+    vm.exit_state_ready = false;
 }
 
 void freeVM() {
@@ -303,11 +312,15 @@ void resetReferences(int scope) {
 
 
 void push(const Value value) {
+    if (vm.stackTop >= vm.stack + STACK_MAX) {
+        runtimeError( "Stack overflow");
+        terminate(FAILED_STACK_OVERFLOW);
+    }
     *vm.stackTop++ = value;
 }
 
 Value pop() {
-    if (vm.stackTop > vm.stack) {
+    if (vm.stackTop <= vm.stack) {
         runtimeError( "Stack underflow");
         terminate(FAILED_STACK_UNDERFLOW);
     }
