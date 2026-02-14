@@ -58,9 +58,7 @@ typedef enum {
     VAL_OBJ,
 } ValueType;
 
-typedef struct Value Value;
-
-struct Value{
+typedef struct Value {
     ValueType type;
 
     union {
@@ -68,7 +66,7 @@ struct Value{
         double number;
         Obj* obj;
     } as;
-};
+} Value;
 
 #define IS_BOOL(value) ((value).type == VAL_BOOL)
 #define IS_NIL(value) ((value).type == VAL_NIL)
