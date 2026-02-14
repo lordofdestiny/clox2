@@ -442,14 +442,17 @@ static void checkSegment(FILE* file, const SegmentSequence seg) {
     }
 }
 
-static ObjString* read_string(FILE* file) {
-    const int length = read_int(file);
-    char* chars = malloc(length + 1);
+typedef struct String {
+    char* chars;
+    size_t length;
+} String;
+
+static String read_string(FILE* file) {
+    size_t length = read_int(file);
+    char* chars = calloc(length + 1, sizeof(char));
     LOAD_ARRAY(char, file, chars, length);
-    chars[length] = '\0';
-    ObjString* str = copyString(chars, length);
-    free(chars);
-    return str;
+    String string = {chars, length};
+    return string;
 }
 
 static void loadFunctionHeader(FILE* file, ObjFunction* function) {
@@ -457,7 +460,9 @@ static void loadFunctionHeader(FILE* file, ObjFunction* function) {
     if (seq == SEG_FUNCTION_SCRIPT) {
         function->name = NULL;
     } else if (seq == SEG_FUNCTION_NAME) {
-        function->name = read_string(file);
+        String string = read_string(file);
+        function->name = copyString(string.chars, string.length);
+        free(string.chars);        
     } else {
         fprintf(stderr, "Unexpected sequence before function name.");
         exit(LOAD_FAILURE);
@@ -548,7 +553,7 @@ static Value loadFunction(FILE* file, GenericArray* patchList) {
     return OBJ_VAL(function);
 }
 
-static void loadFunctions(FILE* file, ObjArray* functions, GenericArray* patchList) {
+static void loadSegmentFunctions(FILE* file, ObjArray* functions, GenericArray* patchList) {
     checkSegment(file, SEG_FUNCTIONS);
     while (true) {
         Value function = loadFunction(file, patchList);
@@ -560,23 +565,22 @@ static void loadFunctions(FILE* file, ObjArray* functions, GenericArray* patchLi
     checkSegment(file, SEG_END_FUNCTIONS);
 }
 
-static Value loadString(FILE* file) {
-    if (feof(file)) {
-        return NIL_VAL;
-    }
+static Value loadSegmentStringsNextString(FILE* file) {
+    if (feof(file)) return NIL_VAL;
 
-    if (peek_int(file) == SEG_END_STRINGS) {
-        return NIL_VAL;
-    }
+    if (peek_int(file) == SEG_END_STRINGS) return NIL_VAL;
 
-    ObjString* string = read_string(file);
-    return OBJ_VAL(string);
+    String string = read_string(file);
+    ObjString* stringObj = copyString(string.chars, string.length);
+    free(string.chars);
+
+    return OBJ_VAL(stringObj);
 }
 
-static void loadStrings(FILE* file, ObjArray* strings) {
+static void loadSegmentStrings(FILE* file, ObjArray* strings) {
     checkSegment(file, SEG_STRINGS);
     while (true) {
-        Value string = loadString(file);
+        Value string = loadSegmentStringsNextString(file);
         if (IS_NIL(string)) break;
         push(string);
         writeValueArray(&strings->array, string);
@@ -625,11 +629,9 @@ ObjFunction* loadBinary(const char* path) {
     checkSegment(file, SEG_LOX_ID);
 
     checkSegment(file, SEG_LOX_NAME);
-    const int file_name_len = read_int(file);
-    char* file_name = calloc(file_name_len+1, 1);
-    LOAD_ARRAY(char, file, file_name, file_name_len);
-    printf("-- file_name: %s --\n", file_name);
-    free(file_name);
+    String fileName = read_string(file);
+    printf("-- file_name: %s --\n", fileName.chars);
+    free(fileName.chars);
 
     ObjArray* functions = newArray();
     push(OBJ_VAL(functions));
@@ -640,8 +642,8 @@ ObjFunction* loadBinary(const char* path) {
     GenericArray patchList;
     GENERIC_INIT(FunctionPatch, &patchList);
 
-    loadFunctions(file, functions, &patchList);
-    loadStrings(file, strings);
+    loadSegmentFunctions(file, functions, &patchList);
+    loadSegmentStrings(file, strings);
 
     patchFunctionRefs(&patchList, functions, strings);
 
