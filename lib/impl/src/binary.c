@@ -299,7 +299,7 @@ static void writeFunction(
     GenericArray* valueIds, GenericArray* patchList,
     ValueQueue* functionQueue, ValueQueue* stringQueue
 ) {
-    const ValueId vid = newFunctionValueId(OBJ_VAL((Obj*) function));
+    const ValueId vid = newFunctionValueId(OBJ_VAL(function));
     appendGenericArray(valueIds, &vid);
 
     write_int(file, SEG_FUNCTION);
@@ -338,7 +338,7 @@ static void writeStrings(FILE* file, ValueQueue* strings) {
 }
 
 void writeBinary(const char* source_file, ObjFunction* compiled, const char* path) {
-   PUSH_OBJ(compiled);
+   push(OBJ_VAL(compiled));
     FILE* file = fopen(path, "w+b");
     setbuf(file, NULL);
 
@@ -531,7 +531,7 @@ static Value loadFunction(FILE* file, GenericArray* patchList) {
     checkSegment(file, SEG_FUNCTION);
 
     ObjFunction* function = newFunction();
-    PUSH_OBJ(function);
+    push(OBJ_VAL(function));
     
     checkSegment(file, SEG_FUNCTION_HEADER);
     loadFunctionHeader(file, function);
@@ -545,7 +545,7 @@ static Value loadFunction(FILE* file, GenericArray* patchList) {
     checkSegment(file, SEG_FUNCTION_END);
     
     pop();
-    return OBJ_VAL((Obj*) function);
+    return OBJ_VAL(function);
 }
 
 static void loadFunctions(FILE* file, ObjArray* functions, GenericArray* patchList) {
@@ -570,7 +570,7 @@ static Value loadString(FILE* file) {
     }
 
     ObjString* string = read_string(file);
-    return OBJ_VAL((Obj*) string);
+    return OBJ_VAL(string);
 }
 
 static void loadStrings(FILE* file, ObjArray* strings) {
@@ -632,10 +632,10 @@ ObjFunction* loadBinary(const char* path) {
     free(file_name);
 
     ObjArray* functions = newArray();
-    PUSH_OBJ(functions);
+    push(OBJ_VAL(functions));
     
     ObjArray* strings = newArray();
-    PUSH_OBJ(strings);
+    push(OBJ_VAL(strings));
 
     GenericArray patchList;
     GENERIC_INIT(FunctionPatch, &patchList);

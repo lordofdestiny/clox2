@@ -12,4 +12,4 @@ set(JANSSON_EXAMPLES OFF CACHE BOOL "Don't build Jansson examples" FORCE)
 
 FetchContent_MakeAvailable(jansson)
 
-target_compile_options(jansson PRIVATE "-Wno-format")
+target_compile_options(jansson PRIVATE "-Wno-format;-Wno-format-pedantic;-Wno-strict-prototypes")

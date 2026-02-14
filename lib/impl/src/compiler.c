@@ -252,7 +252,7 @@ static void emitConstant(const Value value) {
 }
 
 static void emitFunction(const Compiler* compiler, ObjFunction* function) {
-    const uint8_t constant = makeConstant(OBJ_VAL((Obj*) function));
+    const uint8_t constant = makeConstant(OBJ_VAL(function));
     if (function->upvalueCount > 0) {
         emitBytes(OP_CLOSURE, constant);
 
@@ -389,7 +389,7 @@ static uint8_t identifierConstant(const Token* name) {
     if (tableGet(&current->stringConstants, string, &indexValue)) {
         return (uint8_t) AS_NUMBER(indexValue);
     }
-    const uint8_t index = makeConstant(OBJ_VAL((Obj*) string));
+    const uint8_t index = makeConstant(OBJ_VAL(string));
     tableSet(&current->stringConstants, string, NUMBER_VAL((double) index));
     return index;
 }

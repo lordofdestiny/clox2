@@ -5,6 +5,6 @@
 
 typedef bool (*NativeFn)(int argCount, Value* implicit, Value* args);
 
-#define NATIVE_ERROR(msg) (OBJ_VAL((Obj*) copyString(msg, strlen(msg))))
+#define NATIVE_ERROR(msg) OBJ_VAL(copyString(msg, strlen(msg)))
 
 #endif //  __CLOX_LIB_NATIVE_H__

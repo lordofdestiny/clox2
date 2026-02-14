@@ -118,7 +118,7 @@ static ObjVT vtList[] = {
 };
 
 static Obj* allocateObject(const size_t size, const ObjType type, ObjVT* vtp) {
-    Obj* object = (Obj*) reallocate(NULL, 0, size);
+    Obj* object = reallocate(NULL, 0, size);
     object->type = type;
     object->isMarked = false;
     object->vtp = vtp;
@@ -133,7 +133,7 @@ void printObject(FILE* out, const Value value) {
 
 ObjArray* newArray() {
     ObjArray* array = ALLOCATE_OBJ(ObjArray, OBJ_ARRAY);
-    PUSH_OBJ(array);
+    push(OBJ_VAL(array));
     initValueArray(&array->array);
     pop();
     return array;
@@ -284,7 +284,7 @@ static void printFunction(Obj* obj, FILE* out) {
 ObjInstance* newInstance(ObjClass* klass) {
     ObjInstance* instance = ALLOCATE_OBJ(ObjInstance, OBJ_INSTANCE);
     instance->klass = klass;
-    instance->this_ = OBJ_VAL((Obj*) instance);
+    instance->this_ = OBJ_VAL(instance);
     initTable(&instance->fields);
     return instance;
 }
@@ -340,7 +340,7 @@ static ObjString* allocateString(char* chars, const int length, const uint32_t h
     string->length = length;
     string->chars = chars;
     string->hash = hash;
-    PUSH_OBJ(string);
+    push(OBJ_VAL(string));
     tableSet(&vm.strings, string, NIL_VAL);
     pop();
     return string;

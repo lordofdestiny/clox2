@@ -26,7 +26,7 @@ bool initExceptionNative(int argCount, Value* implicit, Value* args) {
     } else {
         tableSet(&exception->fields, copyString("message", 7), NIL_VAL);
     }
-    *implicit = OBJ_VAL((Obj *) exception);
+    *implicit = OBJ_VAL(exception);
     return true;
 }
 
@@ -106,7 +106,7 @@ bool toPrecisionNative([[maybe_unused]] int argCount, Value* implicit, Value* ar
     const int len = snprintf(NULL, 0, "%.*lf", decimals, value);
     char* buffer = ALLOCATE(char, len + 1);
     snprintf(buffer, len + 1, "%.*lf", decimals, value);
-    *implicit = OBJ_VAL((Obj*) takeString(buffer, len));
+    *implicit = OBJ_VAL(takeString(buffer, len));
     return true;
 }
 
@@ -208,7 +208,7 @@ bool initStringNative(int argCount, Value* implicit, Value* args) {
         char* chars = ALLOCATE(char, len + 1);
         snprintf(chars, len + 1, "%g", x);
 
-        instance->this_ = OBJ_VAL((Obj*) takeString(chars, len));
+        instance->this_ = OBJ_VAL(takeString(chars, len));
         tableSet(&instance->fields, copyString("length", 6), NUMBER_VAL(len));
 
         return true;
@@ -222,7 +222,7 @@ bool initStringNative(int argCount, Value* implicit, Value* args) {
 
         const char* str = b ? "true" : "false";
         const int len = b ? 4 : 5;
-        instance->this_ = OBJ_VAL((Obj*) copyString(str, len));
+        instance->this_ = OBJ_VAL(copyString(str, len));
         tableSet(&instance->fields, copyString("length", 6), NUMBER_VAL(len));
         return true;
     }
@@ -233,7 +233,7 @@ bool initStringNative(int argCount, Value* implicit, Value* args) {
             ? value
             : AS_INSTANCE(value)->this_);
 
-        instance->this_ = OBJ_VAL((Obj*) str);
+        instance->this_ = OBJ_VAL(str);
         tableSet(&instance->fields, copyString("length", 6), NUMBER_VAL(str->length));
         return true;
     }
@@ -248,7 +248,7 @@ bool initArrayNative(int argCount, Value* implicit, Value* args) {
     }
 
     if (argCount == 0) {
-        *implicit = OBJ_VAL((Obj*) newArray());
+        *implicit = OBJ_VAL(newArray());
         return true;
     }
 
@@ -271,9 +271,9 @@ bool initArrayNative(int argCount, Value* implicit, Value* args) {
             ? value
             : AS_INSTANCE(value)->this_);
         ObjArray* array_ = newArray();
-        PUSH_OBJ(array_);
+        push(OBJ_VAL(array_));
         valueInitValueArray(&array_->array, NIL_VAL, len);
-        instance->this_ = OBJ_VAL((Obj*) array_);
+        instance->this_ = OBJ_VAL(array_);
         tableSet(&instance->fields, copyString("length", 6), NUMBER_VAL(len));
         pop();
         return true;
@@ -281,7 +281,7 @@ bool initArrayNative(int argCount, Value* implicit, Value* args) {
 
     if (IS_ARRAY(value)) {
         ObjArray* array_ = AS_ARRAY(value);
-        instance->this_ = OBJ_VAL((Obj*) array_);
+        instance->this_ = OBJ_VAL(array_);
         tableSet(&instance->fields, copyString("length", 6), NUMBER_VAL(array_->array.count));
         return true;
     }

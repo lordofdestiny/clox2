@@ -90,8 +90,8 @@ static ObjClass* getGlobalClass(const char* name) {
 }
 
 static bool defineNative(const char* name, const int arity, const NativeFn function) {
-    PUSH_OBJ(copyString(name, (int) strlen(name)));
-    PUSH_OBJ(newNative(name, function, arity));
+    push(OBJ_VAL(copyString(name, (int) strlen(name))));
+    push(OBJ_VAL(newNative(name, function, arity)));
 
     if (tableGet(&vm.globals, AS_STRING(vm.stack[0]), NULL)) {
         pop();
@@ -108,9 +108,9 @@ static bool defineNative(const char* name, const int arity, const NativeFn funct
 }
 
 static ObjClass* nativeClass(const char* name) {
-    PUSH_OBJ(copyString(name, (int) strlen(name)));
+    push(OBJ_VAL(copyString(name, (int) strlen(name))));
     ObjClass* klass = newClass(AS_STRING(vm.stack[0]));
-    PUSH_OBJ(klass);
+    push(OBJ_VAL(klass));
     tableSet(&vm.globals, AS_STRING(vm.stack[0]), vm.stack[1]);
     pop();
     pop();
@@ -120,8 +120,8 @@ static ObjClass* nativeClass(const char* name) {
 static void addNativeMethod(
     ObjClass* klass, const char* name, const NativeFn method, const int arity
 ) {
-    PUSH_OBJ(copyString(name, (int) strlen(name)));
-    PUSH_OBJ(newNative(name, method, arity));
+    push(OBJ_VAL(copyString(name, (int) strlen(name))));
+    push(OBJ_VAL(newNative(name, method, arity)));
     tableSet(&klass->methods, AS_STRING(vm.stack[0]), vm.stack[1]);
     if (AS_STRING(vm.stack[0]) == vm.initString) klass->initializer = vm.stack[1];
     pop();
@@ -342,7 +342,7 @@ static void unpackPrimitive(const int distance) {
 
 static bool promote(const int distance, ObjClass* klass) {
     const Value value = peek(distance);
-    PUSH_OBJ(newPrimitive(value, klass)); // This
+    push(OBJ_VAL(newPrimitive(value, klass))); // This
     push(value); // Value being promoted passed as an argument to the ctor
     if (CALL_OBJ(klass->initializer, 1)) { // call the class ctor
         const Value promoted = pop(); // Pop result of ctor call - promoted value
@@ -384,7 +384,7 @@ static Value getStackTrace(void) {
             function->name == NULL ? "script" : function->name->chars);
     }
     stackTrace = GROW_ARRAY(char, stackTrace, maxStackTraceLength, index + 1);
-    return OBJ_VAL((Obj*) takeString(stackTrace, index));
+    return OBJ_VAL(takeString(stackTrace, index));
 #undef MAX_LINE_LENGTH
 }
 
@@ -489,7 +489,7 @@ bool callFunction(Obj* callable, const int argCount) {
 
 bool callClass(Obj* callable, const int argCount) {
     ObjClass* klass = (ObjClass*) callable;
-    vm.stackTop[-argCount - 1] = OBJ_VAL((Obj *) newInstance(klass));
+    vm.stackTop[-argCount - 1] = OBJ_VAL(newInstance(klass));
     if (!IS_NIL(klass->initializer)) {
         return CALL_OBJ(klass->initializer, argCount);
     }
@@ -590,7 +590,7 @@ static bool bindMethod(ObjClass* klass, ObjString* name) {
 
     ObjBoundMethod* bound = newBoundMethod(peek(0), AS_OBJ(method));
     pop();
-    PUSH_OBJ(bound);
+    push(OBJ_VAL(bound));
     return true;
 }
 
@@ -675,7 +675,7 @@ static void concatenate() {
     );
     pop();
     pop();
-    PUSH_OBJ(result);
+    push(OBJ_VAL(result));
 }
 
 static int primitiveStringLength(const Value value) {
@@ -704,7 +704,7 @@ static void concatenateStringWithPrimitive() {
         b->chars, b->length);
     pop();
     pop();
-    PUSH_OBJ(result);
+    push(OBJ_VAL(result));
 }
 
 static void concatenatePrimitiveWithString() {
@@ -720,7 +720,7 @@ static void concatenatePrimitiveWithString() {
         primitiveStr, primitiveStrLen);
     pop();
     pop();
-    PUSH_OBJ(result);
+    push(OBJ_VAL(result));
 }
 
 static InterpretResult run() {
@@ -769,12 +769,12 @@ static InterpretResult run() {
             ObjArray* array = newArray();
             size_t size = READ_SHORT();
             Value* elements = vm.stackTop - size;
-            PUSH_OBJ(array);
+            push(OBJ_VAL(array));
             for (size_t i = 0; i < size; i++) {
                 writeValueArray(&array->array, elements[i]);
             }
             vm.stackTop = elements;
-            PUSH_OBJ(array);
+            push(OBJ_VAL(array));
             break;
         }
         case OP_CONSTANT: push(READ_CONSTANT());
@@ -1114,7 +1114,7 @@ static InterpretResult run() {
         case OP_CLOSURE: {
             ObjFunction* function = AS_FUNCTION(READ_CONSTANT());
             ObjClosure* closure = newClosure(function);
-            PUSH_OBJ(closure);
+            push(OBJ_VAL(closure));
             for (int i = 0; i < closure->upvalueCount; i++) {
                 uint8_t isLocal = READ_BYTE();
                 uint8_t index = READ_BYTE();
@@ -1144,7 +1144,7 @@ static InterpretResult run() {
             break;
         }
         case OP_CLASS: {
-            PUSH_OBJ(newClass(READ_STRING()));
+            push(OBJ_VAL(newClass(READ_STRING())));
             break;
         }
         case OP_INHERIT: {
@@ -1225,7 +1225,7 @@ static InterpretResult run() {
 
 InterpretResult interpretCompiled(ObjFunction* function) {
     if (function == NULL) return INTERPRET_COMPILE_ERROR;
-    PUSH_OBJ(function);
+    push(OBJ_VAL(function));
     callFunction((Obj*) function, 0);
 
     if (setjmp(vm.exit_state) == 0) {

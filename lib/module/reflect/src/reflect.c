@@ -27,14 +27,14 @@ ObjArray* fieldNames(ObjInstance* instance) {
     int refScope = referenceScope();
     ObjArray* arr = newArray();
 
-    pushReference(OBJ_VAL((Obj*) arr));
+    pushReference(OBJ_VAL(arr));
 
     for(TableIterator it = newTableIterator(&instance->fields);
         !it.done;
         advanceTableIterator(&it)
     ) {
         ObjString* key = getKeyTableIterator(&it);
-        writeValueArray(&arr->array, OBJ_VAL((Obj*) key));
+        writeValueArray(&arr->array, OBJ_VAL(key));
     }
 
     resetReferences(refScope);

@@ -19,8 +19,6 @@
 #define MAX_HANDLER_FRAMES 16
 #define MAX_NATIVE_RC 64
 
-#define PUSH_OBJ(obj) push(OBJ_VAL((Obj*) obj))
-
 typedef struct {
     Value klass;
     uint16_t handlerAddress;

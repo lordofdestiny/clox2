@@ -188,7 +188,7 @@ static void generateFunctionWrapper(FILE* file,NativeModule* module, NativeFunct
     } else if (function->returnType == NATIVE_FUNCTION_TYPE_NIL){
         fprintf(file, """NIL_VAL;\n");
     } else {
-        fprintf(file, "OBJ_VAL((Obj*) %s);\n",resultSource);
+        fprintf(file, "OBJ_VAL(%s);\n",resultSource);
     }
 
     fprintf(file, ""

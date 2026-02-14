@@ -36,7 +36,7 @@ typedef uint64_t Value;
 #define TRUE_VAL ((Value)(uint64_t)(QNAN | TAG_TRUE))
 #define NUMBER_VAL(num) numToValue(num)
 #define OBJ_VAL(obj) \
-    (Value) (SIGN_BIT | QNAN | (uint64_t)(uintptr_t)(obj))
+    ((Value) (SIGN_BIT | QNAN | (uint64_t)(uintptr_t)((Obj*) obj)))
 
 static inline double valueToNum(const Value value) {
     double num;
@@ -84,7 +84,7 @@ struct Value{
 #define FALSE_VAL BOOL_VAL(false)
 #define NIL_VAL ((Value){VAL_NIL, {.number = 0}})
 #define NUMBER_VAL(value) ((Value){VAL_NUMBER, {.number = value}})
-#define OBJ_VAL(value) ((Value) {VAL_OBJ, {.obj = value}})
+#define OBJ_VAL(value) ((Value) {VAL_OBJ, {.obj = (Obj*) value}})
 
 #endif
 
