@@ -3,24 +3,24 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define assertm(expression, message) assert((expression) && (message))
+#include <common/util.h>
 
 #include <jansson.h>
 
 #include "config.h"
 
-static void freeNativeFunctionDescriptor(NativeFunctionDescriptor* functionDescriptor) {
-    free(functionDescriptor->name);
-    free(functionDescriptor->export);
-    free(functionDescriptor->argTypes);
+static void freeNativeFunction(NativeFunction* function) {
+    free(function->name);
+    free(function->export);
+    free(function->argTypes);
 }
 
-void freeNativeModuleDescriptor(NativeModuleDescriptor* moduleDescriptor) {
-    free(moduleDescriptor->name);
-    for(size_t i = 0 ; i < moduleDescriptor->functionCount; i++) {
-        freeNativeFunctionDescriptor(&moduleDescriptor->functions[i]);
+void freeNativeModule(NativeModule* module) {
+    free(module->name);
+    for(size_t i = 0 ; i < module->functionCount; i++) {
+        freeNativeFunction(&module->functions[i]);
     }
-    free(moduleDescriptor->functions);
+    free(module->functions);
 }
 
 const char* json_typenames[] = {
@@ -49,7 +49,7 @@ const char* supported_arg_types[] = {
 static size_t arg_types_size = sizeof(supported_arg_types) / sizeof(supported_arg_types[0]);
 
 const char* nativeFunctionArgName(NativeFunctionArgType id) {
-    assertm(id >= 0 || id < arg_types_size, "Invalid argument type id");
+    massert(id >= 0 || id < arg_types_size, "Invalid argument type id");
     return supported_arg_types[id];
 }
 
@@ -113,7 +113,7 @@ static char* errorBuffer[ERROR_BUFFER_SIZE];
 
 #define STORE_ERROR(FORMAT, ...) snprintf((char*) errorBuffer, sizeof(errorBuffer), FORMAT, __VA_ARGS__)
 
-static int verifyFunctionsDescriptor(const char* filename, size_t index, json_t* root) {
+static int verifyFunctions(const char* filename, size_t index, json_t* root) {
     if(!json_is_object(root)) {
         return NATIVE_MODULE_LOAD_ERROR_FIELD_TYPE;
     }
@@ -201,7 +201,12 @@ static int verifyFunctionsDescriptor(const char* filename, size_t index, json_t*
 static char* generateNamePrefix(const char* libNameCopy) {
     size_t bufferSize = strlen(libNameCopy);
     char* buffer = calloc(bufferSize + 1, sizeof(char));
-    assert(buffer != NULL);
+    
+    if (buffer == NULL) {
+        fprintf(stderr, "out of memory\n");
+        return NULL;
+    }
+    
     strcpy(buffer, libNameCopy);
     for(size_t i = 0 ; i < bufferSize; i++) {
         buffer[i] = toupper(buffer[i]);
@@ -209,7 +214,7 @@ static char* generateNamePrefix(const char* libNameCopy) {
     return buffer;
 }
 
-static int loadNativeModuleDescriptorImpl(const char* filename, json_t* root, NativeModuleDescriptor* moduleDescriptor) {
+static int loadNativeModuleImpl(const char* filename, json_t* root, NativeModule* module) {
     json_t* libraryField, *functionsField;
 
     libraryField = json_object_get(root, "library");
@@ -239,13 +244,13 @@ static int loadNativeModuleDescriptorImpl(const char* filename, json_t* root, Na
 
     // Verify all objects have required fields
     json_array_foreach(functionsField, index, functionObject) {
-        int status = verifyFunctionsDescriptor(filename, index, functionObject);
+        int status = verifyFunctions(filename, index, functionObject);
         if(status != NATIVE_MODULE_LOAD_SUCCESS) {
             return status;
         }
     }
 
-    NativeFunctionDescriptor* functions = calloc(functionCount, sizeof(NativeFunctionDescriptor));
+    NativeFunction* functions = calloc(functionCount, sizeof(NativeFunction));
     if (functions == NULL) {
         return NATIVE_MODULE_LOAD_ERROR_MEMORY;
     }
@@ -310,7 +315,7 @@ static int loadNativeModuleDescriptorImpl(const char* filename, json_t* root, Na
             break;
         }
 
-        functions[index] = (NativeFunctionDescriptor) {
+        functions[index] = (NativeFunction) {
             .name = functionNameCopy,
             .export = exportNameCopy,
             .returnType = returnType,
@@ -323,7 +328,7 @@ static int loadNativeModuleDescriptorImpl(const char* filename, json_t* root, Na
 
     if (failedAlloc) {
         for(size_t i = 0; i < index; i++) {
-            freeNativeFunctionDescriptor(&functions[i]);
+            freeNativeFunction(&functions[i]);
         }
         return NATIVE_MODULE_LOAD_ERROR_MEMORY;
     }
@@ -334,7 +339,7 @@ static int loadNativeModuleDescriptorImpl(const char* filename, json_t* root, Na
         return NATIVE_MODULE_LOAD_ERROR_MEMORY;
     }
 
-    *moduleDescriptor = (NativeModuleDescriptor) {
+    *module = (NativeModule) {
         .name = libNameCopy,
         .namePrefix = generateNamePrefix(libNameCopy),
         .functionCount = functionCount,
@@ -344,9 +349,9 @@ static int loadNativeModuleDescriptorImpl(const char* filename, json_t* root, Na
     return NATIVE_MODULE_LOAD_SUCCESS;
 }
 
-int loadNativeModuleDescriptor(const char* filename, NativeModuleDescriptor* moduleDescriptor) {
-    assertm(filename != NULL, "Expected non-NULL filename");
-    assertm(moduleDescriptor != NULL, "Expected non-NULL NativeModuleDescriptor pointer");
+int loadNativeModule(const char* filename, NativeModule* module) {
+    massert(filename != NULL, "Expected non-NULL filename");
+    massert(module != NULL, "Expected non-NULL NativeModule pointer");
 
     json_error_t error;
     json_t* root = json_load_file(filename, JSON_REJECT_DUPLICATES, &error);
@@ -361,18 +366,18 @@ int loadNativeModuleDescriptor(const char* filename, NativeModuleDescriptor* mod
     }
 
     if (!json_is_object(root)) {
-        STORE_ERROR(ERROR_FORMAT_MODULE, filename, "Invalid module descriptor format. Expected JSON object.");
+        STORE_ERROR(ERROR_FORMAT_MODULE, filename, "Invalid module  format. Expected JSON object.");
         json_decref(root);
         return NATIVE_MODULE_LOAD_ERROR_INVALID_STRUCTURE;
     }
 
-    int status = loadNativeModuleDescriptorImpl(filename, root, moduleDescriptor);
+    int status = loadNativeModuleImpl(filename, root, module);
     json_decref(root);
 
     return status;
 }
 
-int formatFunctionSignature(char* buffer, int cap, NativeFunctionDescriptor* function) {
+int formatFunctionSignature(char* buffer, int cap, NativeFunction* function) {
     int bufferSize = 0;
     bufferSize += snprintf(buffer, cap, "fun %s(", function->export);
     if (bufferSize >= cap) {
@@ -397,7 +402,7 @@ int formatFunctionSignature(char* buffer, int cap, NativeFunctionDescriptor* fun
     return bufferSize;
 }
 
-int printFunctionSignature(FILE* file, NativeFunctionDescriptor* function) {
+int printFunctionSignature(FILE* file, NativeFunction* function) {
     int bufferSize = 0;
     bufferSize += fprintf(file, "fun %s(", function->export);
     for(size_t i = 0; i < function->argTypesCount; i++) {

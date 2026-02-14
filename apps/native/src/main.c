@@ -28,8 +28,8 @@ int main(int argc, char* argv[]) {
 #endif
 
 
-        NativeModuleDescriptor desc;
-        int rc = loadNativeModuleDescriptor(filename, &desc);
+        NativeModule module;
+        int rc = loadNativeModule(filename, &module);
         (void)rc;
 #if HIDE_LOG
         if(rc != 0) {
@@ -37,8 +37,8 @@ int main(int argc, char* argv[]) {
             return FAILED_TO_READ;
         }
         
-        printf("Module: %s\n", desc.name);
-        printf("Function count: %zu\n", desc.functionCount);
+        printf("Module: %s\n", module.name);
+        printf("Function count: %zu\n", module.functionCount);
 #endif
 
         void* res; 
@@ -48,16 +48,16 @@ int main(int argc, char* argv[]) {
             fprintf(stderr,"Failed to open header output file: %s. %s\n", header, strerror(errno));
             exit(INVALID_FILE_PATH);
         }
-        generateModuleWrapperHeader(stdout, &desc, exportHeader);
+        generateModuleWrapperHeader(stdout, &module, exportHeader);
 
         res = freopen(source, "w", stdout);
         if (res == NULL) {
             fprintf(stderr,"Failed to open source output file: %s. %s\n", source, strerror(errno));
             exit(INVALID_FILE_PATH);
         }
-        generateModuleWrapperSource(stdout, &desc,includeHeader);
+        generateModuleWrapperSource(stdout, &module,includeHeader);
 
-        freeNativeModuleDescriptor(&desc);
+        freeNativeModule(&module);
 
         return EXIT_SUCCESS;
     }

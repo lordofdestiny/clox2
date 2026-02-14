@@ -1,5 +1,3 @@
-#include <assert.h>
-
 #include <clox/native/system/system.h>
 
 bool exitNative(int argCount, Value* implicit, Value* args) {

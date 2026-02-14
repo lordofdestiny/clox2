@@ -1,5 +1,3 @@
-#include <assert.h>
-
 #include <clox/native/reflect/reflect.h>
 
 bool hasField(ObjInstance* instance, ObjString* key) {

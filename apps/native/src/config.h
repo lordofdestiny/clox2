@@ -35,21 +35,22 @@ typedef struct {
     NativeFunctionArgType* argTypes;
     bool wrapped;
     bool canFail;
-} NativeFunctionDescriptor;
+} NativeFunction;
 
 typedef struct {
     char* name;
     char* namePrefix;
     size_t functionCount;
-    NativeFunctionDescriptor* functions;
-} NativeModuleDescriptor;
+    NativeFunction* functions;
+} NativeModule;
 
-int loadNativeModuleDescriptor(const char* filename, NativeModuleDescriptor* moduleDescriptor);
-void freeNativeModuleDescriptor(NativeModuleDescriptor* moduleDescriptor);
+int loadNativeModule(const char* filename, NativeModule* module);
+void freeNativeModule(NativeModule* module);
 
 const char* nativeFunctionArgName(NativeFunctionArgType id);
-int formatFunctionSignature(char* buffer, int cap, NativeFunctionDescriptor* function);
-int printFunctionSignature(FILE* file, NativeFunctionDescriptor* function);
+
+int formatFunctionSignature(char* buffer, int cap, NativeFunction* function);
+int printFunctionSignature(FILE* file, NativeFunction* function);
 
 char* getNativeModuleError(void);
 

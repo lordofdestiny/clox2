@@ -48,9 +48,9 @@ static ArgTypeNameCast argTypeCastNames[] = {
 
 #define PREFIXED(COMMAND) "%s_"#COMMAND
 
-static void generateFunctionSignatures(FILE* file, NativeModuleDescriptor* moduleDescriptor) {
-    for (size_t i = 0; i < moduleDescriptor->functionCount; i++) {
-        NativeFunctionDescriptor* function = &moduleDescriptor->functions[i];
+static void generateFunctionSignatures(FILE* file, NativeModule* module) {
+    for (size_t i = 0; i < module->functionCount; i++) {
+        NativeFunction* function = &module->functions[i];
         
         if (function->wrapped) {
             const char* returnTypeName = function->canFail
@@ -80,8 +80,8 @@ static void generateFunctionSignatures(FILE* file, NativeModuleDescriptor* modul
     fprintf(file, "\n");
 }
 
-void generateModuleWrapperHeader(FILE* file, NativeModuleDescriptor* moduleDescriptor, const char* exportHeader) {
-    fprintf(file, "// Auto-generated header for native module: %s\n", moduleDescriptor->name);
+void generateModuleWrapperHeader(FILE* file, NativeModule* module, const char* exportHeader) {
+    fprintf(file, "// Auto-generated header for native module: %s\n", module->name);
     fprintf(file, "// \n");
     fprintf(file, ""
         "// You should not edit this code.\n"
@@ -89,8 +89,8 @@ void generateModuleWrapperHeader(FILE* file, NativeModuleDescriptor* moduleDescr
         "// The wrapper provides the interface between this library and the clox VM\n"
         "\n"
     );
-    fprintf(file, "#ifndef __CLOX_NATIVE_MODULE_%s_H__\n", moduleDescriptor->name);
-    fprintf(file, "#define __CLOX_NATIVE_MODULE_%s_H__\n\n", moduleDescriptor->name);
+    fprintf(file, "#ifndef __CLOX_NATIVE_MODULE_%s_H__\n", module->name);
+    fprintf(file, "#define __CLOX_NATIVE_MODULE_%s_H__\n\n", module->name);
 
     fprintf(file, "#include <stdbool.h>\n\n");
 
@@ -98,14 +98,14 @@ void generateModuleWrapperHeader(FILE* file, NativeModuleDescriptor* moduleDescr
     
     fprintf(file, "#include <clox/clox.h>\n\n");
     
-    fprintf(file, PREFIXED(EXPORT)" extern const char CLOX_MODULE_NAME[];\n\n", moduleDescriptor->namePrefix);
+    fprintf(file, PREFIXED(EXPORT)" extern const char CLOX_MODULE_NAME[];\n\n", module->namePrefix);
 
-    generateFunctionSignatures(file, moduleDescriptor); 
+    generateFunctionSignatures(file, module); 
 
-    fprintf(file, "#endif // __CLOX_NATIVE_MODULE_%s_H__\n", moduleDescriptor->name);
+    fprintf(file, "#endif // __CLOX_NATIVE_MODULE_%s_H__\n", module->name);
 }
 
-static void generateFunctionArgCheck(FILE* file, NativeFunctionDescriptor* function, size_t argIndex) {
+static void generateFunctionArgCheck(FILE* file, NativeFunction* function, size_t argIndex) {
     NativeFunctionArgType argType = function->argTypes[argIndex];
     const char* isTypeName = isArgTypeNames[argType];
     
@@ -121,7 +121,7 @@ static void generateFunctionArgCheck(FILE* file, NativeFunctionDescriptor* funct
     fprintf(file, "    }\n");
 }
 
-static void generateFunctionWrapper(FILE* file,NativeModuleDescriptor* module, NativeFunctionDescriptor* function) {
+static void generateFunctionWrapper(FILE* file,NativeModule* module, NativeFunction* function) {
     if (!function->wrapped) return;
     fprintf(file, PREFIXED(NO_EXPORT)" bool %sNativeWrapper(int argCount, Value* implicit, Value* args) {\n",
         module->namePrefix,
@@ -191,11 +191,11 @@ static void generateFunctionWrapper(FILE* file,NativeModuleDescriptor* module, N
     fprintf(file, "}\n\n");
 }
 
-static void generateRegistrationFunctions(FILE* file, NativeModuleDescriptor* moduleDescriptor) {
+static void generateRegistrationFunctions(FILE* file, NativeModule* module) {
     fprintf(file,""
     PREFIXED(EXPORT)" size_t moduleClassCount(void) {\n"
     "    return 0;\n"
-    "}\n\n", moduleDescriptor->namePrefix);
+    "}\n\n", module->namePrefix);
 
     fprintf(file,""
     PREFIXED(EXPORT)" size_t registerFunctions(DefineNativeFunctionFn registerFn) {\n"
@@ -205,12 +205,12 @@ static void generateRegistrationFunctions(FILE* file, NativeModuleDescriptor* mo
     "    }\n"
     "    return %zu;\n"
     "}\n\n",
-    moduleDescriptor->namePrefix,
-    moduleDescriptor->functionCount,
-    moduleDescriptor->functionCount);
+    module->namePrefix,
+    module->functionCount,
+    module->functionCount);
 }
 
-static void generateFunctionMap(FILE* file, NativeModuleDescriptor* moduleDescriptor) {
+static void generateFunctionMap(FILE* file, NativeModule* module) {
     fprintf(file, ""
         "typedef struct {\n"
         "    char* name;\n"
@@ -220,8 +220,8 @@ static void generateFunctionMap(FILE* file, NativeModuleDescriptor* moduleDescri
         "\n"
         "static ExportedFunction functionMap[] = {\n"
     );
-    for(size_t i = 0; i < moduleDescriptor->functionCount; i++) {
-        NativeFunctionDescriptor* fn = &moduleDescriptor->functions[i];
+    for(size_t i = 0; i < module->functionCount; i++) {
+        NativeFunction* fn = &module->functions[i];
         if (fn->wrapped) {
             fprintf(file, ""
             "    {\"%s\", %zu, %sNativeWrapper},\n",  fn->name, fn->argTypesCount, fn->name
@@ -237,25 +237,25 @@ static void generateFunctionMap(FILE* file, NativeModuleDescriptor* moduleDescri
     );
 }
 
-void generateModuleWrapperSource(FILE* file, NativeModuleDescriptor* moduleDescriptor, const char* includeHeader) {
-    fprintf(file, "// Auto-generated source for native module: %s\n", moduleDescriptor->name);
+void generateModuleWrapperSource(FILE* file, NativeModule* module, const char* includeHeader) {
+    fprintf(file, "// Auto-generated source for native module: %s\n", module->name);
     fprintf(file, "#include <stddef.h>\n\n");
     fprintf(file, "#include \"%s\"\n\n", includeHeader);
 
-    fprintf(file, "const char CLOX_MODULE_NAME[] = \"%s\";\n\n", moduleDescriptor->name);
+    fprintf(file, "const char CLOX_MODULE_NAME[] = \"%s\";\n\n", module->name);
 
-    for(size_t i = 0; i < moduleDescriptor->functionCount; i++) {
-        generateFunctionWrapper(file, moduleDescriptor, &moduleDescriptor->functions[i]);
+    for(size_t i = 0; i < module->functionCount; i++) {
+        generateFunctionWrapper(file, module, &module->functions[i]);
     }
 
-    fprintf(file, PREFIXED(NO_EXPORT)" void %sDefaultModuleOnLoad(void) { }\n", moduleDescriptor->namePrefix, moduleDescriptor->name);
-    fprintf(file, PREFIXED(EXPORT)" void onLoad(void) __attribute__((weak, alias(\"%sDefaultModuleOnLoad\")));\n", moduleDescriptor->namePrefix, moduleDescriptor->name);
+    fprintf(file, PREFIXED(NO_EXPORT)" void %sDefaultModuleOnLoad(void) { }\n", module->namePrefix, module->name);
+    fprintf(file, PREFIXED(EXPORT)" void onLoad(void) __attribute__((weak, alias(\"%sDefaultModuleOnLoad\")));\n", module->namePrefix, module->name);
 
-    fprintf(file, PREFIXED(NO_EXPORT)" void %sDefaultModuleOnUnload(void) { }\n", moduleDescriptor->namePrefix, moduleDescriptor->name);
-    fprintf(file, PREFIXED(EXPORT)" void onUnload(void) __attribute__((weak, alias(\"%sDefaultModuleOnUnload\")));\n", moduleDescriptor->namePrefix, moduleDescriptor->name);
+    fprintf(file, PREFIXED(NO_EXPORT)" void %sDefaultModuleOnUnload(void) { }\n", module->namePrefix, module->name);
+    fprintf(file, PREFIXED(EXPORT)" void onUnload(void) __attribute__((weak, alias(\"%sDefaultModuleOnUnload\")));\n", module->namePrefix, module->name);
     fprintf(file, "\n");
 
-    generateFunctionMap(file, moduleDescriptor);
+    generateFunctionMap(file, module);
 
-    generateRegistrationFunctions(file, moduleDescriptor);
+    generateRegistrationFunctions(file, module);
 }

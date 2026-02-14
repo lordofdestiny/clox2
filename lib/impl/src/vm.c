@@ -1,4 +1,3 @@
-#include <assert.h>
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -26,6 +25,7 @@
 
 #define FAILED_LIB_LOAD 50
 #define FAILED_REF_STACK_FULL 55
+#define FAILED_STACK_UNDERFLOW 60
 
 VM vm;
 NativeLibraryState nativeState;
@@ -307,7 +307,10 @@ void push(const Value value) {
 }
 
 Value pop() {
-    assert(vm.stackTop > vm.stack);
+    if (vm.stackTop > vm.stack) {
+        runtimeError( "Stack underflow");
+        terminate(FAILED_STACK_UNDERFLOW);
+    }
     return *--vm.stackTop;
 }
 

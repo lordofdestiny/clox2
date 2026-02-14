@@ -1,4 +1,3 @@
-#include <assert.h>
 #include <string.h>
 
 #include <clox/table.h>
@@ -6,6 +5,8 @@
 
 #include <impl/memory.h>
 #include <impl/object.h>
+
+#include <common/util.h>
 
 void initTable(Table* table) {
     table->count = 0;
@@ -195,12 +196,12 @@ void advanceTableIterator(TableIterator* it) {
 ObjString* getKeyTableIterator(TableIterator* it) {
     Entry* entry = &it->table->entries[it->index];
     ObjString* string = entry->key;
-    assert(string != NULL);
+    massert(string != NULL, "Tried to iterate over an empty slot");
     return string;
 }
 
 Value getValueTableIterator(TableIterator* it) {
     [[maybe_unused]] ObjString* key = getKeyTableIterator(it);
-    assert(key != NULL);
+    massert(key != NULL, "Tried to iterate over an empty slot");
     return it->table->entries[it->index].value;
 }
