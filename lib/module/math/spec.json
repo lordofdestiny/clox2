@@ -1,5 +1,6 @@
 {
     "library": "cloxmath",
+    "include" : ["<math.h>"],
     "functions": [
         {   
             "name" : "abs",

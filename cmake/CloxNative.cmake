@@ -1,7 +1,7 @@
 function(CloxNativeLibrary)
   cmake_parse_arguments(
     CLOX_NATIVE_LIBARARY_PARGS
-    ""
+    "WRAPPER_ONLY"
     "SPEC_FILE;TARGET_NAME;OUT_HEADER;OUT_SOURCE"
     "LINK_LIBS"
     "${ARGN}"
@@ -9,6 +9,7 @@ function(CloxNativeLibrary)
 
   set(SpecFile ${CLOX_NATIVE_LIBARARY_PARGS_SPEC_FILE})
   set(TargetName ${CLOX_NATIVE_LIBARARY_PARGS_TARGET_NAME})
+  set(WrapperOnly ${CLOX_NATIVE_LIBARARY_PARGS_WRAPPER_ONLY})
   set(OutHeader ${CLOX_NATIVE_LIBARARY_PARGS_OUT_HEADER})
   set(OutSource ${CLOX_NATIVE_LIBARARY_PARGS_OUT_SOURCE})
   set(LinkLibs ${CLOX_NATIVE_LIBARARY_PARGS_LINK_LIBS})
@@ -33,6 +34,10 @@ function(CloxNativeLibrary)
   endif()
 
   string(REPLACE "clox" "" LibName ${TargetName})
+
+  if (NOT WrapperOnly)
+    set(WrapperOnly FALSE)
+  endif()
 
   file(GLOB_RECURSE TargetHeaders "include/*.h")
   file(GLOB_RECURSE TargetSources "src/*.c")
@@ -61,8 +66,10 @@ function(CloxNativeLibrary)
     set(${OutSource} ${WrapperSourcePath} PARENT_SCOPE)
   endif()
 
-  if(NOT EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/src) 
-    message(SEND_ERROR "CLoxNativeLibrary: ${TargetName} has no 'src' directory")
+  if(NOT ${WrapperOnly} AND NOT EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/src) 
+    message(SEND_ERROR
+      "CLoxNativeLibrary: ${TargetName} has no 'src' directory. "
+      "If this is intentional, set WRAPPER_ONLY to true.")
   endif()
 
   # TODO Refactor how cloxn -p is called, so that export there is less implicit "knowledge"

@@ -107,6 +107,8 @@ static NativeFunctionArgType decodeArgType(const char* const type) {
 }
 
 static const char* get_json_typename(json_t * node) {
+    if (node == NULL) return "(null)";
+    
     static int typenames_size = sizeof(json_typenames) / sizeof(json_typenames[0]);
     int typeid = json_typeof(node);
     if (typeid < 0 || typeid >= typenames_size) {
@@ -141,7 +143,7 @@ static void parseFunction(ParseState* pe, const char* filename, size_t index, js
     
     if(!json_is_object(root)) {
         LOG_ERROR(
-            ERROR_FORMAT_FUNCTION_FIELD "Invalid type. " ERROR_FORMAT_EXPECTED,
+            ERROR_FORMAT_FUNCTION_FIELD "Invalid type. " ERROR_FORMAT_EXPECTED "\n",
             filename, index, "object", get_json_typename(root));
         nonFatalError(pe,LOAD_ERROR_INVALID_STRUCTURE);
         return;
@@ -331,7 +333,7 @@ static void loadNativeModuleImpl(ParseState* pe, const char* filename, json_t* r
     if (interfaceVersionField != NULL && !json_is_integer(interfaceVersionField)) {
         LOG_ERROR(
             ERROR_FORMAT_MODULE_FIELD_TYPE,
-            filename, "library", "string", get_json_typename(interfaceVersionField));
+            filename, "interfaceVersion", "string", get_json_typename(interfaceVersionField));
         nonFatalError(pe, LOAD_ERROR_FIELD_TYPE);
     }else {
         interfaceVersion = json_integer_value(interfaceVersionField);
@@ -345,8 +347,42 @@ static void loadNativeModuleImpl(ParseState* pe, const char* filename, json_t* r
             filename, "library");
         nonFatalError(pe, LOAD_ERROR_MISSING_FIELD);
     }else if (!json_is_string(libraryField)) {
-        LOG_ERROR(ERROR_FORMAT_MODULE_FIELD_TYPE, filename, "library", "string", get_json_typename(libraryField));
+        LOG_ERROR(
+            ERROR_FORMAT_MODULE_FIELD_TYPE, filename,
+            "library", "string", get_json_typename(libraryField));
         nonFatalError(pe, LOAD_ERROR_FIELD_TYPE);
+    }
+
+    json_t* includeField = json_object_get(root, "include");
+    if (includeField != NULL && !json_is_array(includeField)) {
+        LOG_ERROR(
+            ERROR_FORMAT_MODULE_FIELD_TYPE,
+            filename, "include", "array", get_json_typename(includeField));
+        nonFatalError(pe, LOAD_ERROR_FIELD_TYPE);
+    } else if (includeField !=NULL) {
+        size_t index;
+        json_t* includeString;
+        json_array_foreach(includeField, index, includeString) {
+            if (!json_is_string(includeString)) {
+                LOG_ERROR(ERROR_FORMAT_LOCATION "Include array at index %zu." ERROR_FORMAT_EXPECTED "\n",
+                    filename, index, "string", get_json_typename(interfaceVersionField)
+                );
+                nonFatalError(pe, LOAD_ERROR_FIELD_TYPE);
+            }
+            size_t size = json_string_length(includeString);
+            const char* string = json_string_value(includeString);
+            if (string[0] == '\"' && string[size-1] != '\"') {
+                LOG_ERROR(ERROR_FORMAT_LOCATION "include array at index %zu. Unpaired quotes.\n",
+                        filename, index
+                    );
+                nonFatalError(pe, LOAD_ERROR_FIELD_TYPE);
+            }else if(string[0] == '<' && string[size-1] != '>') {
+                LOG_ERROR(ERROR_FORMAT_LOCATION "include array at index %zu. Unpaired angle brackets.\n",
+                        filename, index
+                    );
+                nonFatalError(pe, LOAD_ERROR_FIELD_TYPE);
+            }
+        }
     }
 
     json_t *functionsField = json_object_get(root, "functions");
@@ -363,14 +399,19 @@ static void loadNativeModuleImpl(ParseState* pe, const char* filename, json_t* r
         fatalError(pe, LOAD_ERROR_MISSING_FIELD);
         return;
     }
-    
+
+    if (pe->failed) return;
+
+
     size_t index;
-    json_t* functionObject;
+    json_t* element;
 
     char* libNameDup = NULL;
     char* libNamePrefix = NULL;
     NativeFunction* functions = NULL;
     size_t functionCount = 0;
+    char** includes = NULL;
+    size_t includeCount = 0;
 
     libNameDup = strdup(libName);
     if (libNameDup == NULL) {
@@ -384,6 +425,32 @@ static void loadNativeModuleImpl(ParseState* pe, const char* filename, json_t* r
         goto free_all;
     }
 
+    includeCount = json_array_size(includeField);
+    includes = calloc(includeCount, sizeof(char*));
+    if (includes == NULL) {
+        fatalError(pe, LOAD_ERROR_MEMORY);
+        goto free_all;    
+    }
+
+    json_array_foreach(includeField, index, element) {
+        const char* string = json_string_value(element);
+        size_t length = json_string_length(element);
+        bool quoted = true;
+        if (string[0] != '<' && string[0] != '\"') {
+            length += 2;
+            quoted = false;
+        }
+        char* buffer = calloc(length + 1, sizeof(char));
+        if (!quoted) {
+            buffer[0] = '\"';
+            strncpy(buffer + 1, string, length - 2);
+            buffer[length - 1] = '\"';
+        } else {
+            strcpy(buffer, string);
+        }
+        includes[index] = buffer;
+    }
+
     functionCount = json_array_size(functionsField);
     functions = calloc(functionCount, sizeof(NativeFunction));
     if (functions == NULL) {
@@ -391,8 +458,8 @@ static void loadNativeModuleImpl(ParseState* pe, const char* filename, json_t* r
         return;
     }
 
-    json_array_foreach(functionsField, index, functionObject) {
-        parseFunction(pe, filename, index, functionObject, &functions[index]);
+    json_array_foreach(functionsField, index, element) {
+        parseFunction(pe, filename, index, element, &functions[index]);
         if (pe->fatal) {
             goto free_all;
             return;
@@ -406,7 +473,9 @@ static void loadNativeModuleImpl(ParseState* pe, const char* filename, json_t* r
         .name = libNameDup,
         .namePrefix = libNamePrefix,
         .functionCount = functionCount,
-        .functions = functions
+        .functions = functions,
+        .includeCount = includeCount,
+        .includes = includes,
     };
 
     return; // Success
@@ -416,6 +485,10 @@ free_all:
         freeNativeFunction(&functions[i]);
     }
     free(functions);
+    for (size_t i = 0; i < includeCount; i++) {
+        free(includes[i]);
+    }
+    free(includes);
 }
 
 static void loadConfigRoot(ParseState* pe, const char* filename, json_t** out_root) {

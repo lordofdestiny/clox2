@@ -45,6 +45,8 @@ typedef struct {
     char* namePrefix;
     size_t functionCount;
     NativeFunction* functions;
+    size_t includeCount;
+    char** includes;
     int interfaceVersion;
 } NativeModule;
 
