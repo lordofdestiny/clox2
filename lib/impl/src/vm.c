@@ -448,7 +448,7 @@ static void pushExceptionHandler(
 ) {
     CallFrame* frame = &vm.frames[vm.frameCount - 1];
     if (frame->handlerCount == MAX_HANDLER_FRAMES) {
-        runtimeError("Too many nexted exception handlers in one function.");
+        runtimeError("Too many nested exception handlers in one function.");
         return;
     }
     frame->handlerStack[frame->handlerCount++] = (ExceptionHandler){
@@ -529,7 +529,6 @@ bool callNative(Obj* callable, const int argCount) {
         vm.stackTop[-1] = *nativeState.nativeArgs;
         return true;
     }
-    
 
     runtimeError("Native function failed");
     return false;

@@ -302,9 +302,6 @@ static void initCompiler(Compiler* compiler, const FunctionType type) {
                 : "script",
             line);
         char* buffer = ALLOCATE(char, nameLength + 1);
-        if (buffer == NULL) {
-            error("Could not allocate memory for lambda name");
-        }
         memset(buffer, 0, nameLength + 1);
         snprintf(
             buffer, nameLength + 1, template,
