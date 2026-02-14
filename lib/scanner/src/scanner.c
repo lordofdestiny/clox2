@@ -1,22 +1,32 @@
-#include <stdbool.h>
-#include <string.h>
-#include <stddef.h>
 #include <ctype.h>
+#include <stdbool.h>
+#include <stddef.h>
+#include <stdlib.h>
+#include <string.h>
 
 #include <scanner/scanner.h>
 #include <scanner/gen/scanner.h>
 
 #include <scanner_priv.h>
 
-void initScanner(Scanner* scanner, InputFile source) {
+int initScanner(Scanner** scanner_ptr, InputFile source) {
+    Scanner* scanner = malloc(sizeof(Scanner));
+    if(scanner == NULL) {
+        return 1;
+    }
+
     scanner->start = source.content;
     scanner->current = source.content;
     scanner->line = 1;
     scanner->column = 1;
+
+    *scanner_ptr = scanner;
+
+    return 0;
 }
 
-void freeScanner(Scanner* scanner_arg) {
-    (void) scanner_arg;
+void freeScanner(Scanner* scanner) {
+    free(scanner);
 }
 
 static bool isAlpha(const char c) {

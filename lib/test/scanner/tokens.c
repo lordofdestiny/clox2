@@ -12,7 +12,7 @@
 #include <scanner/scanner.h>
 
 typedef struct {
-    Scanner scanner;
+    Scanner* scanner;
     InputFile file;
 } TestState;
 
@@ -26,11 +26,12 @@ void initTestState(TestState* wrapper, const char* input) {
         .path = NULL,
         .size = size
     };
-    initScanner(&wrapper->scanner, wrapper->file);
+    int succ = initScanner(&wrapper->scanner, wrapper->file);
+    assert_int_equal(succ, 0);
 }
 
 void freeTestState(TestState* wrapper) {
-    freeScanner(&wrapper->scanner);
+    freeScanner(wrapper->scanner);
     freeInputFile(&wrapper->file);
 }
 
@@ -45,7 +46,8 @@ typedef struct {
 
 static void test_empty(void **) {
     PREPARE("");
-    assert_int_equal(scanToken(&wrapper.scanner).type, TOKEN_EOF);
+    assert_int_equal(scanToken(wrapper.scanner).type, TOKEN_EOF);
+    freeTestState(&wrapper);
 }
  
 static void test_keywords(void **) {
@@ -69,10 +71,10 @@ static void test_keywords(void **) {
     int expected_tokens = sizeof(expected) / sizeof(TokenType);
     Token tok;
     for(int i = 0; i < expected_tokens; i++) {
-        tok = scanToken(&wrapper.scanner);
+        tok = scanToken(wrapper.scanner);
         assert_int_equal(tok.type, expected[i]);
     }
-    tok = scanToken(&wrapper.scanner);
+    tok = scanToken(wrapper.scanner);
     assert_int_equal(tok.type, TOKEN_EOF);
     freeTestState(&wrapper);
 }
@@ -87,10 +89,10 @@ static void test_symbols(void **) {
     int expected_tokens = sizeof(expected) / sizeof(expected[0]);
     Token tok;
     for(int i = 0; i < expected_tokens; i++) {
-        tok = scanToken(&wrapper.scanner);
+        tok = scanToken(wrapper.scanner);
         assert_int_equal(tok.type, expected[i]);
     }
-    tok = scanToken(&wrapper.scanner);
+    tok = scanToken(wrapper.scanner);
     assert_int_equal(tok.type, TOKEN_EOF);
     freeTestState(&wrapper);
 }
@@ -99,7 +101,7 @@ static void test_non_keywords(void **) {
     PREPARE("classic thorws asm quiro");
     Token tok;
     while(true) {
-        tok = scanToken(&wrapper.scanner);
+        tok = scanToken(wrapper.scanner);
         if (tok.type == TOKEN_EOF){
             break;
         }
@@ -112,7 +114,7 @@ static void test_number(void **) {
     PREPARE("123 123.456");
     Token tok;
     while(true) {
-        tok = scanToken(&wrapper.scanner);
+        tok = scanToken(wrapper.scanner);
         if (tok.type == TOKEN_EOF){
             break;
         }
@@ -142,7 +144,7 @@ static void test_string(void **) {
         PREPARE(tests[i].input);
         Token tok;
         while(true) {
-            tok = scanToken(&wrapper.scanner);
+            tok = scanToken(wrapper.scanner);
             if (tok.type == TOKEN_EOF){
                 break;
             }
@@ -157,7 +159,7 @@ static void test_error(void **) {
     PREPARE("\\ ^");
     Token tok;
     while(true) {
-        tok = scanToken(&wrapper.scanner);
+        tok = scanToken(wrapper.scanner);
         if (tok.type == TOKEN_EOF){
             break;
         }

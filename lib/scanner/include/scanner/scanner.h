@@ -5,14 +5,10 @@
 
 #include <scanner/token.h>
 
-typedef struct {
-    const char* start;
-    const char* current;
-    int line;
-    int column;
-} Scanner;
+typedef struct Scanner Scanner;
 
-void initScanner(Scanner* scanner, InputFile source);
+[[nodiscard("Scanner int might fail")]]
+int initScanner(Scanner** scanner, InputFile source);
 void freeScanner(Scanner* scanner);
 Token scanToken(Scanner* scanners);
 

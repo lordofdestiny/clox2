@@ -111,7 +111,7 @@ typedef struct ClassCompiler {
 } ClassCompiler;
 
 typedef struct {
-    Scanner scanner;
+    Scanner* scanner;
     Token current;
     Token previous;
     bool hadError;
@@ -154,7 +154,7 @@ static void advance() {
     parser.previous = parser.current;
 
     while (true) {
-        parser.current = scanToken(&parser.scanner);
+        parser.current = scanToken(parser.scanner);
         if (parser.current.type != TOKEN_ERROR) break;
 
         errorAtCurrent(parser.current.start);
@@ -1588,7 +1588,9 @@ static ParseRule* getRule(const TokenType type) {
 
 ObjFunction* compile(InputFile source)
 {
-    initScanner(&parser.scanner, source);
+    if(initScanner(&parser.scanner, source) != 0) {
+        return NULL;
+    }
 
     Compiler compiler;
     initCompiler(&compiler, TYPE_SCRIPT);
@@ -1603,7 +1605,7 @@ ObjFunction* compile(InputFile source)
     }
 
     ObjFunction* function = endCompiler();
-    freeScanner(&parser.scanner);
+    freeScanner(parser.scanner);
     return parser.hadError ? NULL : function;
 }
 

@@ -6,6 +6,13 @@
 #include <scanner/scanner.h>
 #include <scanner/token.h>
 
+struct Scanner {
+    const char* start;
+    const char* current;
+    int line;
+    int column;
+};
+
 bool isAtEnd(Scanner* scanner);
 char advance(Scanner* scanner);
 char peekNext(Scanner* scanner);

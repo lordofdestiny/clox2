@@ -5,37 +5,52 @@
 #include <scanner/scanner.h>
 #include <scanner/token.h>
 
-typedef struct {
-	YY_BUFFER_STATE buff;
+struct Scanner {
     yyscan_t yyscan;
-} ScannerImpl;
+	YY_BUFFER_STATE buffer;
+};
 
-void initScanner(Scanner* scanner, InputFile source) {
-    scanner->impl = calloc(1, sizeof(ScannerImpl));
-    ScannerImpl* impl = scanner->impl;
+int initScanner(Scanner** scanner_ptr, InputFile source) {
+    yyscan_t yyscan;
+    if(yylex_init(&yyscan) != 0) {
+        return 1;
+    }
+    YY_BUFFER_STATE buffer = yy_scan_buffer(
+        source.content,  source.size + 2,
+        yyscan
+    );
+    
+    if (buffer == NULL) {
+        yylex_destroy(yyscan);
+        return 2;
+    }
+    
+    Scanner* scanner = malloc(sizeof(Scanner));
+    if (scanner == NULL) {
+        yy_delete_buffer(buffer, yyscan);
+        yylex_destroy(yyscan);
+    }
+    scanner->yyscan = yyscan;
+    scanner->buffer = buffer;
 
-    yylex_init(&impl->yyscan);
-	impl->buff = yy_scan_buffer(source.content,  source.size + 2, impl->yyscan);
-	yy_switch_to_buffer(impl->buff, impl->yyscan);
-    yyset_lineno(1, impl->yyscan);
-    yyset_column(1, impl->yyscan);
+    yy_switch_to_buffer(buffer, yyscan);
+    yyset_lineno(1, yyscan);
+    yyset_column(1, yyscan);
+
+    *scanner_ptr = scanner;
+
+    return 0;
 }
 
 void freeScanner(Scanner* scanner) {
-    ScannerImpl* impl = scanner->impl;
-
-    yy_delete_buffer(impl->buff, impl->yyscan);
-    yylex_destroy( impl ->yyscan);
-
-    free(impl);
-    scanner->impl = NULL;
+    yy_delete_buffer(scanner->buffer, scanner->yyscan);
+    yylex_destroy( scanner ->yyscan);
+    free(scanner);
 }
 
 Token scanToken(Scanner* scanner) {
-    ScannerImpl* impl = scanner->impl;
-
     Token yylex(yyscan_t yyscanner);
-    return yylex(impl->yyscan);
+    return yylex(scanner->yyscan);
 }
 
 static TokenLocation getLocation(yyscan_t yyscanner) {
