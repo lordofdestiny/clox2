@@ -218,17 +218,12 @@ static void parseFunction(ParseState* pe, const char* filename, size_t index, js
     
     json_t* returnsField = json_object_get(root, "returns");
     const char* typeName = json_string_value(returnsField);
-    if(returnsField == NULL) {
-        LOG_ERROR(
-            ERROR_FORMAT_FUNCTION_FIELD_MISSING,
-            filename, index, "returns");
-        nonFatalError(pe, LOAD_ERROR_MISSING_FIELD);
-    }else if(!json_is_string(returnsField)) {
+    if(returnsField != NULL && !json_is_string(returnsField)) {
         LOG_ERROR(
             ERROR_FORMAT_FUNCTION_FIELD_TYPE,
             filename, index, "returns", "string", get_json_typename(returnsField));
         nonFatalError(pe, LOAD_ERROR_FIELD_TYPE);
-    }else if (decodeArgType(typeName) == NATIVE_FUNCTION_TYPE_NONE) {
+    }else if (returnsField != NULL && decodeArgType(typeName) == NATIVE_FUNCTION_TYPE_NONE) {
         LOG_ERROR(
             ERROR_FORMAT_FUNCTION_FIELD " Unknown return type \'%s\'\n",
             filename, index, typeName);
@@ -237,10 +232,7 @@ static void parseFunction(ParseState* pe, const char* filename, size_t index, js
 
     json_t *argsField;
     argsField = json_object_get(root, "args");
-    if(argsField == NULL) {
-        LOG_ERROR(ERROR_FORMAT_FUNCTION_FIELD_MISSING, filename, index, "args");
-        nonFatalError(pe, LOAD_ERROR_MISSING_FIELD);
-    } else if(!json_is_array(argsField)) {
+    if(argsField != NULL && !json_is_array(argsField)) {
         LOG_ERROR(ERROR_FORMAT_FUNCTION_FIELD_TYPE, filename, index, "args", "array", get_json_typename(argsField));
         nonFatalError(pe, LOAD_ERROR_FIELD_TYPE);
     }
@@ -261,6 +253,12 @@ static void parseFunction(ParseState* pe, const char* filename, size_t index, js
                 ERROR_FORMAT_FUNCTION_FIELD " Unknown argument type at index %zu -\'%s\'.\n",
                 filename, index, argIndex, typeName);
             nonFatalError(pe, LOAD_ERROR_FUNCTION_ARG_TYPE);
+        } else if (decodeArgType(typeName) == NATIVE_FUNCTION_TYPE_NIL) {
+            LOG_ERROR(
+                ERROR_FORMAT_FUNCTION_FIELD " Argument at index %zu: %s.\n",
+                filename, index, argIndex, "Nil can't be used as a function signature type");
+                nonFatalError(pe, LOAD_ERROR_FUNCTION_ARG_TYPE);
+
         }
     }
 
@@ -277,10 +275,17 @@ static void parseFunction(ParseState* pe, const char* filename, size_t index, js
     }
     
     argCount = json_array_size(argsField);
-    argTypes = calloc(argCount, sizeof(NativeFunctionArgType));
-    if (argTypes == NULL) {
-        goto out_of_memory;
+    if (argCount > 0) {
+        argTypes = calloc(argCount, sizeof(NativeFunctionArgType));
+        if (argTypes == NULL) {
+            goto out_of_memory;
+        }
     }
+
+    NativeFunctionArgType returnType = 
+        typeName == NULL
+        ? NATIVE_FUNCTION_TYPE_NIL
+        : decodeArgType(typeName);
 
     json_array_foreach(argsField, argIndex, argValue) {
         const char* const typeName = json_string_value(argValue);
@@ -290,7 +295,7 @@ static void parseFunction(ParseState* pe, const char* filename, size_t index, js
     *out_function = (NativeFunction) {
             .name = functionNameDup,
             .export = exportNameDup,
-            .returnType = decodeArgType(typeName),
+            .returnType = returnType,
             .argTypesCount = argCount,
             .argTypes = argTypes,
             .wrapped = json_boolean_value(wrappedField) || true,

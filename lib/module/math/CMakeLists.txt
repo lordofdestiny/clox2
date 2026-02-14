@@ -5,7 +5,7 @@ add_library(cloxmath MODULE)
 
 set(SPEC_FILE "${CMAKE_CURRENT_SOURCE_DIR}/spec.json")
 
-CloxNativeLibrary(TARGET_NAME cloxmath WRAPPER_ONLY)
+CloxNativeLibrary(TARGET_NAME cloxmath)
 
 set_target_properties(
   cloxmath

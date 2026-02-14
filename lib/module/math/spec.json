@@ -2,6 +2,16 @@
     "library": "cloxmath",
     "include" : ["<math.h>"],
     "functions": [
+        {
+            "name" : "PI",
+            "export" : "ludolphine_number",
+            "returns": "Number"
+        },
+        {
+            "name" : "E",
+            "export" : "eulers_number",
+            "returns": "Number"
+        },
         {   
             "name" : "abs",
             "export" : "fabs",

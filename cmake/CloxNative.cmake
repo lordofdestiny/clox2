@@ -66,7 +66,16 @@ function(CloxNativeLibrary)
     set(${OutSource} ${WrapperSourcePath} PARENT_SCOPE)
   endif()
 
-  if(NOT ${WrapperOnly} AND NOT EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/src) 
+  set(ModuleSrcDir ${CMAKE_CURRENT_SOURCE_DIR}/src)
+  if(${WrapperOnly} AND EXISTS ${ModuleSrcDir})
+    file(GLOB CONTENTS_LIST "${ModuleSrcDir}/*")
+      
+    message(WARNING
+      "CLoxNativeLibrary: ${TargetName} has 'src' directory, "
+      "but is marked as WRAPPER_ONLY.")
+  endif()
+
+  if(NOT ${WrapperOnly} AND NOT EXISTS ${ModuleSrcDir}) 
     message(SEND_ERROR
       "CLoxNativeLibrary: ${TargetName} has no 'src' directory. "
       "If this is intentional, set WRAPPER_ONLY to true.")

@@ -27,7 +27,6 @@ int main(int argc, char* argv[]) {
         printf("Command: cloxn -p %s %s %s\n", filename, header, source);
 #endif
 
-
         NativeModule module;
         ParseResult pr = loadNativeModule(filename, &module);
         if (pr.count > 0) {

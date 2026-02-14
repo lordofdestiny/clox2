@@ -24,16 +24,14 @@
                 "Instance",
                 "String",
                 "Value"
-            ],
-            "returns": "nil"
+            ]
         },
         {
             "export": "deleteField",
             "args" : [
                 "Instance",
                 "String"
-            ],
-            "returns": "nil"
+            ]
         },
         {
             "export" : "fieldNames",

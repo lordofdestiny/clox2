@@ -26,34 +26,34 @@ print "Gonna sleep";
 sleep(2);
 print "I Woke up\n";
 
-print "Some long work:";
+fun timeme(function) {
+    var start = clock();
+    function();
+    var end = clock();
 
-var start = clock();
-
-var pp = 0;
-for(var i = 0; i < 10000000; i+=1) {
-    pp += i;
+    print "Elapsed: " + (end - start);
 }
 
-var end = clock();
+print "Some long work:";
 
-print "Elapsed: " + (end - start);
+timeme(|| {
+    var pp = 0;
+    for(var i = 0; i < 10000000; i+=1) {
+        pp += i;
+    }
+});
 
 fun my_max(a, b) {
     return a < b ? b : a;
 }
 
-start = clock();
+timeme(|| {
+    for (var i = 0; i < 10000000; i += 1) max(55, 99);
+});
 
-for (var i = 0; i < 100000000; i += 1) my_max(55, 99);
+timeme(|| {
+    for (var i = 0; i < 10000000; i += 1) my_max(55, 99);
+});
 
-var end = clock();
-print "Elapsed: " + (end - start);
-
-start = clock();
-
-for (var i = 0; i < 100000000; i += 1) max(44, 11);
-
-var end = clock();
-print "Elapsed: " + (end - start);
-
+print "sin(pi/4) = " + sin(PI() / 4) + " = " + (sqrt(2) / 2);
+print "cos(pi/6) = " + cos(PI() / 6) + " = " + (sqrt(3) / 2);
