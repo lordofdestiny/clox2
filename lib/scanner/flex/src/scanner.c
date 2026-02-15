@@ -1,6 +1,6 @@
 #include <stdlib.h>
 
-#include <scanner/scanner_impl.h>
+#include <scanner/gen/scanner_impl.h>
 
 #include <scanner/scanner.h>
 #include <scanner/token.h>

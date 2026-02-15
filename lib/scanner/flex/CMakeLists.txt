@@ -6,8 +6,8 @@ file(GLOB_RECURSE SCANNER_SOURCES src/*.c)
 if(FLEX_FOUND)
   set(SCANNER_SPEC misc/scanner_spec.l)
   
-  set(SCANNER_IMPL_HEADER ${CMAKE_CURRENT_BINARY_DIR}/include/scanner/scanner_impl.h)
-  set(SCANNER_IMPL_SOURCE ${CMAKE_CURRENT_BINARY_DIR}/src/scanner_impl.c)
+  set(SCANNER_IMPL_HEADER ${CMAKE_CURRENT_BINARY_DIR}/include/scanner/gen/scanner_impl.h)
+  set(SCANNER_IMPL_SOURCE ${CMAKE_CURRENT_BINARY_DIR}/src/gen/scanner_impl.c)
 
   cmake_path(GET SCANNER_IMPL_HEADER PARENT_PATH INCLUDE_DIR_PATH)
   cmake_path(GET SCANNER_IMPL_SOURCE PARENT_PATH SOURCE_DIR_PATH)
