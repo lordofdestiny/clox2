@@ -47,9 +47,9 @@ if(FLEX_FOUND)
   set_target_properties(
     cloxscanner_flex
     PROPERTIES
+      POSITION_INDEPENDENT_CODE TRUE
       C_VISIBILITY_PRESET default
       VISIBILITY_INLINES_HIDDEN YES 
-      POSITION_INDEPENDENT_CODE TRUE
       COMPILE_WARNING_AS_ERROR TRUE
   )
 
@@ -61,5 +61,8 @@ if(FLEX_FOUND)
     cloxscanner_flex
     PUBLIC
       cloxcommon
+      cloxscanner_common
   )
 endif()
+
+add_subdirectory(test)

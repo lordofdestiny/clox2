@@ -10,6 +10,6 @@ typedef struct Scanner Scanner;
 [[nodiscard("Scanner int might fail")]]
 int initScanner(Scanner** scanner, InputFile source);
 void freeScanner(Scanner* scanner);
-Token scanToken(Scanner* scanners);
+Token scanToken(Scanner* scanner);
 
-#endif //__CLOX2_SCANNER_H__
+#endif // __CLOX2_SCANNER_H__

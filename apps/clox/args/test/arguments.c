@@ -15,7 +15,7 @@ typedef struct {
 typedef struct {
     MainArgs* args;
     Command command;
-} TestState;
+} TestStateBase;
 
 MainArgs* makeMainArgs(int argc, ...) {
     MainArgs* args = malloc(sizeof(MainArgs));
@@ -44,8 +44,8 @@ void deleteMainArgs(MainArgs* args) {
     free(args);
 }
 
-TestState* makeTestState(MainArgs* args, Command command) {
-    TestState* test_state = malloc(sizeof(TestState));
+TestStateBase* makeTestState(MainArgs* args, Command command) {
+    TestStateBase* test_state = malloc(sizeof(TestStateBase));
 
     test_state->args = args;
     memcpy(&test_state->command, &command, sizeof(Command));
@@ -53,19 +53,19 @@ TestState* makeTestState(MainArgs* args, Command command) {
     return test_state;
 }
 
-void deleteTestState(TestState* state) {
+void deleteTestState(TestStateBase* state) {
     deleteMainArgs(state->args);
     free(state);
 }
 
 int teardownTest(void **state) {
-    TestState* test_state = *(TestState**) state;
+    TestStateBase* test_state = *(TestStateBase**) state;
     deleteTestState(test_state);
     return 0;
 }
 
 void test(void** state) {
-    TestState* test_state = *(TestState**) state;
+    TestStateBase* test_state = *(TestStateBase**) state;
     MainArgs* args = test_state->args;
     Command* cmd = &test_state->command;
 
