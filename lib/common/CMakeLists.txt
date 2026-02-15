@@ -3,8 +3,6 @@ add_library(cloxcommon OBJECT)
 set_target_properties(
   cloxcommon
   PROPERTIES
-    C_VISIBILITY_PRESET hidden
-    VISIBILITY_INLINES_HIDDEN YES
     POSITION_INDEPENDENT_CODE TRUE
     COMPILE_WARNING_AS_ERROR TRUE
 )

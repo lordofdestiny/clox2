@@ -57,7 +57,7 @@ target_link_libraries(cloximpl PRIVATE m)
 target_link_libraries(cloximpl PRIVATE cloxcommon)
 
 if(NOT USE_FLEX_SCANNER)
-  target_link_libraries(cloximpl PRIVATE cloxscanner)
+  target_link_libraries(cloximpl PRIVATE cloxscanner_default)
 else()
   target_link_libraries(cloximpl PRIVATE cloxscanner_flex)
 endif()

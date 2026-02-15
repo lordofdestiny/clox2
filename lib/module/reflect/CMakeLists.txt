@@ -15,3 +15,5 @@ set_target_properties(
     VISIBILITY_INLINES_HIDDEN YES
     COMPILE_WARNING_AS_ERROR TRUE
 )
+
+target_link_libraries(cloxreflect PRIVATE m)
