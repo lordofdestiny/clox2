@@ -1,13 +1,24 @@
 %top{
 
 #include <stdio.h>
-#include "parser_spec.h"
+#include <common/arena.h>
 
-#define YY_DECL int yylex (Token* lvalp, TokenLocation* loc, yyscan_t yyscanner)
+#include <gen/parser.h>
+
+#define YY_DECL int yylex (YYSTYPE* lvalp, TokenLocation* loc, yyscan_t yyscanner)
 
 #define SET_STRING_ERROR(str) do{ if (stringError == NULL) stringError = str; }while(0);
 
-#define TOKEN(NAME) do { *lvalp = (Token) {yytext, yyleng}; *loc = (TokenLocation){yylineno, yycolumn}; return TOKEN_##NAME; }while(0);
+#define TOKEN(NAME) do { \
+        char* data = sbuff_alloc(yyleng + 1); \
+        memcpy(data, yytext, yyleng); \
+        data[yyleng] = '\0'; \
+        *lvalp = (YYSTYPE) { \
+            .tok = {data, yyleng} \
+        }; \
+        *loc = (TokenLocation){yylineno, yycolumn}; \
+        return TOKEN_##NAME; \
+    } while(0);
 
 }
 
@@ -74,7 +85,7 @@ number          [[:digit:]]+(\.[[:digit:]]+)?
                         BEGIN(INITIAL);
                         *buffer_ptr = 0;
                         if (stringError != NULL) {
-                            char* tmp = stringError;
+                            [[maybe_unused]] char* tmp = stringError;
                             stringError = NULL;
                             return TOKEN_ERROR;
                         }
