@@ -1,8 +1,8 @@
 #include <stdio.h>
 
 #include "token.h"
-#include "Expr.h"
-#include "Statement.h"
+#include "expr.h"
+#include "statement.h"
 
 #define ENUM_NODE_ITEM(type, desc) \
     static void print##desc(FILE* file, const desc* expr); 

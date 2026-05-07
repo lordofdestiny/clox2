@@ -4,8 +4,8 @@
   #include <common/arena.h>
 
   #include "token.h"
-  #include "Statement.h"
-  #include "Expr.h"
+  #include "statement.h"
+  #include "expr.h"
   
   typedef void* yyscan_t;
   static const char* token_name(int t);
@@ -239,9 +239,7 @@ Designator:
   ;
 
 ArgumentList:
-  Expression {
-    // $$ = NULL;
-  }
+  Expression 
   | ArgumentList COMMA Expression
   | %empty {
     // $$ = NULL;
