@@ -32,6 +32,9 @@ ExprVt exprVT[] = {
 
 Node* allocateNode(arena_t* arena, size_t size, NodeType type) {
     Node* node = arena_alloc(arena, size);
+    if (node == NULL) {
+        return NULL;
+    }
     node->type = type;
     return node;
 }
@@ -57,7 +60,7 @@ void printDesignatorValue(FILE* file, const DesignatorValue* designatorValue) {
 }
 
 void printPrimitive(FILE* file, const Primitive* primitive) {
-    printToken(file, &primitive->value);
+    printToken(file, primitive->value);
 }
 
 void printGroup(FILE* file, const Group* group) {
@@ -78,7 +81,7 @@ void printExponent(FILE* file, const Exponent* exponent) {
 
 void printFactor(FILE* file, const Factor* factor){
     fprintf(file, "(");
-    printToken(file, &factor->op);
+    printToken(file, factor->op);
     fprintf(file, " ");
     NODE_PRINT(file, factor->expr);
     fprintf(file, ")");
@@ -86,7 +89,7 @@ void printFactor(FILE* file, const Factor* factor){
 
 void printTerm(FILE* file, const Term* term) {
     fprintf(file, "(");
-    printToken(file, &term->op);
+    printToken(file, term->op);
     fprintf(file, " ");
     NODE_PRINT(file, term->left);
     fprintf(file, " ");
@@ -96,7 +99,7 @@ void printTerm(FILE* file, const Term* term) {
 
 void printAddition(FILE* file, const Addition* addition) {
     fprintf(file, "(");
-    printToken(file, &addition->op);
+    printToken(file, addition->op);
     fprintf(file, " ");
     NODE_PRINT(file, addition->left);
     fprintf(file, " ");
@@ -106,7 +109,7 @@ void printAddition(FILE* file, const Addition* addition) {
 
 void printOrdering(FILE* file, const Ordering* ordering) {
     fprintf(file, "(");
-    printToken(file, &ordering->op);
+    printToken(file, ordering->op);
     fprintf(file, " ");
     NODE_PRINT(file, ordering->left);
     fprintf(file, " ");
@@ -115,7 +118,7 @@ void printOrdering(FILE* file, const Ordering* ordering) {
 }
 
 void printDesignatorIdentifier(FILE* file, const DesignatorIdentifier* designator) {
-    printToken(file, &designator->name);
+    printToken(file, designator->name);
 }
 
 void printDesignatorIndexed(FILE* file, const DesignatorIndexed* designator) {
@@ -128,7 +131,7 @@ void printDesignatorIndexed(FILE* file, const DesignatorIndexed* designator) {
 void printDesignatorField(FILE* file, const DesignatorField* designator) {
     NODE_PRINT(file, designator->source);
     fprintf(file, " . ");
-    printToken(file, &designator->name);
+    printToken(file, designator->name);
 }
 
 void printDesignatorCall(FILE* file, const DesignatorCall* designator) {
@@ -137,7 +140,7 @@ void printDesignatorCall(FILE* file, const DesignatorCall* designator) {
 
 void printEquality(FILE* file, const Equality* expr) {
     fprintf(file, "(");
-    printToken(file, &expr->op);
+    printToken(file, expr->op);
     fprintf(file, " ");
     NODE_PRINT(file, expr->left);
     fprintf(file, " ");

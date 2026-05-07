@@ -5,17 +5,14 @@
 
 #include <gen/parser.h>
 
-#define YY_DECL int yylex (YYSTYPE* lvalp, TokenLocation* loc, yyscan_t yyscanner)
+#define YY_DECL int yylex (YYSTYPE* lvalp, TokenLocation* loc, arena_t* arena, yyscan_t yyscanner)
 
 #define SET_STRING_ERROR(str) do{ if (stringError == NULL) stringError = str; }while(0);
 
 #define TOKEN(NAME) do { \
-        char* data = sbuff_alloc(yyleng + 1); \
-        memcpy(data, yytext, yyleng); \
-        data[yyleng] = '\0'; \
-        *lvalp = (YYSTYPE) { \
-            .tok = {data, yyleng} \
-        }; \
+        static int x = 0; \
+        x += 1; \
+        lvalp->tok = makeToken(arena, yytext, yyleng); \
         *loc = (TokenLocation){yylineno, yycolumn}; \
         return TOKEN_##NAME; \
     } while(0);

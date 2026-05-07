@@ -18,11 +18,13 @@
 
 %locations
 %define parse.trace
+%define parse.error detailed
 %define api.location.type {TokenLocation}
 %define api.header.include {<gen/parser.h>}
 %define api.pure full
 %define api.token.prefix {TOKEN_}
 
+%lex-param {arena_t* arena}
 %lex-param {yyscan_t yyscanner}
 
 %parse-param { arena_t* arena }
@@ -35,12 +37,12 @@
   Expr* expr;
   Statement* stmt;
   DesignatorTarget* desig;
-  Token tok;
+  Token* tok;
 }
 
 %printer {
   fprintf(yyo, "TOKEN at %d:%d = '", @$.line, @$.column);
-  printToken(yyo, &$$);
+  printToken(yyo, $$);
   fprintf(yyo, "'");
 } <tok>
 
@@ -54,14 +56,18 @@
 
 %code provides {
 
-int yylex (YYSTYPE* lvalp, YYLTYPE*, yyscan_t);
+int yylex (YYSTYPE* lvalp, YYLTYPE*, arena_t*, yyscan_t);
 void yyerror (YYLTYPE*, arena_t*, yyscan_t yyscanner, Node** result, char const *s);
 #define TOKEN_ERROR TOKEN_YYerror
 #define TOKEN_EOF TOKEN_YYEOF
 #define TOKEN_UNDEF TOKEN_YYUNDEF
 
 #define DEFINE_NODE(type, nodeType) \
-  type* value = (type*) ALLOCATE_NODE(arena, type, nodeType)
+  type* value = (type*) ALLOCATE_NODE(arena, type, nodeType); \
+  if (value == NULL) { \
+    YYNOMEM; \
+  } \
+
 }
 
 %{
