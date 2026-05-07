@@ -8,3 +8,6 @@ coverage/
 compile_commands.json
 valgrind-out.txt
 *.lox.bin
+
+# macOS specific
+.DS_Store
