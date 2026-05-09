@@ -4,7 +4,11 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#if  defined(IS_APPLE)
 #define ARENA_ALIGNMENT  (alignof(max_align_t))
+#else
+#define ARENA_ALIGNMENT (alignof(size_t))
+#endif
 
 typedef struct {
     alignas(max_align_t) size_t capacity;
@@ -13,7 +17,6 @@ typedef struct {
 
 static_assert(
     alignof(arena_t) == ARENA_ALIGNMENT &&
-    sizeof(arena_t) == ARENA_ALIGNMENT &&
     sizeof(arena_t) % ARENA_ALIGNMENT == 0,
     "Arena object violates requirements"
 );

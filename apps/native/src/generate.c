@@ -265,12 +265,36 @@ void generateModuleWrapperSource(FILE* file, NativeModule* module, const char* i
         generateFunctionWrapper(file, module, &module->functions[i]);
     }
 
-    fprintf(file, PREFIXED(NO_EXPORT)" void %sDefaultModuleOnLoad(void) { }\n", module->namePrefix, module->name);
-    fprintf(file, PREFIXED(EXPORT)" void onLoad(void) __attribute__((weak, alias(\"%sDefaultModuleOnLoad\")));\n", module->namePrefix, module->name);
-
-    fprintf(file, PREFIXED(NO_EXPORT)" void %sDefaultModuleOnUnload(void) { }\n", module->namePrefix, module->name);
-    fprintf(file, PREFIXED(EXPORT)" void onUnload(void) __attribute__((weak, alias(\"%sDefaultModuleOnUnload\")));\n", module->namePrefix, module->name);
     fprintf(file, "\n");
+
+    const char* defaultModuleOnLoadSuffix = "DefaultModuleOnLoad";
+    const char* defaultModuleOnUnloadSuffix = "DefaultModuleOnUnload";
+        
+    fprintf(file, PREFIXED(NO_EXPORT)" void %s%s(void) { }\n", module->namePrefix, module->name, defaultModuleOnLoadSuffix);
+    fprintf(file, PREFIXED(NO_EXPORT)" void %s%s(void) { }\n", module->namePrefix, module->name, defaultModuleOnUnloadSuffix);
+
+    fprintf(file, "#if defined(__APPLE__)\n");
+
+    fprintf(file, "\t" PREFIXED(EXPORT)" void onLoad(void);\n", module->namePrefix);
+    fprintf(file, "\t#pragma weak onLoad = %s%s\n", module->name, defaultModuleOnLoadSuffix);
+
+    fprintf(file, "\t" PREFIXED(EXPORT)" void onUnload(void);\n", module->namePrefix);
+    fprintf(file, "\t#pragma weak onUnload = %s%s\n", module->name, defaultModuleOnUnloadSuffix);
+
+    fprintf(file, "#else\n");
+
+    fprintf(
+        file,
+        "\t" PREFIXED(EXPORT)" void onLoad(void) __attribute__((weak, alias(\"%s%s\")));\n",
+        module->namePrefix, module->name, defaultModuleOnLoadSuffix
+    );
+    fprintf(
+        file,
+        "\t" PREFIXED(EXPORT)" void onUnload(void) __attribute__((weak, alias(\"%s%s\")));\n",
+        module->namePrefix, module->name, defaultModuleOnUnloadSuffix
+    );
+
+    fprintf(file, "#endif\n");
 
     generateFunctionMap(file, module);
 

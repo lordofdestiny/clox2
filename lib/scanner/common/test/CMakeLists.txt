@@ -17,3 +17,7 @@ target_link_libraries(
     cloxcommon
     cloxscanner_common
 )
+
+if(APPLE)
+  target_link_options(TestScannerCommon PRIVATE "-Wl,-undefined,dynamic_lookup")
+endif()
