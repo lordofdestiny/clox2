@@ -67,8 +67,6 @@ typedef struct Term {
     Token* op;
 } Term;
 
-typedef struct Addition Addition;
-
 typedef struct Addition { 
     Expr base;
     Expr* left;
