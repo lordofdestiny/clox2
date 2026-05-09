@@ -1,6 +1,6 @@
-[submodule "externals/CMake-argp"]
-	path = externals/CMake-argp
+[submodule "cmake-argp"]
+	path = externals/cmake-argp
 	url = https://github.com/alehaa/CMake-argp.git
 [submodule "externals/argp-standalone"]
 	path = externals/argp-standalone
-	url = https://github.com/ericonr/argp-standalone
+	url = https://github.com/tom42/argp-standalone

@@ -1,7 +1,3 @@
-set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/externals/cmake-argp/cmake" "${CMAKE_MODULE_PATH}")
-
-find_package(argp REQUIRED)
-
 add_library(cloxargs OBJECT)
 
 target_sources(cloxargs
@@ -15,8 +11,17 @@ target_sources(cloxargs
       include/args.h
 )
 
-target_link_libraries(cloxargs PRIVATE argp)
+find_package(argp)
+if(ARGP_FOUND)
+  add_subdirectory(${PROJECT_SOURCE_DIR}/externals/argp-standalone ${CMAKE_BINARY_DIR}/externals/argp-standalone)
+  target_compile_options(argp-standalone PRIVATE "-Wno-unused-parameter" "-Wno-pedantic" "-Wno-pointer-arith" "-Wno-missing-field-initializers")
+
+  set(ARGP_LIBRARIES argp-standalone)
+endif()
+
+target_link_libraries(cloxargs PRIVATE ${ARGP_LIBRARIES})
 
 if(BUILD_TESTING)
   add_subdirectory(test)
 endif()
+ 

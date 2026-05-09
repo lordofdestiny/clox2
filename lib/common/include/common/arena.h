@@ -4,7 +4,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#if  defined(IS_APPLE)
+#if !defined(IS_APPLE)
 #define ARENA_ALIGNMENT  (alignof(max_align_t))
 #else
 #define ARENA_ALIGNMENT (alignof(size_t))

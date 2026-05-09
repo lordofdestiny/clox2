@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 3.24)
 project(clox LANGUAGES C)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/externals/cmake-argp/cmake")
 
 include(CheckIPOSupported)
 include(CTest)
