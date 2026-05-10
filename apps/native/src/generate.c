@@ -267,34 +267,21 @@ void generateModuleWrapperSource(FILE* file, NativeModule* module, const char* i
 
     fprintf(file, "\n");
 
-    const char* defaultModuleOnLoadSuffix = "DefaultModuleOnLoad";
-    const char* defaultModuleOnUnloadSuffix = "DefaultModuleOnUnload";
-        
-    fprintf(file, PREFIXED(NO_EXPORT)" void %s%s(void) { }\n", module->namePrefix, module->name, defaultModuleOnLoadSuffix);
-    fprintf(file, PREFIXED(NO_EXPORT)" void %s%s(void) { }\n", module->namePrefix, module->name, defaultModuleOnUnloadSuffix);
+    // Define default no-op implementations
+    fprintf(file, "static void onLoad_default(void) { }\n");
+    fprintf(file, "static void onUnload_default(void) { }\n\n");
 
-    fprintf(file, "#if defined(__APPLE__)\n");
-
-    fprintf(file, "\t" PREFIXED(EXPORT)" void onLoad(void);\n", module->namePrefix);
-    fprintf(file, "\t#pragma weak onLoad = %s%s\n", module->name, defaultModuleOnLoadSuffix);
-
-    fprintf(file, "\t" PREFIXED(EXPORT)" void onUnload(void);\n", module->namePrefix);
-    fprintf(file, "\t#pragma weak onUnload = %s%s\n", module->name, defaultModuleOnUnloadSuffix);
-
-    fprintf(file, "#else\n");
-
+    // Weak functions that can be overridden by user code
     fprintf(
         file,
-        "\t" PREFIXED(EXPORT)" void onLoad(void) __attribute__((weak, alias(\"%s%s\")));\n",
-        module->namePrefix, module->name, defaultModuleOnLoadSuffix
+        PREFIXED(EXPORT)" __attribute__((weak)) void onLoad(void) { onLoad_default(); }\n",
+        module->namePrefix
     );
     fprintf(
         file,
-        "\t" PREFIXED(EXPORT)" void onUnload(void) __attribute__((weak, alias(\"%s%s\")));\n",
-        module->namePrefix, module->name, defaultModuleOnUnloadSuffix
+        PREFIXED(EXPORT)" __attribute__((weak)) void onUnload(void) { onUnload_default(); }\n",
+        module->namePrefix
     );
-
-    fprintf(file, "#endif\n");
 
     generateFunctionMap(file, module);
 
