@@ -9,9 +9,3 @@ double ludolphine_number(void) {
 double eulers_number(void) {
     return M_E;
 }
-
-#include <stdio.h>
-
-CLOXMATH_EXPORT void onLoad(void){
-    printf("MATH MODULE LOADED\n");
-}
