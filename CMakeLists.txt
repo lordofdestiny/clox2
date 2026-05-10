@@ -50,7 +50,6 @@ if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
     add_compile_options(-pedantic-errors -Wpedantic -pedantic -Wall -Wextra)
 endif()
 
-
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 
 if(BUILD_TESTING AND ENABLE_COVERAGE)
