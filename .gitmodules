@@ -3,4 +3,4 @@
 	url = https://github.com/alehaa/CMake-argp.git
 [submodule "externals/argp-standalone"]
 	path = externals/argp-standalone
-	url = https://github.com/tom42/argp-standalone
+	url = https://github.com/lordofdestiny/argp-standalone.git
