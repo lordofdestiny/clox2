@@ -24,6 +24,7 @@ jobs:
     steps:
     - name: Fetch submodules
       run: git submodule update --init
+      
     - uses: actions/checkout@v4
 
     - name: Configure CMake
