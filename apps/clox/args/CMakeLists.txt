@@ -12,14 +12,13 @@ target_sources(cloxargs
 )
 
 find_package(argp)
-if(ARGP_FOUND)
+if(NOT ARGP_FOUND)
   add_subdirectory(${PROJECT_SOURCE_DIR}/externals/argp-standalone ${CMAKE_BINARY_DIR}/externals/argp-standalone)
   target_compile_options(argp-standalone PRIVATE "-Wno-unused-parameter" "-Wno-pedantic" "-Wno-pointer-arith" "-Wno-missing-field-initializers")
 
   set(ARGP_LIBRARIES argp-standalone)
+  target_link_libraries(cloxargs PUBLIC ${ARGP_LIBRARIES})
 endif()
-
-target_link_libraries(cloxargs PRIVATE ${ARGP_LIBRARIES})
 
 if(BUILD_TESTING)
   add_subdirectory(test)
