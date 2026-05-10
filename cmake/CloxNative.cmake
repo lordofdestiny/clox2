@@ -124,4 +124,9 @@ function(CloxNativeLibrary)
   target_compile_options(${TargetName} PRIVATE "-Wno-unused-parameter")
 
   target_link_libraries(${TargetName} PUBLIC cloximpl::api_native PRIVATE ${LinkLibs})
+
+  if(APPLE)
+    target_link_options(${TargetName} PRIVATE "-Wl,-undefined,dynamic_lookup")
+  endif()
+
 endfunction()

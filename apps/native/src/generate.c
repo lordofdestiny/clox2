@@ -265,12 +265,23 @@ void generateModuleWrapperSource(FILE* file, NativeModule* module, const char* i
         generateFunctionWrapper(file, module, &module->functions[i]);
     }
 
-    fprintf(file, PREFIXED(NO_EXPORT)" void %sDefaultModuleOnLoad(void) { }\n", module->namePrefix, module->name);
-    fprintf(file, PREFIXED(EXPORT)" void onLoad(void) __attribute__((weak, alias(\"%sDefaultModuleOnLoad\")));\n", module->namePrefix, module->name);
-
-    fprintf(file, PREFIXED(NO_EXPORT)" void %sDefaultModuleOnUnload(void) { }\n", module->namePrefix, module->name);
-    fprintf(file, PREFIXED(EXPORT)" void onUnload(void) __attribute__((weak, alias(\"%sDefaultModuleOnUnload\")));\n", module->namePrefix, module->name);
     fprintf(file, "\n");
+
+    // Define default no-op implementations
+    fprintf(file, "static void onLoad_default(void) { }\n");
+    fprintf(file, "static void onUnload_default(void) { }\n\n");
+
+    // Weak functions that can be overridden by user code
+    fprintf(
+        file,
+        PREFIXED(EXPORT)" __attribute__((weak)) void onLoad(void) { onLoad_default(); }\n",
+        module->namePrefix
+    );
+    fprintf(
+        file,
+        PREFIXED(EXPORT)" __attribute__((weak)) void onUnload(void) { onUnload_default(); }\n",
+        module->namePrefix
+    );
 
     generateFunctionMap(file, module);
 

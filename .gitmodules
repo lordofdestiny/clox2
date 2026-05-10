@@ -1,0 +1,6 @@
+[submodule "cmake-argp"]
+	path = externals/cmake-argp
+	url = https://github.com/alehaa/CMake-argp.git
+[submodule "externals/argp-standalone"]
+	path = externals/argp-standalone
+	url = https://github.com/lordofdestiny/argp-standalone.git

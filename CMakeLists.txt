@@ -2,13 +2,13 @@ cmake_minimum_required(VERSION 3.24)
 project(clox LANGUAGES C)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/externals/cmake-argp/cmake")
 
 include(CheckIPOSupported)
 include(CTest)
 
 option(ENABLE_COVERAGE "Enable code coverage generation" NO)
 option(CLOX_NAN_BOXING "Enable NAN BOXING for stack values" YES)
-
 
 if(BUILD_TESTING)
   include(FetchCMocka)
@@ -31,6 +31,10 @@ if(result)
   set(CMAKE_INTERPROCEDURAL_OPTIMIZATION TRUE)
 else()
   message(WARNING "IPO is not supported: ${output}")
+endif()
+
+if(APPLE)
+  add_compile_definitions(IS_APPLE)
 endif()
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -pedantic-errors -Wpedantic -pedantic -Wall -Wextra")

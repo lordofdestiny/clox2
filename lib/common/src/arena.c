@@ -23,8 +23,10 @@
 typedef struct {
     size_t free : 1;
     size_t size : 8 * sizeof(size_t) - 1;
+#if !defined(IS_APPLE)
     // Insert padding to future proof the implementation for new features
     char padding[ARENA_ALIGNMENT - sizeof(size_t)];
+#endif
 } block_header_t;
 
 static_assert(

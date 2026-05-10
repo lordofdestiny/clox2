@@ -1,8 +1,9 @@
 #ifndef __CLOX2_ARGS_H__
 #define __CLOX2_ARGS_H__
 
-#include <argp.h>
 #include <stdbool.h>
+
+#include <argp.h>
 
 typedef enum {
     CMD_NONE,

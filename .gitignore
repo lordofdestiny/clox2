@@ -1,8 +1,10 @@
 # Project exclude paths
 build*/
 coverage/
-.vscode/
+.vscode/*
+!.vscode/settings.json
 .venv/
 .cache/
 compile_commands.json
 valgrind-out.txt
+*.lox.bin

@@ -1,0 +1,7 @@
+{
+    "search.exclude": {
+        "externals" : true,
+        ".clangd" : true,
+        ".git*" : true
+    },
+}
