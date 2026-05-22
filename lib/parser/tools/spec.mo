@@ -1,4 +1,5 @@
-from metaox import term, term_type
+# pyright: reportUndefinedVariable=false, reportInvalidTypeForm=false
+from metaox import term
 
 term.typename = "Token"
 
@@ -71,25 +72,25 @@ TRY: term
 VAR: term
 WHILE: term
 
-Statements: list = Statement | (Statements, Statement)
+Statements: list[Statement] = Statement | (Statements, Statement)
 
 Statement = DeclarationStatement | ExpressionStatement
 
 DeclarationStatement = VarDeclarationStatement
 
-VarDeclarationStatement = (VarDeclaration, SEMICOLON)
+VarDeclarationStatement = VarDeclaration, SEMICOLON
 
-VarDeclaration = (VAR, VarDeclarationList)
+VarDeclaration = VAR, VarDeclarationList
 
-VarDeclarationList: list = VarDeclElement | (
+VarDeclarationList: list[VarDeclElement] = VarDeclElement | (
     VarDeclarationList,
     COMMA,
     VarDeclElement,
 )
 
-VarDeclElement: Stmt = (IDENTIFIER, EQUAL, Expression)
+VarDeclElement = IDENTIFIER, EQUAL, Expression
 
-ExpressionStatement: Stmt = (Expression, SEMICOLON)
+ExpressionStatement = Expression, SEMICOLON
 
 Expression = AssignmentExpression
 
@@ -105,7 +106,7 @@ Designator = (
     | (Designator, DOT, IDENTIFIER)
 )
 
-ArgumentList: list = Expression | (ArgumentList, COMMA, Expression) | 0
+ArgumentList: list[Expression] = Expression | (ArgumentList, COMMA, Expression)
 
 AssignmentOperator = (
     EQUAL | PLUS_EQUAL | MINUS_EQUAL | STAR_EQUAL | SLASH_EQUAL | PERCENT_EQUAL
@@ -170,11 +171,6 @@ ExponentExpression = PrimaryExpression | (
     STAR_STAR,
     FactorExpression,
 )
-ExponentExpression = PrimaryExpression | (
-    PrimaryExpression,
-    STAR_STAR,
-    FactorExpression,
-)
 
 UnaryOperator = BANG | MINUS
 
@@ -187,4 +183,4 @@ PrimaryExpression = (
     | FunctionCall
 )
 
-FunctionCall = (Designator, LEFT_PAREN, ArgumentList, RIGHT_PAREN)
+FunctionCall = Designator, LEFT_PAREN, ArgumentList, RIGHT_PAREN
