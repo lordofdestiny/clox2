@@ -99,7 +99,9 @@ void push(Value value);
 
 Value pop();
 
-CLOX_EXPORT InterpretResult interpret(InputFile source);
+CLOX_EXPORT InterpretResult interpretFile(const char* source);
+
+CLOX_EXPORT InterpretResult interpretPrompt(char* prompt);
 
 CLOX_EXPORT InterpretResult interpretCompiled(ObjFunction* function);
 

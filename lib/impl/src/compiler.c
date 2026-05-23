@@ -86,19 +86,6 @@ typedef struct Compiler {
     Table stringConstants;
 } Compiler;
 
-static bool* compilerReplMode() {
-    static bool value;
-    return &value;
-}
-
-bool isRepl() {
-    return *compilerReplMode();
-}
-
-void setRepl(bool isRepl) {
-    *compilerReplMode() = isRepl;
-}
-
 typedef struct ClassCompiler {
     struct ClassCompiler* enclosing;
     bool hasSuperclass;
@@ -116,6 +103,7 @@ typedef struct {
     Token previous;
     bool hadError;
     bool panicMode;
+    bool replMode;
 } Parser;
 
 Parser parser;
@@ -174,7 +162,7 @@ static void consumeReplOptional(const TokenType type, const char* message) {
         advance();
         return;
     }
-    if (current->enclosing != NULL || !isRepl()) {
+    if (current->enclosing != NULL || !parser.replMode) {
         errorAtCurrent(message);
     }
 }
@@ -753,7 +741,7 @@ static void varDeclaration() {
 static void expressionStatement() {
     expression();
     consumeReplOptional(TOKEN_SEMICOLON, "Expect ';' after expression.");
-    if (isRepl()) {
+    if (parser.replMode) {
         emitByte(OP_PRINT);
     }else {
         emitByte(OP_POP);
@@ -1583,27 +1571,59 @@ static ParseRule* getRule(const TokenType type) {
     return &rules[type];
 }
 
-ObjFunction* compile(InputFile source)
-{
-    if(initScanner(&parser.scanner, source) != 0) {
-        return NULL;
-    }
-
+static ObjFunction* compile(bool repl) {
     Compiler compiler;
     initCompiler(&compiler, TYPE_SCRIPT);
 
     parser.hadError = false;
     parser.panicMode = false;
+    parser.replMode = repl;
 
     advance();
-
-    while (!match(TOKEN_EOF)) {
+    while(!match(TOKEN_EOF)) {
         declaration();
     }
 
     ObjFunction* function = endCompiler();
-    freeScanner(parser.scanner);
     return parser.hadError ? NULL : function;
+}
+
+static void handlerScannerException(ScannerErrorCode code, const char* path) {
+    int size = formatScannerError(NULL, 0, path, code);
+
+    char* errorBuffer = calloc(size + 1, sizeof(char));
+    if (errorBuffer == NULL) {
+        fprintf(stderr, "Failed to create scanner for file %s\n", path);
+    }else {
+        (void) formatScannerError(errorBuffer, size, path, code);
+        fprintf(stderr, "%s", errorBuffer);
+    }
+    free(errorBuffer);
+}
+
+ObjFunction* compileFile(const char* path)
+{
+    int code = initScannerFile(&parser.scanner, path);
+    if(code != 0) {
+        handlerScannerException(code, path);
+        return NULL;
+    }
+
+    ObjFunction* function = compile(false);
+    
+    freeScanner(parser.scanner);
+    return function;
+}
+
+ObjFunction* compilePrompt(const char* prompt) {
+    if(initScannerPrompt(&parser.scanner, prompt) != 0) {
+        return NULL;
+    }
+
+    ObjFunction* function = compile(true);
+    
+    freeScanner(parser.scanner);
+    return function;
 }
 
 void markCompilerRoots() {

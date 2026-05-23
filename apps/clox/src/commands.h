@@ -5,8 +5,8 @@
 
 int repl();
 
-int runFile(const Command* cmd);
+int runFileCommand(const Command* cmd);
 
-int compileFile(const Command* cmd);
+int compileFileCommand(const Command* cmd);
 
 #endif // __CLOX2_COMMANDS_H__

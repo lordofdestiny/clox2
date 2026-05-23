@@ -20,9 +20,9 @@
 } \
 
 typedef struct {
-    InputFile file;
     Scanner* scanner;
     const char * str;
+    bool into_file;
 } TestStateBase;
 
 typedef struct {
@@ -36,26 +36,41 @@ typedef struct {
     TokenType* expected;
 } TestStateMultiType;
 
+typedef struct {
+    TestStateMultiType multi;
+    const char* path;
+} TestStateFileType;
+
 static int initTestState(void** state) {
     TestStateBase* wrapper = *state;
     size_t size = strlen(wrapper->str);
-    char* buffer = calloc(size + 2 ,1);
-    strcpy(buffer, wrapper->str);
 
-    wrapper->file = (InputFile) {
-        .content = buffer,
-        .path = NULL,
-        .size = size
-    };
+    if(wrapper->into_file) {
+        char* path = tmpnam(NULL);
+        FILE* file = fopen(path, "w");
+        fwrite(wrapper->str, sizeof(char), size, file);
+        fclose(file);
+        ((TestStateFileType*)wrapper)->path = path;
 
-    int succ = initScanner(&wrapper->scanner, wrapper->file);
-    assert_int_equal(succ, 0);
+        int succ = initScannerFile(&wrapper->scanner, path);
+        assert_int_equal(succ, 0);
+    } else {
+        char* buffer = malloc(size + 1);
+        assert_non_null(buffer);
+        strcpy(buffer, wrapper->str);
+
+        int succ = initScannerPrompt(&wrapper->scanner, buffer);
+        assert_int_equal(succ, 0);
+    }
+    
     return 0;
 }
 
 static int freeTestState(void** state) {
     TestStateBase* wrapper = *state;
-    freeInputFile(&wrapper->file);
+    if(wrapper->into_file) {
+        remove(((TestStateFileType*)wrapper)->path);
+    }
     freeScanner(wrapper->scanner);
     free(*state);
     return 0;
@@ -64,6 +79,7 @@ static int freeTestState(void** state) {
 static TestStateSingleType* makeSingleTypeData(const char* str, TokenType expected) {
     TestStateSingleType* data = malloc(sizeof(TestStateSingleType));
     data->common.str = str;
+    data->common.into_file = false;
     data->expected = expected;
     return data;
 }
@@ -71,10 +87,21 @@ static TestStateSingleType* makeSingleTypeData(const char* str, TokenType expect
 static TestStateMultiType* makeMultipleTypeData(const char* str, size_t count, TokenType* expected) {
     TestStateMultiType* data = malloc(sizeof(TestStateMultiType));
     data->common.str = str;
+    data->common.into_file = false;
     data->count = count;
     data->expected = expected;
     return data;
 }
+
+static TestStateFileType* makeMultipleTypeDataFile(const char* str, size_t count, TokenType* expected) {
+    TestStateFileType* data = malloc(sizeof(TestStateFileType));
+    data->multi.common.str = str;
+    data->multi.common.into_file = true;
+    data->multi.count = count;
+    data->multi.expected = expected;
+    return data;
+}
+
 
 static void test_base_single_type(void** state) {
     TestStateSingleType* data = *state;
@@ -168,6 +195,20 @@ int main(void) {
         named_test(
             "test_error", test_base_single_type,
             makeSingleTypeData("\\ ^", TOKEN_ERROR)
+        ),
+        named_test(
+            "test_file", test_base_multiple_types,
+            makeMultipleTypeDataFile(
+                "var a = 5;\n"
+                "var b = 10;\n"
+                "print a + b;\n",
+                15,
+                (TokenType*) &(TokenType[]){
+                    TOKEN_VAR, TOKEN_IDENTIFIER, TOKEN_EQUAL, TOKEN_NUMBER, TOKEN_SEMICOLON,
+                    TOKEN_VAR, TOKEN_IDENTIFIER, TOKEN_EQUAL, TOKEN_NUMBER, TOKEN_SEMICOLON,
+                    TOKEN_PRINT, TOKEN_IDENTIFIER, TOKEN_PLUS, TOKEN_IDENTIFIER, TOKEN_SEMICOLON
+                }
+            )
         )
     };
  

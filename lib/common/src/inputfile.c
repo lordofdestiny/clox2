@@ -49,11 +49,6 @@ void freeInputFile(InputFile* file) {
     memset(file, 0, sizeof(InputFile));
 }
 
-// fprintf(stderr, "Not enough memory to read \"%s\".\n", path);
-// fprintf(stderr, "Could not open file \"%s\".\n", path);
-// fprintf(stderr, "Not enough memory to read \"%s\".\n", path);
-// fprintf(stderr, "Could not read file \"%s\".\n", path);
-
 static char* errorMessages[] = {
     [INPUT_FILE_SUCCESS] = NULL,
     [INPUT_FILE_ERROR_ALLOC_FAILED] = "buffer allocation failed",

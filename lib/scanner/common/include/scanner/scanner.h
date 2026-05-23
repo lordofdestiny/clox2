@@ -5,11 +5,21 @@
 
 #include <scanner/token.h>
 
+enum ScannerErrorCode : int;
+typedef enum ScannerErrorCode ScannerErrorCode;
+
 typedef struct Scanner Scanner;
 
 [[nodiscard("Scanner int might fail")]]
-int initScanner(Scanner** scanner, InputFile source);
+int initScannerFile(Scanner** scanner, const char* path);
+
+[[nodiscard("Scanner int might fail")]]
+int initScannerPrompt(Scanner** scanner, const char* prompt);
+
 void freeScanner(Scanner* scanner);
+
 Token scanToken(Scanner* scanner);
+
+int formatScannerError(char* buffer, size_t cap, const char* file, ScannerErrorCode cause);
 
 #endif // __CLOX2_SCANNER_H__

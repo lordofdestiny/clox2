@@ -5,46 +5,119 @@
 #include <scanner/scanner.h>
 #include <scanner/token.h>
 
+enum ScannerErrorCode : int {
+    SCANNER_SUCCESS = 0,
+    SCANNER_ERROR_SCANNER_DEST_NULL,
+    SCANNER_ERROR_FILE_NULL,
+    SCANNER_ERROR_FILE_OPEN_FAILED,
+    SCANNER_ERROR_ALLOC_FAILED,
+    SCANNER_YY_INIT_FAILED,
+    SCANNER_YY_CREATE_BUFFER_FAILED,
+    SCANNER_ERROR_LAST = SCANNER_YY_CREATE_BUFFER_FAILED
+};
+
 struct Scanner {
     yyscan_t yyscan;
 	YY_BUFFER_STATE buffer;
+    FILE* source;
 };
 
-int initScanner(Scanner** scanner_ptr, InputFile source) {
+int initScannerFile(Scanner** scanner_ptr, const char* path) {
+    if (scanner_ptr == NULL) {
+        return SCANNER_ERROR_SCANNER_DEST_NULL;
+    }
+
+    if (path == NULL) {
+        return SCANNER_ERROR_FILE_NULL;
+    }
+
+    Scanner* scanner = malloc(sizeof(Scanner));
+    if(scanner == NULL) {
+        return SCANNER_ERROR_ALLOC_FAILED;
+    }
+
     yyscan_t yyscan;
     if(yylex_init(&yyscan) != 0) {
-        return 1;
-    }
-    YY_BUFFER_STATE buffer = yy_scan_buffer(
-        source.content,  source.size + 2,
-        yyscan
-    );
-    
-    if (buffer == NULL) {
-        yylex_destroy(yyscan);
-        return 2;
+        free(scanner);
+        return SCANNER_YY_INIT_FAILED;
     }
     
-    Scanner* scanner = malloc(sizeof(Scanner));
-    if (scanner == NULL) {
-        yy_delete_buffer(buffer, yyscan);
+    FILE* file = fopen(path, "r");
+    if (file == NULL) {
+        free(scanner);
         yylex_destroy(yyscan);
+        return SCANNER_ERROR_FILE_OPEN_FAILED;
     }
-    scanner->yyscan = yyscan;
-    scanner->buffer = buffer;
+
+    YY_BUFFER_STATE buffer = yy_create_buffer(file,YY_BUF_SIZE, yyscan);
+    if(buffer == NULL) {
+        fclose(file);
+        free(scanner);
+        yylex_destroy(yyscan);
+        return SCANNER_YY_CREATE_BUFFER_FAILED;
+    }
 
     yy_switch_to_buffer(buffer, yyscan);
     yyset_lineno(1, yyscan);
     yyset_column(1, yyscan);
 
+    scanner->yyscan = yyscan;
+    scanner->buffer = buffer;
+    scanner->source = file;
+
     *scanner_ptr = scanner;
 
-    return 0;
+    return SCANNER_SUCCESS;
+}
+
+int initScannerPrompt(Scanner** scanner_ptr, const char* prompt) {
+    if (scanner_ptr == NULL) {
+        return SCANNER_ERROR_SCANNER_DEST_NULL;
+    }
+    
+    if (prompt == NULL) {
+        return SCANNER_ERROR_FILE_NULL;
+    }
+
+    Scanner* scanner = malloc(sizeof(Scanner));
+    if(scanner == NULL) {
+        return SCANNER_ERROR_ALLOC_FAILED;
+    }
+
+    yyscan_t yyscan;
+    if(yylex_init(&yyscan) != 0) {
+        free(scanner);
+        return SCANNER_YY_INIT_FAILED;
+    }
+
+    YY_BUFFER_STATE buffer = yy_scan_string(prompt, yyscan);
+    if (buffer == NULL) {
+        free(scanner);
+        yylex_destroy(yyscan);
+        return SCANNER_YY_CREATE_BUFFER_FAILED;
+    }
+
+    yy_switch_to_buffer(buffer, yyscan);
+    yyset_lineno(1, yyscan);
+    yyset_column(1, yyscan);
+
+    scanner->yyscan = yyscan;
+    scanner->buffer = buffer;
+    scanner->source = NULL;
+
+    *scanner_ptr = scanner;
+
+    return SCANNER_SUCCESS;
 }
 
 void freeScanner(Scanner* scanner) {
-    yy_delete_buffer(scanner->buffer, scanner->yyscan);
-    yylex_destroy( scanner ->yyscan);
+    if(scanner->source) {
+        fclose(scanner->source);
+    }
+    if (scanner->buffer) {
+        yy_delete_buffer(scanner->buffer, scanner->yyscan);
+    }
+    yylex_destroy(scanner->yyscan);
     free(scanner);
 }
 
@@ -76,4 +149,31 @@ Token errorToken(yyscan_t yyscanner, const char* message) {
         .length = strlen(message),
         .start = message,
     };
+}
+
+static char* errorMessages[] = {
+    [SCANNER_SUCCESS] = NULL,
+    [SCANNER_ERROR_SCANNER_DEST_NULL] = "scanner destination is null",
+    [SCANNER_ERROR_FILE_NULL] = "input file is null",
+    [SCANNER_ERROR_FILE_OPEN_FAILED] = "failed to open input file",
+    [SCANNER_ERROR_ALLOC_FAILED] = "buffer allocation failed",
+    [SCANNER_YY_INIT_FAILED] = "failed to initialize flex scanner",
+    [SCANNER_YY_CREATE_BUFFER_FAILED] = "failed to create flex buffer",
+};
+
+int formatScannerError(char* buffer, size_t cap, const char*, ScannerErrorCode cause) {
+    int trueCause = cause & ((1 << 4) - 1);
+
+    if (trueCause == SCANNER_SUCCESS) {
+        return 0;
+    }
+
+    if (trueCause < SCANNER_SUCCESS || trueCause > SCANNER_ERROR_LAST) {
+        return 0;
+    }
+
+    return snprintf(
+        buffer, cap,
+        "Failed to create scanner: %s\n\n",
+        errorMessages[trueCause]);
 }

@@ -8,10 +8,9 @@
 #include <impl/object.h>
 #include <common/inputfile.h>
 
-CLOX_EXPORT bool isRepl();
-CLOX_EXPORT void setRepl(bool isRepl);
+CLOX_EXPORT ObjFunction* compileFile(const char* path);
 
-CLOX_EXPORT ObjFunction* compile(InputFile source);
+CLOX_EXPORT ObjFunction* compilePrompt(const char* prompt);
 
 void markCompilerRoots();
 
