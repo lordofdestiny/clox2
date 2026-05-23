@@ -22,6 +22,7 @@
 typedef struct {
     Scanner* scanner;
     const char * str;
+    char* buffer;
     bool into_file;
 } TestStateBase;
 
@@ -38,7 +39,7 @@ typedef struct {
 
 typedef struct {
     TestStateMultiType multi;
-    const char* path;
+    char* path;
 } TestStateFileType;
 
 static int initTestState(void** state) {
@@ -46,18 +47,33 @@ static int initTestState(void** state) {
     size_t size = strlen(wrapper->str);
 
     if(wrapper->into_file) {
-        char* path = tmpnam(NULL);
-        FILE* file = fopen(path, "w");
-        fwrite(wrapper->str, sizeof(char), size, file);
+        char path[] = "/tmp/scanner_test_XXXXXX.txt";
+        char* pathbuf = malloc(sizeof(path));
+        assert_non_null(pathbuf);
+        
+        int fd = mkstemps(path, 4);
+        assert_int_not_equal(fd, -1);
+
+        strcpy(pathbuf, path);
+
+        FILE* file = fdopen(fd, "w");
+        assert_non_null(file);
+
+        size_t count = fwrite(wrapper->str, sizeof(char), size, file);
+        assert_int_equal(count, size);
         fclose(file);
-        ((TestStateFileType*)wrapper)->path = path;
+
+        ((TestStateFileType*)wrapper)->path = pathbuf;
 
         int succ = initScannerFile(&wrapper->scanner, path);
         assert_int_equal(succ, 0);
     } else {
         char* buffer = malloc(size + 1);
         assert_non_null(buffer);
+
         strcpy(buffer, wrapper->str);
+        buffer[size] = '\0';
+        wrapper->buffer = buffer;
 
         int succ = initScannerPrompt(&wrapper->scanner, buffer);
         assert_int_equal(succ, 0);
@@ -69,7 +85,11 @@ static int initTestState(void** state) {
 static int freeTestState(void** state) {
     TestStateBase* wrapper = *state;
     if(wrapper->into_file) {
-        remove(((TestStateFileType*)wrapper)->path);
+        auto fileState = (TestStateFileType*)wrapper;
+        remove(fileState->path);
+        free(fileState->path);
+    }else {
+        free(wrapper->buffer);
     }
     freeScanner(wrapper->scanner);
     free(*state);
