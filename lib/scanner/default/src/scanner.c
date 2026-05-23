@@ -37,7 +37,7 @@ typedef struct ScannerPrompt {
     Scanner base;
 } ScannerPrompt;
 
-static void initScanner(Scanner* scanner, const char* content, ScannerType type) {
+static void initScannerImpl(Scanner* scanner, const char* content, ScannerType type) {
     scanner->start = content;
     scanner->current = content;
     scanner->line = 1;
@@ -65,7 +65,7 @@ int initScannerFile(Scanner** scanner_ptr, const char* path) {
         return succ << 4 | SCANNER_ERROR_READ_INPUT_FILE_FAILED;
     }
 
-    initScanner((void*)scanner, scanner->file.content, SCANNER_FILE);
+    initScannerImpl((void*)scanner, scanner->file.content, SCANNER_FILE);
     *scanner_ptr = (void*)scanner;
     
     return SCANNER_SUCCESS;
@@ -85,7 +85,7 @@ int initScannerPrompt(Scanner** scanner_ptr, const char* prompt) {
         return SCANNER_ERROR_ALLOC_FAILED;
     }
 
-    initScanner((void*)scanner, prompt, SCANNER_PROMPT);
+    initScannerImpl((void*)scanner, prompt, SCANNER_PROMPT);
     *scanner_ptr = (void*)scanner;
 
     return SCANNER_SUCCESS;

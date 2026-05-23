@@ -22,12 +22,14 @@ struct Scanner {
     FILE* source;
 };
 
-int initScannerFile(Scanner** scanner_ptr, const char* path) {
+typedef  int(*CreateBufferType)(Scanner*, yyscan_t, const char*);
+
+static int initScannerImpl(Scanner** scanner_ptr, const char* text, CreateBufferType createBuffer) {
     if (scanner_ptr == NULL) {
         return SCANNER_ERROR_SCANNER_DEST_NULL;
     }
 
-    if (path == NULL) {
+    if (text == NULL) {
         return SCANNER_ERROR_FILE_NULL;
     }
 
@@ -42,13 +44,35 @@ int initScannerFile(Scanner** scanner_ptr, const char* path) {
         return SCANNER_YY_INIT_FAILED;
     }
     
+    int code = createBuffer(scanner, yyscan, text);
+    if (code != 0)  {
+        scanner->yyscan = NULL;
+        scanner->buffer = NULL;
+        scanner->source = NULL;
+        return code;
+    }
+
+    yy_switch_to_buffer(scanner->buffer, yyscan);
+    yyset_lineno(1, yyscan);
+    yyset_column(1, yyscan);
+
+    *scanner_ptr = scanner;
+
+    return SCANNER_SUCCESS;
+}
+
+
+static int createFileBuffer(Scanner* scanner, yyscan_t yyscan, const char* path) {
+    scanner->yyscan = yyscan;
+
     FILE* file = fopen(path, "r");
     if (file == NULL) {
         free(scanner);
         yylex_destroy(yyscan);
         return SCANNER_ERROR_FILE_OPEN_FAILED;
     }
-
+    scanner->source = file;
+    
     YY_BUFFER_STATE buffer = yy_create_buffer(file,YY_BUF_SIZE, yyscan);
     if(buffer == NULL) {
         fclose(file);
@@ -56,58 +80,32 @@ int initScannerFile(Scanner** scanner_ptr, const char* path) {
         yylex_destroy(yyscan);
         return SCANNER_YY_CREATE_BUFFER_FAILED;
     }
-
-    yy_switch_to_buffer(buffer, yyscan);
-    yyset_lineno(1, yyscan);
-    yyset_column(1, yyscan);
-
-    scanner->yyscan = yyscan;
     scanner->buffer = buffer;
-    scanner->source = file;
 
-    *scanner_ptr = scanner;
-
-    return SCANNER_SUCCESS;
+    return 0;
 }
 
-int initScannerPrompt(Scanner** scanner_ptr, const char* prompt) {
-    if (scanner_ptr == NULL) {
-        return SCANNER_ERROR_SCANNER_DEST_NULL;
-    }
+static int createStringBuffer(Scanner* scanner, yyscan_t yyscan, const char* prompt) {
+    scanner->yyscan = yyscan;
+    scanner->source = NULL;
     
-    if (prompt == NULL) {
-        return SCANNER_ERROR_FILE_NULL;
-    }
-
-    Scanner* scanner = malloc(sizeof(Scanner));
-    if(scanner == NULL) {
-        return SCANNER_ERROR_ALLOC_FAILED;
-    }
-
-    yyscan_t yyscan;
-    if(yylex_init(&yyscan) != 0) {
-        free(scanner);
-        return SCANNER_YY_INIT_FAILED;
-    }
-
     YY_BUFFER_STATE buffer = yy_scan_string(prompt, yyscan);
     if (buffer == NULL) {
         free(scanner);
         yylex_destroy(yyscan);
         return SCANNER_YY_CREATE_BUFFER_FAILED;
     }
-
-    yy_switch_to_buffer(buffer, yyscan);
-    yyset_lineno(1, yyscan);
-    yyset_column(1, yyscan);
-
-    scanner->yyscan = yyscan;
     scanner->buffer = buffer;
-    scanner->source = NULL;
 
-    *scanner_ptr = scanner;
+    return 0;
+}
 
-    return SCANNER_SUCCESS;
+int initScannerFile(Scanner** scanner_ptr, const char* path) {
+    return initScannerImpl(scanner_ptr, path, createFileBuffer);
+}
+
+int initScannerPrompt(Scanner** scanner_ptr, const char* prompt) {
+    return initScannerImpl(scanner_ptr, prompt, createStringBuffer);
 }
 
 void freeScanner(Scanner* scanner) {
