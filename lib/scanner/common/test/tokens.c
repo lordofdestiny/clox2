@@ -65,8 +65,8 @@ static int initTestState(void** state) {
 
         ((TestStateFileType*)wrapper)->path = pathbuf;
 
-        int succ = initScannerFile(&wrapper->scanner, path);
-        assert_int_equal(succ, 0);
+        xerror* err = initScannerFile(&wrapper->scanner, path);
+        assert_null(err);
     } else {
         char* buffer = malloc(size + 1);
         assert_non_null(buffer);
@@ -75,8 +75,8 @@ static int initTestState(void** state) {
         buffer[size] = '\0';
         wrapper->buffer = buffer;
 
-        int succ = initScannerPrompt(&wrapper->scanner, buffer);
-        assert_int_equal(succ, 0);
+        xerror* err = initScannerPrompt(&wrapper->scanner, buffer);
+        assert_null(err);
     }
     
     return 0;

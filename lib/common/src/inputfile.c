@@ -12,61 +12,43 @@ static InputFile makeFile(char* path, char* src, size_t size) {
     };
 }
 
-InputFileErrorCode readInputFile(const char* path, InputFile* out) {
+xerror* readInputFile(const char* path, InputFile* out) {
     char* pathCopy = strdup(path);
     if (pathCopy == NULL) {
-        return INPUT_FILE_ERROR_ALLOC_FAILED;
+        return XERROR_LIBC("Failed to duplicate file path");
     }
 
     FILE* file = fopen(path, "rb");
     if (file == NULL) {
-        return INPUT_FILE_ERROR_FILE_OPEN_FAILED;
+        return XERROR_LIBC("Failed to open file");
     }
 
     fseek(file, 0L, SEEK_END);
     const size_t size = ftell(file);
     rewind(file);
 
-    char* buffer = (char*) calloc(size + 2, 1);
+    char* buffer = malloc(size + 1);
     if (buffer == NULL) {
-        return INPUT_FILE_ERROR_ALLOC_FAILED;
+        fclose(file);
+        return XERROR_LIBC("Failed to allocate buffer");
     }
-
+    
     const size_t bytesRead = fread(buffer, sizeof(char), size, file);
     if (bytesRead < size) {
-        return INPUT_FILE_ERROR_FILE_READ_FAILED;
+        fclose(file);
+        free(buffer);
+        return XERROR_LIBC("Failed to read file");
     }
+    buffer[size] = '\0';
 
     fclose(file);
 
     *out = makeFile(pathCopy, buffer, size);
-    return INPUT_FILE_SUCCESS;
+    return NULL;
 }
 
 void freeInputFile(InputFile* file) {
     free(file->path);
     free(file->content);
     memset(file, 0, sizeof(InputFile));
-}
-
-static char* errorMessages[] = {
-    [INPUT_FILE_SUCCESS] = NULL,
-    [INPUT_FILE_ERROR_ALLOC_FAILED] = "buffer allocation failed",
-    [INPUT_FILE_ERROR_FILE_OPEN_FAILED] = "could to open the file",
-    [INPUT_FILE_ERROR_FILE_READ_FAILED] = "could to read the file",
-};
-
-int formatInputFileError(char* buffer, size_t cap, const char* file, InputFileErrorCode cause) {
-    if (cause == INPUT_FILE_SUCCESS || file == NULL) {
-        return 0;
-    }
-
-    if (cause < INPUT_FILE_SUCCESS || cause > INPUT_FILE_ERROR_LAST) {
-        return 0;
-    }
-
-    return snprintf(
-        buffer, cap,
-        "Failed to read the input file \"%s\": %s\n\n",
-        file, errorMessages[cause]);
 }

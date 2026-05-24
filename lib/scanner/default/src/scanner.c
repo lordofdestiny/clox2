@@ -7,8 +7,7 @@
 #include <scanner/scanner.h>
 
 enum ScannerErrorCode : int {
-    SCANNER_SUCCESS = 0,
-    SCANNER_ERROR_SCANNER_DEST_NULL,
+    SCANNER_ERROR_SCANNER_DEST_NULL = 1,
     SCANNER_ERROR_FILE_NULL,
     SCANNER_ERROR_READ_INPUT_FILE_FAILED,
     SCANNER_ERROR_ALLOC_FAILED,
@@ -45,53 +44,55 @@ static void initScannerImpl(Scanner* scanner, const char* content, ScannerType t
     scanner->type = type;
 }
 
-int initScannerFile(Scanner** scanner_ptr, const char* path) {
+xerror* initScannerFile(Scanner** scanner_ptr, const char* path) {
     if (scanner_ptr == NULL) {
-        return SCANNER_ERROR_SCANNER_DEST_NULL;
+        return XERROR("clox_scanner", SCANNER_ERROR_SCANNER_DEST_NULL, "Scanner destination is null");
     }
     
     if (path == NULL) {
-        return SCANNER_ERROR_FILE_NULL;
+        return XERROR("clox_scanner", SCANNER_ERROR_FILE_NULL, "File path is null");
     }
 
     ScannerFile* scanner = malloc(sizeof(ScannerFile));
     if(scanner == NULL) {
-        return SCANNER_ERROR_ALLOC_FAILED;
+        return XERROR_LIBC("Failed to allocate scanner");
     }
 
-    int succ = readInputFile(path, &scanner->file);
-    if(succ != 0) {
+    xerror* cause = readInputFile(path, &scanner->file);
+    if(cause != NULL) {
         free(scanner);
-        return succ << 4 | SCANNER_ERROR_READ_INPUT_FILE_FAILED;
+        return XERROR(cause, "clox_scanner", SCANNER_ERROR_READ_INPUT_FILE_FAILED, "Failed to read input file");
     }
 
     initScannerImpl((void*)scanner, scanner->file.content, SCANNER_FILE);
     *scanner_ptr = (void*)scanner;
     
-    return SCANNER_SUCCESS;
+    return NULL;
 }
 
-int initScannerPrompt(Scanner** scanner_ptr, const char* prompt) {
+xerror* initScannerPrompt(Scanner** scanner_ptr, const char* prompt) {
     if (scanner_ptr == NULL) {
-        return SCANNER_ERROR_SCANNER_DEST_NULL;
+        return XERROR("clox_scanner", SCANNER_ERROR_SCANNER_DEST_NULL, "Scanner destination is null");
     }
 
     if (prompt == NULL) {
-        return SCANNER_ERROR_FILE_NULL;
+        return XERROR("clox_scanner", SCANNER_ERROR_FILE_NULL, "File path is null");
     }
 
     ScannerPrompt* scanner = malloc(sizeof(ScannerPrompt));
     if(scanner == NULL) {
-        return SCANNER_ERROR_ALLOC_FAILED;
+        return XERROR_LIBC("Failed to allocate scanner");
     }
 
     initScannerImpl((void*)scanner, prompt, SCANNER_PROMPT);
     *scanner_ptr = (void*)scanner;
 
-    return SCANNER_SUCCESS;
+    return NULL;
 }
 
 void freeScanner(Scanner* scanner) {
+    if (scanner == NULL) return;
+    
     if(scanner->type == SCANNER_FILE) {
         ScannerFile* fileScanner = (ScannerFile*)scanner;
         freeInputFile(&fileScanner->file);
@@ -457,34 +458,4 @@ Token scanToken(Scanner* scanner) {
     if (c == '"') return string(scanner);
 
     return charToken(scanner, c);
-}
-
-static char* errorMessages[] = {
-    [SCANNER_SUCCESS] = NULL,
-    [SCANNER_ERROR_SCANNER_DEST_NULL] = "scanner destination is null",
-    [SCANNER_ERROR_FILE_NULL] = "input file is null",
-    [SCANNER_ERROR_READ_INPUT_FILE_FAILED] = "failed to read input file",
-    [SCANNER_ERROR_ALLOC_FAILED] = "buffer allocation failed",
-};
-
-int formatScannerError(char* buffer, size_t cap, const char* file, ScannerErrorCode cause) {
-    int trueCause = cause & ((1 << 4) - 1);
-
-    if (trueCause == SCANNER_SUCCESS) {
-        return 0;
-    }
-
-    if (trueCause < SCANNER_SUCCESS || trueCause > SCANNER_ERROR_LAST) {
-        return 0;
-    }
-
-    // In case when file error needs to be propagated
-    if(cause != trueCause && trueCause == SCANNER_ERROR_READ_INPUT_FILE_FAILED) {
-        return formatInputFileError(buffer, cap, file, cause >> 4);
-    }
-
-    return snprintf(
-        buffer, cap,
-        "Failed to create scanner: %s\n\n",
-        errorMessages[trueCause]);
 }

@@ -3,6 +3,8 @@
 
 #include <common/inputfile.h>
 
+#include <common/xerror.h>
+
 #include <scanner/token.h>
 
 enum ScannerErrorCode : int;
@@ -11,10 +13,10 @@ typedef enum ScannerErrorCode ScannerErrorCode;
 typedef struct Scanner Scanner;
 
 [[nodiscard("Scanner int might fail")]]
-int initScannerFile(Scanner** scanner, const char* path);
+xerror* initScannerFile(Scanner** scanner, const char* path);
 
 [[nodiscard("Scanner int might fail")]]
-int initScannerPrompt(Scanner** scanner, const char* prompt);
+xerror* initScannerPrompt(Scanner** scanner, const char* prompt);
 
 void freeScanner(Scanner* scanner);
 

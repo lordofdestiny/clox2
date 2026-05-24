@@ -1609,24 +1609,12 @@ static ObjFunction* compile(bool repl) {
     return parser.hadError ? NULL : function;
 }
 
-static void handlerScannerException(ScannerErrorCode code, const char* path) {
-    int size = formatScannerError(NULL, 0, path, code);
-
-    char* errorBuffer = calloc(size + 1, sizeof(char));
-    if (errorBuffer == NULL) {
-        fprintf(stderr, "Failed to create scanner for file %s\n", path);
-    }else {
-        (void) formatScannerError(errorBuffer, size, path, code);
-        fprintf(stderr, "%s", errorBuffer);
-    }
-    free(errorBuffer);
-}
-
 ObjFunction* compileFile(const char* path)
 {
-    int code = initScannerFile(&parser.scanner, path);
-    if(code != 0) {
-        handlerScannerException(code, path);
+    xerror* err = initScannerFile(&parser.scanner, path);
+    if(err != NULL) {
+        xperror(err);
+        xerror_free(err);
         return NULL;
     }
 
@@ -1637,9 +1625,10 @@ ObjFunction* compileFile(const char* path)
 }
 
 ObjFunction* compilePrompt(const char* prompt) {
-    int code = initScannerPrompt(&parser.scanner, prompt);
-    if(code != 0) {
-        handlerScannerException(code, prompt);
+    xerror* err = initScannerPrompt(&parser.scanner, prompt);
+    if(err != NULL) {
+        xperror(err);
+        xerror_free(err);
         return NULL;
     }
 
