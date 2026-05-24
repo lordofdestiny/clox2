@@ -8,7 +8,7 @@
 #include <impl/object.h>
 #include <common/inputfile.h>
 
-CLOX_EXPORT ObjFunction* compileFile(const char* path);
+CLOX_EXPORT ObjFunction* compileFile(FILE* file);
 
 CLOX_EXPORT ObjFunction* compilePrompt(const char* prompt);
 

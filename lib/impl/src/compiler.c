@@ -1609,9 +1609,9 @@ static ObjFunction* compile(bool repl) {
     return parser.hadError ? NULL : function;
 }
 
-ObjFunction* compileFile(const char* path)
+ObjFunction* compileFile(FILE* file)
 {
-    xerror* err = initScannerFile(&parser.scanner, path);
+    xerror* err = initScannerFile(&parser.scanner, file);
     if(err != NULL) {
         xperror(err);
         xerror_free(err);

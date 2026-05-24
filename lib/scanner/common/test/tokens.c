@@ -40,6 +40,7 @@ typedef struct {
 typedef struct {
     TestStateMultiType multi;
     char* path;
+    FILE* file;
 } TestStateFileType;
 
 static int initTestState(void** state) {
@@ -61,11 +62,15 @@ static int initTestState(void** state) {
 
         size_t count = fwrite(wrapper->str, sizeof(char), size, file);
         assert_int_equal(count, size);
-        fclose(file);
+        file = freopen(pathbuf, "r", file);
+        assert_non_null(file);
 
-        ((TestStateFileType*)wrapper)->path = pathbuf;
+        auto fileState = (TestStateFileType*)wrapper;
 
-        xerror* err = initScannerFile(&wrapper->scanner, path);
+        fileState->path = pathbuf;
+        fileState->file = file;
+
+        xerror* err = initScannerFile(&wrapper->scanner, file);
         assert_null(err);
     } else {
         char* buffer = malloc(size + 1);
@@ -86,6 +91,7 @@ static int freeTestState(void** state) {
     TestStateBase* wrapper = *state;
     if(wrapper->into_file) {
         auto fileState = (TestStateFileType*)wrapper;
+        fclose(fileState->file);
         remove(fileState->path);
         free(fileState->path);
     }else {
@@ -98,6 +104,7 @@ static int freeTestState(void** state) {
 
 static TestStateSingleType* makeSingleTypeData(const char* str, TokenType expected) {
     TestStateSingleType* data = malloc(sizeof(TestStateSingleType));
+    assert_non_null(data);
     data->common.str = str;
     data->common.into_file = false;
     data->expected = expected;
@@ -106,6 +113,7 @@ static TestStateSingleType* makeSingleTypeData(const char* str, TokenType expect
 
 static TestStateMultiType* makeMultipleTypeData(const char* str, size_t count, TokenType* expected) {
     TestStateMultiType* data = malloc(sizeof(TestStateMultiType));
+    assert_non_null(data);
     data->common.str = str;
     data->common.into_file = false;
     data->count = count;
@@ -115,6 +123,7 @@ static TestStateMultiType* makeMultipleTypeData(const char* str, size_t count, T
 
 static TestStateFileType* makeMultipleTypeDataFile(const char* str, size_t count, TokenType* expected) {
     TestStateFileType* data = malloc(sizeof(TestStateFileType));
+    assert_non_null(data);
     data->multi.common.str = str;
     data->multi.common.into_file = true;
     data->multi.count = count;

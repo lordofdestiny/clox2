@@ -34,17 +34,29 @@ static void displayTime(clock_t start, clock_t end) {
     fprintf(stdout, "Execution time: %.6f seconds\n", time);
 }
 
-typedef ObjFunction* (*CreateFunction)(const char* path);
+typedef ObjFunction* (*CreateFunction)(FILE* file);
 
-static int runFile(const char* path, CreateFunction create) {
+static void displayFailedToOpenFileError(const char* path) {
+    fprintf(stderr, "Could not open file \"%s\": %s\n", path, strerror(errno));
+}
+
+static int runFile(CreateFunction create, const char* path) {
     const clock_t start = clock();
 
-    ObjFunction* script = create(path);
+    FILE* file = fopen(path, "rb");
+    if (file == NULL) {
+        displayFailedToOpenFileError(path);
+        return EXIT_CODE_FAILED_TO_READ_FILE;
+    }
+
+    ObjFunction* script = create(file);
     if (script == NULL) {
+        fclose(file);
         return EXIT_CODE_COMPILE_ERROR;
     }
     InterpretResult code = interpret(script);
-    
+    fclose(file);
+
     const clock_t end = clock();
     displayTime(start, end);
 
@@ -69,11 +81,11 @@ int runFileCommand(const Command* cmd) {
     }
 
     if (cmd->input_type == CMD_EXEC_SOURCE) {
-        return runFile(cmd->input_file, compileFile);
+        return runFile(compileFile, cmd->input_file);
     }
 
     if (cmd->input_type == CMD_EXEC_BINARY) {
-        return runFile(cmd->input_file, loadBinary);
+        return runFile(loadBinary, cmd->input_file);
     }
 
     fprintf(stderr, "Unknown input type for execution.\n");
@@ -97,13 +109,20 @@ int compileFileCommand(const Command* cmd) {
 
     clock_t start = clock();
 
-    ObjFunction* bytecode = compileFile(cmd->input_file);
+    FILE* file = fopen(cmd->input_file, "rb");
+    if (file == NULL) {
+        displayFailedToOpenFileError(cmd->input_file);
+        return EXIT_CODE_FAILED_TO_READ_FILE;
+    }
+
+    ObjFunction* bytecode = compileFile(file);
+    fclose(file);
 
     int code = EXIT_SUCCESS;
     if (bytecode == NULL) {
         code = INTERPRET_COMPILE_ERROR;
     } else {
-        writeBinary(cmd->input_file, bytecode, cmd->output_file);
+        writeBinary(cmd->output_file, cmd->input_file, bytecode);
     }
 
     clock_t end = clock();

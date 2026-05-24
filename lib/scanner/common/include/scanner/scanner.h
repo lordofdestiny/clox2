@@ -13,7 +13,7 @@ typedef enum ScannerErrorCode ScannerErrorCode;
 typedef struct Scanner Scanner;
 
 [[nodiscard("Scanner int might fail")]]
-xerror* initScannerFile(Scanner** scanner, const char* path);
+xerror* initScannerFile(Scanner** scanner, FILE* file);
 
 [[nodiscard("Scanner int might fail")]]
 xerror* initScannerPrompt(Scanner** scanner, const char* prompt);

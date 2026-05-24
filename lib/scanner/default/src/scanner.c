@@ -9,9 +9,9 @@
 enum ScannerErrorCode : int {
     SCANNER_ERROR_SCANNER_DEST_NULL = 1,
     SCANNER_ERROR_FILE_NULL,
-    SCANNER_ERROR_READ_INPUT_FILE_FAILED,
-    SCANNER_ERROR_ALLOC_FAILED,
-    SCANNER_ERROR_LAST = SCANNER_ERROR_ALLOC_FAILED
+    SCANNER_ERROR_READ_INPUT_FILE,
+    SCANNER_ERROR_ALLOC,
+    SCANNER_ERROR_LAST = SCANNER_ERROR_ALLOC
 };
 
 typedef enum {
@@ -29,7 +29,7 @@ struct Scanner {
 
 typedef struct ScannerFile {
     Scanner base;
-    InputFile file;
+    char* buffer;
 } ScannerFile;
 
 typedef struct ScannerPrompt {
@@ -44,27 +44,36 @@ static void initScannerImpl(Scanner* scanner, const char* content, ScannerType t
     scanner->type = type;
 }
 
-xerror* initScannerFile(Scanner** scanner_ptr, const char* path) {
+xerror* initScannerFile(Scanner** scanner_ptr, FILE* file) {
     if (scanner_ptr == NULL) {
         return XERROR("clox_scanner", SCANNER_ERROR_SCANNER_DEST_NULL, "Scanner destination is null");
     }
     
-    if (path == NULL) {
-        return XERROR("clox_scanner", SCANNER_ERROR_FILE_NULL, "File path is null");
+    fseek(file, 0, SEEK_END);
+    size_t file_size = ftell(file);
+    rewind(file);
+
+    char* buffer = malloc(file_size + 1);
+    if(buffer == NULL) {
+        return XERROR_LIBC("Failed to allocate buffer");
     }
+
+    size_t bytesRead = fread(buffer, sizeof(char), file_size, file);
+    if(bytesRead != file_size) {
+        free(buffer);
+        return XERROR("clox_scanner", SCANNER_ERROR_READ_INPUT_FILE, "Failed to read input file");
+    }
+    buffer[file_size] = '\0';
 
     ScannerFile* scanner = malloc(sizeof(ScannerFile));
     if(scanner == NULL) {
+        free(buffer);
         return XERROR_LIBC("Failed to allocate scanner");
     }
 
-    xerror* cause = readInputFile(path, &scanner->file);
-    if(cause != NULL) {
-        free(scanner);
-        return XERROR(cause, "clox_scanner", SCANNER_ERROR_READ_INPUT_FILE_FAILED, "Failed to read input file");
-    }
+    initScannerImpl((void*)scanner, buffer, SCANNER_FILE);
+    scanner->buffer = buffer;
 
-    initScannerImpl((void*)scanner, scanner->file.content, SCANNER_FILE);
     *scanner_ptr = (void*)scanner;
     
     return NULL;
@@ -95,7 +104,7 @@ void freeScanner(Scanner* scanner) {
     
     if(scanner->type == SCANNER_FILE) {
         ScannerFile* fileScanner = (ScannerFile*)scanner;
-        freeInputFile(&fileScanner->file);
+        free(fileScanner->buffer);
     }
     free(scanner);
 }

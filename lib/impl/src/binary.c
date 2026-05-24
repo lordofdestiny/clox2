@@ -337,7 +337,7 @@ static void writeStrings(FILE* file, ValueQueue* strings) {
     }
 }
 
-void writeBinary(const char* source_file, ObjFunction* compiled, const char* path) {
+void writeBinary(const char* path, const char* source_file, ObjFunction* compiled) {
    push(OBJ_VAL(compiled));
     FILE* file = fopen(path, "w+b");
     setbuf(file, NULL);
@@ -618,13 +618,7 @@ static void patchFunctionRefs(
     }
 }
 
-ObjFunction* loadBinary(const char* path) {
-    FILE* file = fopen(path, "rb");
-    if (file == NULL) {
-        fprintf(stderr, "Could not open file c\"%s\".\n", path);
-        exit(LOAD_FAILURE);
-    }
-
+ObjFunction* loadBinary(FILE* file) {
     checkSegment(file, SEG_FILE_START);
     checkSegment(file, SEG_LOX_ID);
 
@@ -646,8 +640,6 @@ ObjFunction* loadBinary(const char* path) {
     loadSegmentStrings(file, strings);
 
     patchFunctionRefs(&patchList, functions, strings);
-
-    fclose(file);
     
     Value scriptVal = functions->array.values[0];
     ObjFunction* script = (ObjFunction*) AS_OBJ(scriptVal);

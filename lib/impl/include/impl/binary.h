@@ -5,8 +5,8 @@
 
 #include <impl/object.h>
 
-CLOX_EXPORT void writeBinary(const char* source_file, ObjFunction* compiled, const char* path);
+CLOX_EXPORT void writeBinary(const char* path, const char* source_file, ObjFunction* compiled);
 
-CLOX_EXPORT ObjFunction* loadBinary(const char* path);
+CLOX_EXPORT ObjFunction* loadBinary(FILE* file);
 
 #endif // __CLOX2_BINARY_H__
