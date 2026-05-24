@@ -13,9 +13,9 @@ int repl() {
     while (true) {
         memset(line, 0, sizeof(line));
 
-        printf(">>> ");
+        fprintf(stdout, ">>> ");
         if (!fgets(line, sizeof(line), stdin)) {
-            printf("\n");
+            fprintf(stdout, "\n");
             break;
         }
 
@@ -31,7 +31,7 @@ int repl() {
 
 static void displayTime(clock_t start, clock_t end) {
     float time = ((float) (end - start)) / CLOCKS_PER_SEC;
-    printf("Execution time: %.6f seconds\n", time);
+    fprintf(stdout, "Execution time: %.6f seconds\n", time);
 }
 
 typedef ObjFunction* (*CreateFunction)(const char* path);
