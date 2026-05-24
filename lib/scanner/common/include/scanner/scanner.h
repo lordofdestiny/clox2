@@ -2,7 +2,6 @@
 #define __CLOX2_SCANNER_H__
 
 #include <common/inputfile.h>
-
 #include <common/xerror.h>
 
 #include <scanner/token.h>
@@ -21,7 +20,5 @@ xerror* initScannerPrompt(Scanner** scanner, const char* prompt);
 void freeScanner(Scanner* scanner);
 
 Token scanToken(Scanner* scanner);
-
-int formatScannerError(char* buffer, size_t cap, const char* file, ScannerErrorCode cause);
 
 #endif // __CLOX2_SCANNER_H__
