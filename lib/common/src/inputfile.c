@@ -20,21 +20,29 @@ xerror* readInputFile(const char* path, InputFile* out) {
 
     FILE* file = fopen(path, "rb");
     if (file == NULL) {
+        free(pathCopy);
         return XERROR_LIBC("Failed to open file");
     }
 
     fseek(file, 0L, SEEK_END);
-    const size_t size = ftell(file);
+    long size = ftell(file);
+    if (size < 0) {
+        free(pathCopy);
+        fclose(file);
+        return XERROR_LIBC("Failed to determine file size");
+    }
     rewind(file);
 
     char* buffer = malloc(size + 1);
     if (buffer == NULL) {
+        free(pathCopy);
         fclose(file);
         return XERROR_LIBC("Failed to allocate buffer");
     }
     
     const size_t bytesRead = fread(buffer, sizeof(char), size, file);
-    if (bytesRead < size) {
+    if (bytesRead < (size_t) size) {
+        free(pathCopy);
         fclose(file);
         free(buffer);
         return XERROR_LIBC("Failed to read file");

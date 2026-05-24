@@ -338,12 +338,13 @@ static void writeStrings(FILE* file, ValueQueue* strings) {
 }
 
 void writeBinary(const char* path, const char* source_file, ObjFunction* compiled) {
-   push(OBJ_VAL(compiled));
+    push(OBJ_VAL(compiled));
+    
     FILE* file = fopen(path, "w+b");
     setbuf(file, NULL);
 
     if (file == NULL) {
-        fprintf(stderr, "File does not exist");
+        fprintf(stderr, "Failed to open file for writing\n");
         exit(SAVE_FAILURE);
     }
     write_int(file, SEG_FILE_START);

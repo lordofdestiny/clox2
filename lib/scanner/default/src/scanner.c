@@ -48,9 +48,16 @@ xerror* initScannerFile(Scanner** scanner_ptr, FILE* file) {
     if (scanner_ptr == NULL) {
         return XERROR("clox_scanner", SCANNER_ERROR_SCANNER_DEST_NULL, "Scanner destination is null");
     }
-    
+
+    if(file == NULL) {
+        return XERROR("clox_scanner", SCANNER_ERROR_FILE_NULL, "File is null");
+    }
+
     fseek(file, 0, SEEK_END);
-    size_t file_size = ftell(file);
+    long file_size = ftell(file);
+    if (file_size < 0) {
+        return XERROR("clox_scanner", SCANNER_ERROR_READ_INPUT_FILE, "Failed to determine file size");
+    }
     rewind(file);
 
     char* buffer = malloc(file_size + 1);
@@ -59,7 +66,7 @@ xerror* initScannerFile(Scanner** scanner_ptr, FILE* file) {
     }
 
     size_t bytesRead = fread(buffer, sizeof(char), file_size, file);
-    if(bytesRead != file_size) {
+    if(bytesRead != (size_t) file_size) {
         free(buffer);
         return XERROR("clox_scanner", SCANNER_ERROR_READ_INPUT_FILE, "Failed to read input file");
     }
