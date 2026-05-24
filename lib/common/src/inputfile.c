@@ -39,7 +39,7 @@ xerror* readInputFile(const char* path, InputFile* out) {
         fclose(file);
         return XERROR_LIBC("Failed to allocate buffer");
     }
-    
+
     const size_t bytesRead = fread(buffer, sizeof(char), size, file);
     if (bytesRead < (size_t) size) {
         free(pathCopy);
