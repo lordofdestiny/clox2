@@ -9,19 +9,18 @@
 #include "commands.h"
 
 int repl() {
-    setRepl(true);
     char line[1024];
-    while (1) {
+    while (true) {
         memset(line, 0, sizeof(line));
 
-        printf(">>> ");
+        fprintf(stdout, ">>> ");
         if (!fgets(line, sizeof(line), stdin)) {
-            printf("\n");
+            fprintf(stdout, "\n");
             break;
         }
 
-        InputFile source = {.content = line, .size = strlen(line)};
-        InterpretResult code = interpret(source);
+        ObjFunction* script = compilePrompt(line);
+        InterpretResult code = interpret(script);
         if (code == INTERPRET_EXIT) {
             return vmExitCode();
         }
@@ -32,65 +31,45 @@ int repl() {
 
 static void displayTime(clock_t start, clock_t end) {
     float time = ((float) (end - start)) / CLOCKS_PER_SEC;
-    printf("Execution time: %.6f seconds\n", time);
+    fprintf(stdout, "Execution time: %.6f seconds\n", time);
 }
 
-static int handlerInputFileException(InputFileErrorCode code, const char* path) {
-    int size = formatInputFileError(NULL, 0, path, code);
+typedef ObjFunction* (*CreateFunction)(FILE* file);
 
-    char* errorBuffer = malloc(size);
-    if (errorBuffer == NULL) {
-        fprintf(stderr, "Failed to open file %s\n", path);
-    }else {
-        (void) formatInputFileError(errorBuffer, size, path, code);
-        fprintf(stderr, "%s", errorBuffer);
-    }
-    
-    return EXIT_CODE_FAILED_TO_READ_FILE;
+static void displayFailedToOpenFileError(const char* path) {
+    fprintf(stderr, "Could not open file \"%s\": %s\n", path, strerror(errno));
 }
 
-static int runSourceFile(const char* path) {
+static int runFile(CreateFunction create, const char* path) {
     const clock_t start = clock();
 
-    InputFile source;
-    int ret = readInputFile(path, &source);
-    if (ret != INPUT_FILE_SUCCESS) {
-        return handlerInputFileException(ret, path);
+    FILE* file = fopen(path, "rb");
+    if (file == NULL) {
+        displayFailedToOpenFileError(path);
+        return EXIT_CODE_FAILED_TO_READ_FILE;
     }
-    InterpretResult result = interpret(source);
+
+    ObjFunction* script = create(file);
+    if (script == NULL) {
+        fclose(file);
+        return EXIT_CODE_COMPILE_ERROR;
+    }
+    InterpretResult code = interpret(script);
+    fclose(file);
 
     const clock_t end = clock();
     displayTime(start, end);
 
-    freeInputFile(&source);
-
-    switch (result) {
+    switch (code) {
     case INTERPRET_OK: return EXIT_SUCCESS;
     case INTERPRET_EXIT: return vmExitCode();
     case INTERPRET_COMPILE_ERROR: return EXIT_CODE_COMPILE_ERROR;
     case INTERPRET_RUNTIME_ERROR: return EXIT_CODE_RUNTIME_ERROR;
     }
-
     return 0;
 }
 
-static int runBinaryFile(const char* path) {
-    clock_t start = clock();
-
-    ObjFunction* compiled = loadBinary(path);
-    InterpretResult result = interpretCompiled(compiled);
-    
-    clock_t end = clock();
-    displayTime(start, end);
-
-    switch (result) {
-    case INTERPRET_EXIT: return vmExitCode();
-    case INTERPRET_RUNTIME_ERROR: return EXIT_CODE_RUNTIME_ERROR;
-    default: return 0;
-    }
-}
-
-int runFile(const Command* cmd) {
+int runFileCommand(const Command* cmd) {
     if (cmd->input_file == NULL) {
         fprintf(stderr, "No input file specified for execution.\n");
         return EXIT_CODE_BAD_ARGS;
@@ -102,18 +81,18 @@ int runFile(const Command* cmd) {
     }
 
     if (cmd->input_type == CMD_EXEC_SOURCE) {
-        return runSourceFile(cmd->input_file);
+        return runFile(compileFile, cmd->input_file);
     }
 
     if (cmd->input_type == CMD_EXEC_BINARY) {
-        return runBinaryFile(cmd->input_file);
+        return runFile(loadBinary, cmd->input_file);
     }
 
     fprintf(stderr, "Unknown input type for execution.\n");
     return EXIT_CODE_BAD_ARGS;
 }
 
-int compileFile(const Command* cmd) {
+int compileFileCommand(const Command* cmd) {
     if (cmd->input_type != CMD_EXEC_SOURCE) {
         fprintf(stderr, "Compilation only supported for source input.\n");
         return EXIT_CODE_BAD_ARGS;
@@ -130,16 +109,20 @@ int compileFile(const Command* cmd) {
 
     clock_t start = clock();
 
-    InputFile source;
-    readInputFile(cmd->input_file, &source);
-    ObjFunction* bytecode = compile(source);
-    freeInputFile(&source);
+    FILE* file = fopen(cmd->input_file, "rb");
+    if (file == NULL) {
+        displayFailedToOpenFileError(cmd->input_file);
+        return EXIT_CODE_FAILED_TO_READ_FILE;
+    }
+
+    ObjFunction* bytecode = compileFile(file);
+    fclose(file);
 
     int code = EXIT_SUCCESS;
     if (bytecode == NULL) {
         code = INTERPRET_COMPILE_ERROR;
     } else {
-        writeBinary(cmd->input_file, bytecode, cmd->output_file);
+        writeBinary(cmd->output_file, cmd->input_file, bytecode);
     }
 
     clock_t end = clock();

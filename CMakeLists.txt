@@ -37,7 +37,13 @@ if(APPLE)
   add_compile_definitions(IS_APPLE)
 endif()
 
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -pedantic-errors -Wpedantic -pedantic -Wall -Wextra")
+# Place this in your root CMakeLists.txt
+if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
+    # Strips the absolute project path from the __FILE__ macro
+    add_compile_options(-fmacro-prefix-map=${CMAKE_SOURCE_DIR}/=)
+    add_compile_options(-pedantic-errors -Wpedantic -pedantic -Wall -Wextra)
+endif()
+
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 

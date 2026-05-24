@@ -337,13 +337,14 @@ static void writeStrings(FILE* file, ValueQueue* strings) {
     }
 }
 
-void writeBinary(const char* source_file, ObjFunction* compiled, const char* path) {
-   push(OBJ_VAL(compiled));
+void writeBinary(const char* path, const char* source_file, ObjFunction* compiled) {
+    push(OBJ_VAL(compiled));
+    
     FILE* file = fopen(path, "w+b");
     setbuf(file, NULL);
 
     if (file == NULL) {
-        fprintf(stderr, "File does not exist");
+        fprintf(stderr, "Failed to open file for writing\n");
         exit(SAVE_FAILURE);
     }
     write_int(file, SEG_FILE_START);
@@ -618,13 +619,7 @@ static void patchFunctionRefs(
     }
 }
 
-ObjFunction* loadBinary(const char* path) {
-    FILE* file = fopen(path, "rb");
-    if (file == NULL) {
-        fprintf(stderr, "Could not open file c\"%s\".\n", path);
-        exit(LOAD_FAILURE);
-    }
-
+ObjFunction* loadBinary(FILE* file) {
     checkSegment(file, SEG_FILE_START);
     checkSegment(file, SEG_LOX_ID);
 
@@ -646,8 +641,6 @@ ObjFunction* loadBinary(const char* path) {
     loadSegmentStrings(file, strings);
 
     patchFunctionRefs(&patchList, functions, strings);
-
-    fclose(file);
     
     Value scriptVal = functions->array.values[0];
     ObjFunction* script = (ObjFunction*) AS_OBJ(scriptVal);

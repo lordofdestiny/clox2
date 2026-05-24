@@ -20,9 +20,10 @@
 } \
 
 typedef struct {
-    InputFile file;
     Scanner* scanner;
     const char * str;
+    char* buffer;
+    bool into_file;
 } TestStateBase;
 
 typedef struct {
@@ -36,26 +37,66 @@ typedef struct {
     TokenType* expected;
 } TestStateMultiType;
 
+typedef struct {
+    TestStateMultiType multi;
+    char* path;
+    FILE* file;
+} TestStateFileType;
+
 static int initTestState(void** state) {
     TestStateBase* wrapper = *state;
     size_t size = strlen(wrapper->str);
-    char* buffer = calloc(size + 2 ,1);
-    strcpy(buffer, wrapper->str);
 
-    wrapper->file = (InputFile) {
-        .content = buffer,
-        .path = NULL,
-        .size = size
-    };
+    if(wrapper->into_file) {
+        char path[] = "/tmp/scanner_test_XXXXXX.txt";
+        char* pathbuf = malloc(sizeof(path));
+        assert_non_null(pathbuf);
+        
+        int fd = mkstemps(path, 4);
+        assert_int_not_equal(fd, -1);
 
-    int succ = initScanner(&wrapper->scanner, wrapper->file);
-    assert_int_equal(succ, 0);
+        strcpy(pathbuf, path);
+
+        FILE* file = fdopen(fd, "w");
+        assert_non_null(file);
+
+        size_t count = fwrite(wrapper->str, sizeof(char), size, file);
+        assert_int_equal(count, size);
+        file = freopen(pathbuf, "r", file);
+        assert_non_null(file);
+
+        auto fileState = (TestStateFileType*)wrapper;
+
+        fileState->path = pathbuf;
+        fileState->file = file;
+
+        xerror* err = initScannerFile(&wrapper->scanner, file);
+        assert_null(err);
+    } else {
+        char* buffer = malloc(size + 1);
+        assert_non_null(buffer);
+
+        strcpy(buffer, wrapper->str);
+        buffer[size] = '\0';
+        wrapper->buffer = buffer;
+
+        xerror* err = initScannerPrompt(&wrapper->scanner, buffer);
+        assert_null(err);
+    }
+    
     return 0;
 }
 
 static int freeTestState(void** state) {
     TestStateBase* wrapper = *state;
-    freeInputFile(&wrapper->file);
+    if(wrapper->into_file) {
+        auto fileState = (TestStateFileType*)wrapper;
+        fclose(fileState->file);
+        remove(fileState->path);
+        free(fileState->path);
+    }else {
+        free(wrapper->buffer);
+    }
     freeScanner(wrapper->scanner);
     free(*state);
     return 0;
@@ -63,18 +104,33 @@ static int freeTestState(void** state) {
 
 static TestStateSingleType* makeSingleTypeData(const char* str, TokenType expected) {
     TestStateSingleType* data = malloc(sizeof(TestStateSingleType));
+    assert_non_null(data);
     data->common.str = str;
+    data->common.into_file = false;
     data->expected = expected;
     return data;
 }
 
 static TestStateMultiType* makeMultipleTypeData(const char* str, size_t count, TokenType* expected) {
     TestStateMultiType* data = malloc(sizeof(TestStateMultiType));
+    assert_non_null(data);
     data->common.str = str;
+    data->common.into_file = false;
     data->count = count;
     data->expected = expected;
     return data;
 }
+
+static TestStateFileType* makeMultipleTypeDataFile(const char* str, size_t count, TokenType* expected) {
+    TestStateFileType* data = malloc(sizeof(TestStateFileType));
+    assert_non_null(data);
+    data->multi.common.str = str;
+    data->multi.common.into_file = true;
+    data->multi.count = count;
+    data->multi.expected = expected;
+    return data;
+}
+
 
 static void test_base_single_type(void** state) {
     TestStateSingleType* data = *state;
@@ -168,6 +224,20 @@ int main(void) {
         named_test(
             "test_error", test_base_single_type,
             makeSingleTypeData("\\ ^", TOKEN_ERROR)
+        ),
+        named_test(
+            "test_file", test_base_multiple_types,
+            makeMultipleTypeDataFile(
+                "var a = 5;\n"
+                "var b = 10;\n"
+                "print a + b;\n",
+                15,
+                (TokenType*) &(TokenType[]){
+                    TOKEN_VAR, TOKEN_IDENTIFIER, TOKEN_EQUAL, TOKEN_NUMBER, TOKEN_SEMICOLON,
+                    TOKEN_VAR, TOKEN_IDENTIFIER, TOKEN_EQUAL, TOKEN_NUMBER, TOKEN_SEMICOLON,
+                    TOKEN_PRINT, TOKEN_IDENTIFIER, TOKEN_PLUS, TOKEN_IDENTIFIER, TOKEN_SEMICOLON
+                }
+            )
         )
     };
  

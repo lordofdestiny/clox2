@@ -11,9 +11,9 @@ int executeCommand(const Command* cmd) {
     case CMD_REPL:
         return repl();
     case CMD_EXECUTE:
-        return runFile(cmd);
+        return runFileCommand(cmd);
     case CMD_COMPILE:
-        return compileFile(cmd);
+        return compileFileCommand(cmd);
     case CMD_DISASSEMBLE:
         fprintf(stderr, "Disassembly not implemented yet.\n");
         return EXIT_CODE_BAD_ARGS;

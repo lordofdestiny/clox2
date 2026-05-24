@@ -11,17 +11,19 @@ target_compile_features(cloxcommon PUBLIC c_std_23)
 
 target_sources(cloxcommon
   PRIVATE
-    src/inputfile.c
     src/arena.c
+    src/inputfile.c
+    src/xerror.c
 
   PUBLIC
     FILE_SET HEADERS
     BASE_DIRS include
     FILES
-      include/common/inputfile.h
       include/common/arena.h
+      include/common/inputfile.h
       include/common/ilist.h
       include/common/util.h
+      include/common/xerror.h
 )
 
 add_subdirectory(test)

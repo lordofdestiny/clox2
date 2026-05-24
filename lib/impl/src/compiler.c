@@ -14,7 +14,7 @@
 
 #if defined(DEBUG_PRINT_CODE) || defined(DEBUG_TRACE_EXECUTION)
 
-#include "debug.h"
+#include <impl/debug.h>
 
 #endif
 
@@ -83,21 +83,10 @@ typedef struct Compiler {
     int innermostLoopStart;
     int innermostLoopScopeDepth;
 
+    bool canDropSemicolon;
+
     Table stringConstants;
 } Compiler;
-
-static bool* compilerReplMode() {
-    static bool value;
-    return &value;
-}
-
-bool isRepl() {
-    return *compilerReplMode();
-}
-
-void setRepl(bool isRepl) {
-    *compilerReplMode() = isRepl;
-}
 
 typedef struct ClassCompiler {
     struct ClassCompiler* enclosing;
@@ -116,6 +105,7 @@ typedef struct {
     Token previous;
     bool hadError;
     bool panicMode;
+    bool replMode;
 } Parser;
 
 Parser parser;
@@ -174,7 +164,7 @@ static void consumeReplOptional(const TokenType type, const char* message) {
         advance();
         return;
     }
-    if (current->enclosing != NULL || !isRepl()) {
+    if (current->enclosing != NULL || !parser.replMode || !current->canDropSemicolon) {
         errorAtCurrent(message);
     }
 }
@@ -287,6 +277,7 @@ static void initCompiler(Compiler* compiler, const FunctionType type) {
     compiler->localCount = 0;
     compiler->scopeDepth = 0;
     compiler->function = newFunction();
+    compiler->canDropSemicolon = true;
     current = compiler;
 
     // Has to be called here because GC will try to mark its entries
@@ -331,7 +322,6 @@ static void initCompiler(Compiler* compiler, const FunctionType type) {
     compiler->loopType = LOOP_NONE;
     compiler->innermostLoopStart = -1;
     compiler->innermostLoopScopeDepth = 0;
-
 }
 
 static ObjFunction* endCompiler() {
@@ -548,11 +538,9 @@ static void super_([[maybe_unused]] bool canAssign) {
         namedVariable(syntheticToken("super"), false);
         emitBytes(OP_GET_SUPER, name);
     }
-    // emitBytes(OP_GET_SUPER, name);
 }
 
 static void and_([[maybe_unused]] bool canAssign) {
-
     const int endJump = emitJump(OP_JUMP_IF_FALSE);
     emitByte(OP_POP);
     parsePrecedence(PREC_AND);
@@ -574,7 +562,6 @@ static void parameterList() {
         defineVariable(constant);
     } while (match(TOKEN_COMMA));
 }
-
 
 static void lambda();
 
@@ -753,10 +740,10 @@ static void varDeclaration() {
 static void expressionStatement() {
     expression();
     consumeReplOptional(TOKEN_SEMICOLON, "Expect ';' after expression.");
-    if (isRepl()) {
-        emitByte(OP_PRINT);
-    }else {
+    if (!parser.replMode || !current->canDropSemicolon) {
         emitByte(OP_POP);
+    }else {
+        emitByte(OP_PRINT);
     }
 }
 
@@ -818,6 +805,8 @@ static void breakStatement() {
 }
 
 static void forStatement() {
+    const bool previousCanDropSemicolon = current->canDropSemicolon;
+    current->canDropSemicolon = false;
     beginScope();
 
     // 1: Grab the name and slot of the loop variable,so that we can refer to it later.
@@ -912,6 +901,7 @@ static void forStatement() {
     leaveBreakLocations(&locations);
 
     endScope();
+    current->canDropSemicolon = previousCanDropSemicolon;
 }
 
 static void continueStatement() {
@@ -936,6 +926,9 @@ static void continueStatement() {
 }
 
 static void ifStatement() {
+    const bool previousCanDropSemicolon = current->canDropSemicolon;
+    current->canDropSemicolon = false;
+    
     consume(TOKEN_LEFT_PAREN, "Expect '(' after if.");
     expression();
     consume(TOKEN_RIGHT_PAREN, "Expect ')' after condition.");
@@ -949,6 +942,8 @@ static void ifStatement() {
     emitByte(OP_POP);
     if (match(TOKEN_ELSE)) statement();
     patchJump(elseJump);
+    
+    current->canDropSemicolon = previousCanDropSemicolon;
 }
 
 static void printStatement() {
@@ -975,6 +970,9 @@ static void returnStatement() {
 }
 
 static void switchStatement() {
+    const bool previousCanDropSemicolon = current->canDropSemicolon;
+    current->canDropSemicolon = false;
+
     consume(TOKEN_LEFT_PAREN, "Expected '(' after switch");
     expression();
     consume(TOKEN_RIGHT_PAREN, "Expected ')' after switch expression");
@@ -1056,9 +1054,14 @@ static void switchStatement() {
     current->localCount--;
 
     emitByte(OP_POP);
+
+    current->canDropSemicolon = previousCanDropSemicolon;
 }
 
 static void whileStatement() {
+    const bool previousCanDropSemicolon = current->canDropSemicolon;
+    current->canDropSemicolon = false;
+
     const LoopType surroundingLoopType = current->loopType;
     const int surroundingLoopStart = current->innermostLoopStart;
     const int surroundingLoopScopeDepth = current->innermostLoopScopeDepth;
@@ -1087,9 +1090,14 @@ static void whileStatement() {
     current->loopType = surroundingLoopType;
     current->innermostLoopStart = surroundingLoopStart;
     current->innermostLoopScopeDepth = surroundingLoopScopeDepth;
+
+    current->canDropSemicolon = previousCanDropSemicolon;
 }
 
 static void tryCatchStatement() {
+    const bool previousCanDropSemicolon = current->canDropSemicolon;
+    current->canDropSemicolon = false;
+
     emitByte(OP_PUSH_EXCEPTION_HANDLER);
 
     const int exceptionType = currentChunk()->count;
@@ -1147,6 +1155,8 @@ static void tryCatchStatement() {
     if (tryOnly) {
         error("Try must be followed by a catch and/or finally block.");
     }
+
+    current->canDropSemicolon = previousCanDropSemicolon;
 }
 
 void throwStatement() {
@@ -1446,7 +1456,6 @@ static void namedVariable(Token name, const bool canAssign) {
     }
 }
 
-
 static void this_([[maybe_unused]] bool canAssign) {
     if (currentClass == NULL) {
         error("Can't use 'this' outside of a class.");
@@ -1583,27 +1592,50 @@ static ParseRule* getRule(const TokenType type) {
     return &rules[type];
 }
 
-ObjFunction* compile(InputFile source)
-{
-    if(initScanner(&parser.scanner, source) != 0) {
-        return NULL;
-    }
-
+static ObjFunction* compile(bool repl) {
     Compiler compiler;
     initCompiler(&compiler, TYPE_SCRIPT);
 
     parser.hadError = false;
     parser.panicMode = false;
+    parser.replMode = repl;
 
     advance();
-
-    while (!match(TOKEN_EOF)) {
+    while(!match(TOKEN_EOF)) {
         declaration();
     }
 
     ObjFunction* function = endCompiler();
-    freeScanner(parser.scanner);
     return parser.hadError ? NULL : function;
+}
+
+ObjFunction* compileFile(FILE* file)
+{
+    xerror* err = initScannerFile(&parser.scanner, file);
+    if(err != NULL) {
+        xperror(err);
+        xerror_free(err);
+        return NULL;
+    }
+
+    ObjFunction* function = compile(false);
+    
+    freeScanner(parser.scanner);
+    return function;
+}
+
+ObjFunction* compilePrompt(const char* prompt) {
+    xerror* err = initScannerPrompt(&parser.scanner, prompt);
+    if(err != NULL) {
+        xperror(err);
+        xerror_free(err);
+        return NULL;
+    }
+
+    ObjFunction* function = compile(true);
+    
+    freeScanner(parser.scanner);
+    return function;
 }
 
 void markCompilerRoots() {
