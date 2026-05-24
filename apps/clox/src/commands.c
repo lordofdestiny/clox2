@@ -10,7 +10,7 @@
 
 int repl() {
     char line[1024];
-    while (1) {
+    while (true) {
         memset(line, 0, sizeof(line));
 
         printf(">>> ");
@@ -19,7 +19,8 @@ int repl() {
             break;
         }
 
-        InterpretResult code = interpretPrompt(line);
+        ObjFunction* script = compilePrompt(line);
+        InterpretResult code = interpret(script);
         if (code == INTERPRET_EXIT) {
             return vmExitCode();
         }
@@ -33,41 +34,27 @@ static void displayTime(clock_t start, clock_t end) {
     printf("Execution time: %.6f seconds\n", time);
 }
 
-static int runSourceFile([[maybe_unused]] const char* path) {
+typedef ObjFunction* (*CreateFunction)(const char* path);
+
+static int runFile(const char* path, CreateFunction create) {
     const clock_t start = clock();
 
-    InterpretResult result = interpretFile(path);
-    if(result == INTERPRET_COMPILE_ERROR) {
+    ObjFunction* script = create(path);
+    if (script == NULL) {
         return EXIT_CODE_COMPILE_ERROR;
     }
-
+    InterpretResult code = interpret(script);
+    
     const clock_t end = clock();
     displayTime(start, end);
 
-    switch (result) {
+    switch (code) {
     case INTERPRET_OK: return EXIT_SUCCESS;
     case INTERPRET_EXIT: return vmExitCode();
     case INTERPRET_COMPILE_ERROR: return EXIT_CODE_COMPILE_ERROR;
     case INTERPRET_RUNTIME_ERROR: return EXIT_CODE_RUNTIME_ERROR;
     }
-
     return 0;
-}
-
-static int runBinaryFile(const char* path) {
-    clock_t start = clock();
-
-    ObjFunction* compiled = loadBinary(path);
-    InterpretResult result = interpretCompiled(compiled);
-    
-    clock_t end = clock();
-    displayTime(start, end);
-
-    switch (result) {
-    case INTERPRET_EXIT: return vmExitCode();
-    case INTERPRET_RUNTIME_ERROR: return EXIT_CODE_RUNTIME_ERROR;
-    default: return 0;
-    }
 }
 
 int runFileCommand(const Command* cmd) {
@@ -82,11 +69,11 @@ int runFileCommand(const Command* cmd) {
     }
 
     if (cmd->input_type == CMD_EXEC_SOURCE) {
-        return runSourceFile(cmd->input_file);
+        return runFile(cmd->input_file, compileFile);
     }
 
     if (cmd->input_type == CMD_EXEC_BINARY) {
-        return runBinaryFile(cmd->input_file);
+        return runFile(cmd->input_file, loadBinary);
     }
 
     fprintf(stderr, "Unknown input type for execution.\n");

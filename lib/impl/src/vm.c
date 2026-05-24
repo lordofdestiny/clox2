@@ -1222,17 +1222,7 @@ static InterpretResult run() {
 #undef BINARY_OP
 }
 
-InterpretResult interpretFile(const char* source) {
-    ObjFunction* function = compileFile(source);
-    return interpretCompiled(function);
-}
-
-InterpretResult interpretPrompt(char* prompt) {
-    ObjFunction* function = compilePrompt(prompt);
-    return interpretCompiled(function);
-}
-
-InterpretResult interpretCompiled(ObjFunction* function) {
+InterpretResult interpret(ObjFunction* function) {
     if (function == NULL) return INTERPRET_COMPILE_ERROR;
     push(OBJ_VAL(function));
     callFunction((Obj*) function, 0);
