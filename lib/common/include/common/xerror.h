@@ -26,6 +26,7 @@
 
 typedef struct xerror xerror;
 
+[[nodiscard("xerror* is dynamically allocated")]]
 xerror* xerror_create(xerror* cause, const char* lib_name, int code, const char* context, const char* file, int line, const char* function);
 
 void xerror_free(xerror* err);

@@ -19,6 +19,7 @@ typedef struct  {
     size_t size;
 } InputFile;
 
+[[nodiscard("xerror* is dynamically allocated")]]
 xerror* readInputFile(const char* path, InputFile* out);
 
 void freeInputFile(InputFile* file);
