@@ -1,0 +1,147 @@
+File = { Statements } EOF ;
+
+Statements = { Statement } ;
+
+Statement	=	DeclarationStatement
+				| IfElseStatement
+				| ForStatement
+				| WhileStatement
+				| SwitchStatement
+				| BreakStatement
+				| ContinueStatement
+				| ReturnStatement
+				| TryCatchFinallyStatement
+				| ThrowStatement
+				| BlockStatement
+				| PrintStatement
+				| ExpressionStatement
+				;
+
+Declaration	= 	ClassDeclarationStatement
+				| VarDeclarationStatement
+				| FunDeclarationStatement
+				;
+
+ClassDeclarationStatement =	
+	'class' IDENTIFIER	'<' IDENTIFIER
+	'{'
+		{ ClassMember }
+	'}'
+	;
+
+ClassMember	=	[ 'static' ] FunctionBody
+				| 'static' IDENTIFIER [ '=' Expression ]
+				;
+	
+FunDeclarationStatement	=	'fun' FunctionBody ;
+
+FunctionBody = IDENTIFIER '(' FunctionParameters ')' BlockStatement ;
+
+FunctionParameters	=	IDENTIFIER { ',' IDENTIFIER } ;
+
+VarDeclarationStatement	= VarDeclaration ';' ;
+
+VarDeclaration = 'var' VarDeclarationList ;
+
+VarDeclarationList = VarDeclElement { ',' VarDeclElement } ;
+
+VarDeclElement = IDENTIFIER '=' Expression ;
+
+IfElseStatement = 'if' '(' Expression ')' Statement [ 'else' Statement ] ;
+
+ForStatement = 'for' '(' 
+	[ 'var' ] VarDeclarationList ';'
+	{ Expression } ';'
+	Expression ')'
+	Statement
+	;
+
+WhileStatement = 'while' '(' Expression ')' Statement ;
+
+SwitchStatement = 'switch' '(' Expression ')' '{'
+		{ 
+			(
+				'case' Expression ';' 
+				| Statement
+			)
+		}	
+		[
+			'default' ':'
+			{ Statement }
+		]
+	'}'
+	;
+
+BreakStatement = 'break' ';' ;
+
+ContinueStatement = 'continue' ';' ;
+
+ReturnStatement = 'return' ';' ;
+
+TryCatchFinallyStatement =
+	'try' Statement (
+		'catch' Statement 'finally' Statement
+		| 'finally' Statement
+	)
+	;
+
+ThrowStatement = 'throw' Expression ';' ;
+
+BlockStatement = '{' Statements '}' ;
+
+PrintStatement = 'print' Expression ';' ;
+
+ExpressionStatement = Expression ';' ;
+
+Expression = AssignmentExpression
+			| LambdaExpression
+			| ContainerLiteral
+			;
+
+AssignmentExpression = Designator ( '=' | '+=' | '-=' | '*=' | '/=' | '%=' ) Expression ;
+
+LambdaExpression = '|' FunctionParameters '|' ( BlockStatement | Expression) ;
+
+ContainerLiteral =	ArrayLiteral
+					| ConditionalExpression
+					;
+
+ArrayLiteral = '[' [ Expression { ', ' Expression } ] ']' ;
+
+ConditionalExpression =	TernaryExpression
+						| DisjunctionExpression
+						;
+
+TernaryExpression = Expression '?' Expression ':' Expression ;
+
+DisjunctionExpression =	ConjunctionEpression { 'or' ConjunctionEpression } ;
+
+ConjunctionEpression = EquivalenceExpression { 'and' EquivalenceExpression } ;
+
+EquivalenceExpression = RelationalExpression { ('==' | '!=') RelationalExpression } ;
+
+RelationalExpression = SumattionExpression { ('<' | '>' | '<=' | '>=') SumattionExpression } ;
+
+SumattionExpression = FactorExpression { ('+' | '-') FactorExpression } ;
+
+FactorExpression = ExponentExporession { ('*' | '/' | "%") ExponentExporession } ;
+
+ExponentExporession = PrimaryExpression { '**' UnaryExpression } ;
+
+UnaryExpression = PrimaryExpression | [ ('!' | '-') ExponentExporession ] ;
+
+PrimaryExpression = Designator
+					| FunctionCall
+					| NUMBER
+					| STRING
+					;
+
+Designator =	IDENTIFIER
+			 	| Designator '[' Expression ']'
+				| Designator '.' IDENTIFIER
+				| FunctionCall '.' IDENTIFIER
+				;
+
+FunctionCall	= Designator '(' FunctionArguments ')' ;
+
+FunctionArguments	= Expression { ',' Expression } ;
