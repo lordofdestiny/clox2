@@ -8,6 +8,11 @@
   "--security-opt",
   "seccomp=unconfined"
  ],
+"features": {
+   "ghcr.io/eliises/devcontainer-features/bash-profile:1.0.1": {
+      "command" : "source ~/.bash_profile"
+   }
+},
  "postCreateCommand": "python3 -m venv .venv && . .venv/bin/activate && pip install -r requirements.txt",
  "customizations": {
   "vscode": {
@@ -19,13 +24,15 @@
     "GitHub.copilot-chat",
     "jlevere.elfpreview",
     "ms-vscode.live-server",
-    "ms-vscode.hexeditor"
+    "ms-vscode.hexeditor",
+    "omkov.vscode-ebnf",
+    "daohong-emilio.yash"
    ],
    "settings": {
       "python.terminal.activateEnvironment": true,
       "python.defaultInterpreterPath": ".venv/bin/python",
       "python-envs.terminal.autoActivationType": "shellStartup"
-   }
+   },
   }
  },
  "workspaceMount": "source=${localWorkspaceFolder},target=/mnt/clox2,type=bind",
