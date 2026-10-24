@@ -38,14 +38,13 @@ def is_nterm_variant_nterm(node: AST, reverse=False):
 
 
 class NamesetCollector(NodeVisitor):
-    def __init__(self):
+    def __init__(self, root: AST):
+        self.root = root
         self.names = set()
 
-    @classmethod
-    def collect(cls, node: AST) -> set[str]:
-        vst = cls()
-        vst.visit(node)
-        return vst.names
+    def collect(self) -> set[str]:
+        self.visit(self.root)
+        return self.names
 
     def visit_Assign(self, node):
         if not isinstance(node.targets[0], Attribute):
@@ -60,5 +59,5 @@ class NamesetCollector(NodeVisitor):
         self.names.add(node.id)
 
 
-def collect_nterm_names(node: AST) -> set[str]:
-    return NamesetCollector.collect(node)
+def collect_names(node: AST) -> set[str]:
+    return NamesetCollector(node).collect()

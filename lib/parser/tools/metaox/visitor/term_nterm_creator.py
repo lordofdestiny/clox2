@@ -1,6 +1,5 @@
 from ast import NodeVisitor
 from ast import Name, Constant, Subscript, Attribute, AST
-from platform import node
 
 from ..types import nterm, term, nterm_list
 

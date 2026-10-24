@@ -2,7 +2,9 @@ import argparse
 from ast import parse as ast_parse, dump as ast_dump
 from pprint import pprint
 
-from metaox import term, nterm, TermNtermCollector, collect_nterm_names
+from metaox import term, nterm, TermNtermCollector, collect_names
+
+from metaox.visitor.rules import CreateRules
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser("metaox")
@@ -13,17 +15,12 @@ if __name__ == "__main__":
     with open(args.specfile, "r") as f:
         tree = ast_parse(f.read())
 
-        if args.tree:
-            print(ast_dump(tree, indent=2))
-            exit(0)
+    if args.tree:
+        print(ast_dump(tree, indent=2))
+        exit(0)
 
-        nameset = collect_nterm_names(tree)
+    nameset = collect_names(tree)
 
-        vis = TermNtermCollector(args.specfile, nameset)
-        vis.traverse(tree)
+    TermNtermCollector(args.specfile, nameset).traverse(tree)
 
-        # All non terminals
-        pprint(nterm.nterms)
-
-        # print(term.terms)
-        # print(nterm.nterms)
+    CreateRules().traverse(tree)
