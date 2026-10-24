@@ -95,6 +95,7 @@ static void* init_block(void* ptr, size_t size) {
 }
 
 void* arena_alloc(arena_t *arena, size_t req_size) {
+    massert(arena != NULL, "arena is NULL");
     size_t size = ALIGNED_BLOCK_SIZE(req_size);
     if (arena->position + size > arena->capacity) {
         return NULL;
@@ -105,6 +106,7 @@ void* arena_alloc(arena_t *arena, size_t req_size) {
 }
 
 void* arena_calloc(arena_t *arena, size_t count, size_t size) {
+    massert(arena != NULL, "arena is NULL");
     size_t total_size = count * size;
     if (size > 0 && count > ULONG_MAX  / size) {
         return NULL;
@@ -121,6 +123,7 @@ void* arena_calloc(arena_t *arena, size_t count, size_t size) {
 void* arena_realloc(arena_t *arena, void *ptr, size_t req_size) {
     if(ptr == NULL) return arena_alloc(arena, req_size);
 
+    massert(arena != NULL, "arena is NULL");
     massert(arena_owns(arena, ptr),  "arena does not own reallocated pointer");
     massert(IS_ALIGNED(ptr), "unialigned pointer reallocated in arena");
     massert(!IS_FREE(ptr), "reallocating a freed pointer in arena");
@@ -166,6 +169,7 @@ void* arena_realloc(arena_t *arena, void *ptr, size_t req_size) {
 void arena_free(arena_t *arena, void *ptr) {
     if (ptr == NULL) return;
 
+    massert(arena != NULL, "arena is NULL");
     massert(arena_owns(arena, ptr),  "arena does not own freed pointer");
     massert(IS_ALIGNED(ptr), "unialigned pointer freed in arena");
     massert(!IS_FREE(ptr), "double free corruption in arena allocator: %p");
@@ -178,14 +182,17 @@ void arena_free(arena_t *arena, void *ptr) {
 }
 
 void arena_reset(arena_t *arena) {
+    massert(arena != NULL, "arena is NULL");
     arena->position = sizeof(arena_t);
 }
 
 size_t arena_save(arena_t *arena) {
+    massert(arena != NULL, "arena is NULL");
     return arena->position;
 }
 
 void arena_rewind(arena_t *arena, size_t checkpoint) {
+    massert(arena != NULL, "arena is NULL");
     arena->position = checkpoint;
 }
 

@@ -20,4 +20,6 @@ RUN apt-get install -y \
 
 RUN git config --global --add safe.directory /mnt/clox2
 
-COPY .bash_aliases /root
+RUN curl https://raw.githubusercontent.com/git/git/master/contrib/completion/git-completion.bash -o ~/.git-completion.bash
+
+COPY .bash_aliases .bash_profile /root

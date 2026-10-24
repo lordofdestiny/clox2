@@ -4,15 +4,19 @@ project(clox LANGUAGES C)
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/externals/cmake-argp/cmake")
 
-include(CheckIPOSupported)
 include(CTest)
 
 option(ENABLE_COVERAGE "Enable code coverage generation" NO)
+option(ENABLE_IPO "Enable interprocedural optimization" OFF)
 option(CLOX_NAN_BOXING "Enable NAN BOXING for stack values" YES)
 
 if(BUILD_TESTING)
   include(FetchCMocka)
   enable_testing()
+endif()
+
+if(ENABLE_IPO)
+  include(CheckIPOSupported)
 endif()
 
 find_package(Python3 3.12 REQUIRED COMPONENTS Interpreter)
@@ -26,11 +30,13 @@ endif()
 
 set(CMAKE_C_EXTENSIONS ON)
 
-check_ipo_supported(RESULT result OUTPUT output)
-if(result)
-  set(CMAKE_INTERPROCEDURAL_OPTIMIZATION TRUE)
-else()
-  message(WARNING "IPO is not supported: ${output}")
+if(ENABLE_IPO)
+  check_ipo_supported(RESULT result OUTPUT output)
+  if(result)
+    set(CMAKE_INTERPROCEDURAL_OPTIMIZATION TRUE)
+  else()
+    message(WARNING "IPO is not supported: ${output}")
+  endif()
 endif()
 
 if(APPLE)
@@ -43,7 +49,6 @@ if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
     add_compile_options(-fmacro-prefix-map=${CMAKE_SOURCE_DIR}/=)
     add_compile_options(-pedantic-errors -Wpedantic -pedantic -Wall -Wextra)
 endif()
-
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 
